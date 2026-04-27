@@ -1,0 +1,444 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  font-family: "Pretendard", "Noto Sans KR", sans-serif;
+  background: #f5f7fb;
+  color: #111827;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 16px 80px;
+}
+
+.hero {
+  margin-bottom: 16px;
+}
+
+.hero-badge {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.hero h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.hero-sub {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* TABS */
+.tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.tab.active {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+/* CARD */
+.card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.08);
+  margin-bottom: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field span {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+select,
+input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.check-row input {
+  width: auto;
+}
+
+.check-row span {
+  font-size: 14px;
+}
+
+.employee-summary h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.employee-summary p {
+  margin: 0 0 14px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.info-box {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f9fafb;
+}
+
+.info-box span {
+  display: block;
+  margin-bottom: 6px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.info-box strong {
+  font-size: 14px;
+}
+
+.substitute-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #92400e;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.status-box {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f9fafb;
+}
+
+.status-box span {
+  display: block;
+  margin-bottom: 6px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.status-box strong {
+  font-size: 18px;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.primary-btn,
+.danger-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.primary-btn {
+  background: #111827;
+}
+
+.danger-btn {
+  background: #dc2626;
+}
+
+.primary-btn:disabled,
+.danger-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.section-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.section-head span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.record-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.record-row:last-child {
+  border-bottom: none;
+}
+
+.record-row span {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.record-row strong {
+  font-size: 14px;
+}
+
+.record-row.total strong {
+  font-size: 16px;
+}
+
+.loading-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.loading-card {
+  background: #fff;
+  padding: 28px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.08);
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto 12px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #111827;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-card p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.tab {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tab.active {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+/* ── LOGOUT ── */
+.logout-btn {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+/* ── PIN 화면 ── */
+.pin-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pin-wrap {
+  width: 100%;
+  max-width: 360px;
+  padding: 32px 24px 40px;
+  text-align: center;
+}
+
+.pin-title {
+  margin: 8px 0 6px;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.pin-sub {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.pin-display {
+  margin: 0 auto 8px;
+  padding: 18px 24px;
+  border-radius: 18px;
+  background: #111827;
+  color: #fff;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pin-prefix {
+  font-size: 28px;
+  font-weight: 900;
+  color: #f59e0b;
+  letter-spacing: 0;
+}
+
+.pin-value {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.pin-placeholder {
+  font-size: 22px;
+  color: #4b5563;
+  letter-spacing: 0.2em;
+}
+
+.pin-error {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.pinpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.pin-key {
+  padding: 18px 0;
+  border-radius: 16px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.pin-key:active {
+  background: #e5e7eb;
+}
+
+.pin-ok {
+  background: #111827;
+  color: #fff;
+}
+
+.pin-ok:active {
+  background: #374151;
+}
+
+.pin-del {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.pin-del:active {
+  background: #fecaca;
+}
+
+.pin-hint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0 0 10px;
+}
+
+.pin-text-input {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 15px;
+  text-align: center;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}

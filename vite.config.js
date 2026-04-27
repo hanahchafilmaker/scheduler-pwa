@@ -2,10 +2,9 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
-const isProd = process.env.NODE_ENV === "production";
-
 export default defineConfig({
-  base: isProd ? "/scheduler-pwa/" : "/",
+  // Vercel 배포를 위해 루트 경로('/')로 고정합니다.
+  base: "/", 
   plugins: [
     react(),
     VitePWA({

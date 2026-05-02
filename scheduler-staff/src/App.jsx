@@ -102,7 +102,7 @@ export default function StaffApp() {
 
   const [allData, setAllData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false); // kept for compatibility
   const [toast, setToast] = useState(null);
 
   const [tab, setTab] = useState("today"); // today | history
@@ -189,10 +189,17 @@ export default function StaffApp() {
     ) || null;
   }, [allData, employee, today]);
 
-  const isPending = todayAttendance?.status === "pending";
-  const isCheckedIn = !!todayAttendance?.check_in && !isPending;
-  const isCheckedOut = !!todayAttendance?.check_out;
-  const isWorking = isCheckedIn && !isCheckedOut;
+  // 상태 설계:
+  // approved=false + check_in있음 + check_out없음 → 승인대기
+  // approved=true  + check_in있음 + check_out없음 → 근무중
+  // approved=true  + check_in있음 + check_out있음 → 퇴근완료
+  // approved=false + check_out있음                → 비정상
+  const att = todayAttendance;
+  const isPending   = !!att?.check_in && !att?.check_out && String(att?.approved) !== "true";
+  const isWorking   = !!att?.check_in && !att?.check_out && String(att?.approved) === "true";
+  const isCheckedOut = !!att?.check_out && String(att?.approved) === "true";
+  const isAbnormal  = !!att?.check_out && String(att?.approved) !== "true";
+  const isCheckedIn = isWorking || isCheckedOut; // 승인된 상태만 출근 처리됨
 
   // ── 출근 ──
   const checkIn = async () => {
@@ -201,44 +208,72 @@ export default function StaffApp() {
       showToast("파트를 먼저 선택해주세요", "err");
       return;
     }
-    setActionLoading(true);
-    try {
-      await post({
-        action: "check_in",
-        employee_id: employee.employee_id,
-        name: employee.name,
-        date: today,
-        part: selectedPart,
-        check_in: nowTime(),
-        status: "pending",
-      });
-      showToast("출근 요청 완료! 관리자 승인을 기다려주세요 ⏳");
-      await fetchAll();
-    } finally {
-      setActionLoading(false);
-    }
+    const checkInTime = nowTime();
+    const tempId = "TMP_" + Date.now();
+
+    // Optimistic update: 즉시 로컬 반영
+    const newRecord = {
+      attendance_id: tempId,
+      employee_id: employee.employee_id,
+      name: employee.name,
+      date: today,
+      part: selectedPart,
+      check_in: checkInTime,
+      check_out: "",
+      break_min: 0,
+      approved: false,
+    };
+    setAllData((prev) => ({
+      ...prev,
+      attendance: [...(prev?.attendance || []), newRecord],
+    }));
+    showToast("출근 요청 완료! 관리자 승인을 기다려주세요 ⏳");
+
+    // 백그라운드 서버 저장 후 실제 ID로 교체
+    post({
+      action: "check_in",
+      employee_id: employee.employee_id,
+      name: employee.name,
+      date: today,
+      part: selectedPart,
+      check_in: checkInTime,
+    }).then(() => fetchAll()).catch(() => {
+      showToast("서버 저장 실패, 다시 시도해주세요", "err");
+      setAllData((prev) => ({
+        ...prev,
+        attendance: prev.attendance.filter((a) => a.attendance_id !== tempId),
+      }));
+    });
   };
 
   // ── 퇴근 ──
   const checkOut = async () => {
-    if (!isCheckedIn || isCheckedOut) return;
-    setActionLoading(true);
-    try {
-      await post({
-        action: "check_out",
-        attendance_id: todayAttendance.attendance_id,
-        check_out: nowTime(),
-      });
-      showToast("퇴근 완료! 수고했어요 🎉 잠시 후 로그아웃됩니다");
-      await fetchAll();
-      setTimeout(() => {
-        setScreen("pin");
-        setEmployee(null);
-        setTab("today");
-      }, 3000);
-    } finally {
-      setActionLoading(false);
-    }
+    if (!isWorking) return;
+    const checkOutTime = nowTime();
+    const attId = todayAttendance.attendance_id;
+
+    // Optimistic update: 즉시 로컬 반영
+    setAllData((prev) => ({
+      ...prev,
+      attendance: prev.attendance.map((a) =>
+        a.attendance_id === attId ? { ...a, check_out: checkOutTime } : a
+      ),
+    }));
+    showToast("퇴근 완료! 수고했어요 🎉");
+    setTimeout(() => {
+      setScreen("pin");
+      setEmployee(null);
+      setTab("today");
+    }, 2500);
+
+    // 백그라운드 서버 저장
+    post({
+      action: "check_out",
+      attendance_id: attId,
+      check_out: checkOutTime,
+    }).then(() => fetchAll()).catch(() => {
+      showToast("퇴근 저장 실패, 관리자에게 문의하세요", "err");
+    });
   };
 
   // ── 근무 기록 (월별) ──
@@ -257,7 +292,8 @@ export default function StaffApp() {
           safeStr(a.employee_id) === safeStr(employee.employee_id) &&
           d >= historyMonth.start &&
           d <= historyMonth.end &&
-          a.check_in && a.check_out
+          a.check_in && a.check_out &&
+          String(a.approved) === "true"  // 승인된 기록만 표시
         );
       })
       .sort((a, b) => normalizeDate(b.date).localeCompare(normalizeDate(a.date))) || [];
@@ -278,11 +314,12 @@ export default function StaffApp() {
 
   // ── 오늘 근무 상태 텍스트 ──
   const statusInfo = useMemo(() => {
-    if (isPending) return { label: "승인 대기", color: "#d97706", bg: "#fffbeb" };
-    if (!isCheckedIn) return { label: "출근 전", color: "#6b7280", bg: "#f3f4f6" };
-    if (isWorking) return { label: "근무 중", color: "#059669", bg: "#d1fae5" };
+    if (isAbnormal)  return { label: "확인 필요", color: "#dc2626", bg: "#fee2e2" };
+    if (isPending)   return { label: "승인 대기", color: "#d97706", bg: "#fffbeb" };
+    if (!isCheckedIn) return { label: "출근 전",  color: "#6b7280", bg: "#f3f4f6" };
+    if (isWorking)   return { label: "근무 중",   color: "#059669", bg: "#d1fae5" };
     return { label: "퇴근 완료", color: "#2563eb", bg: "#dbeafe" };
-  }, [isPending, isCheckedIn, isWorking, isCheckedOut]);
+  }, [isAbnormal, isPending, isCheckedIn, isWorking]);
 
   // ── 오늘 예상 급여 ──
   const todayPay = useMemo(() => {
@@ -405,8 +442,17 @@ export default function StaffApp() {
 
           {/* 출근/퇴근 버튼 */}
           <div className="s-action-area">
-            {/* 파트 선택 — 항상 출근 전에 표시 */}
-            {!isCheckedIn && !isPending && (
+            {isAbnormal && (
+              <div className="s-pending-banner" style={{ background: "#1c0505", borderColor: "#991b1b" }}>
+                <div className="s-pending-icon">⚠️</div>
+                <div className="s-pending-text">
+                  <strong style={{ color: "#f87171" }}>확인 필요</strong>
+                  <span style={{ color: "#b91c1c" }}>관리자에게 문의해 주세요</span>
+                </div>
+              </div>
+            )}
+            {/* 파트 선택 — 출근 전에만 표시 */}
+            {!isCheckedIn && !isPending && !isAbnormal && (
               <div className="s-part-select-wrap">
                 <div className="s-part-select-label">📋 파트 선택 {todaySchedule ? "(배정됨)" : "(자율 선택)"}</div>
                 <div className="s-part-btns">
@@ -425,14 +471,13 @@ export default function StaffApp() {
                 </div>
               </div>
             )}
-            {!isCheckedIn && !isPending && (
+            {!isCheckedIn && !isPending && !isAbnormal && (
               <button
                 className="s-checkin-btn"
                 onClick={checkIn}
-                disabled={actionLoading}
               >
                 <span className="s-btn-icon">▶</span>
-                <span>{actionLoading ? "처리 중..." : "출근하기"}</span>
+                <span>출근하기</span>
               </button>
             )}
             {isPending && (
@@ -449,10 +494,9 @@ export default function StaffApp() {
               <button
                 className="s-checkout-btn"
                 onClick={checkOut}
-                disabled={actionLoading}
               >
                 <span className="s-btn-icon">■</span>
-                <span>{actionLoading ? "처리 중..." : "퇴근하기"}</span>
+                <span>퇴근하기</span>
               </button>
             )}
             {isCheckedOut && (
@@ -510,7 +554,8 @@ export default function StaffApp() {
                     (a) => safeStr(a.employee_id) === safeStr(employee.employee_id) &&
                            normalizeDate(a.date) >= getMonthRange().start &&
                            normalizeDate(a.date) <= getMonthRange().end &&
-                           a.check_in && a.check_out
+                           a.check_in && a.check_out &&
+                           String(a.approved) === "true"
                   ).length || 0}일
                 </strong>
               </div>

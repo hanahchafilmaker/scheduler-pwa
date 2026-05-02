@@ -79,7 +79,7 @@ function EmployeeRow({ s, att, status, shift, onApprove, onReject }) {
 
 // ── Extra attendance row (not on schedule) ────────────────────────────────────
 function ExtraRow({ a, onApprove, onReject }) {
-  const isPending = a.status === "pending";
+  const isPending = a.check_in && !a.check_out && String(a.approved) !== "true";
   return (
     <div className={`dash-emp-row ${isPending ? "row-pending" : "row-extra"}`}>
       <div className="dash-emp-name">
@@ -125,7 +125,7 @@ function PartBlock({ part, todayAtt, todaySched, onApprove, onReject }) {
     const att = partAtt.find((a) => safeStr(a.employee_id) === safeStr(s.employee_id));
     const status = !att
       ? "미출근"
-      : att.status === "pending"
+      : (att.check_in && !att.check_out && String(att.approved) !== "true")
       ? "승인대기"
       : getStatus(s, att);
     return { s, att, status };
@@ -135,13 +135,15 @@ function PartBlock({ part, todayAtt, todaySched, onApprove, onReject }) {
     (a) => !sched.some((s) => safeStr(s.employee_id) === safeStr(a.employee_id))
   );
 
+  const isPendingAtt = (a) => a.check_in && !a.check_out && String(a.approved) !== "true";
+
   const hasPending =
     schedRows.some((r) => r.status === "승인대기") ||
-    extraAtt.some((a) => a.status === "pending");
+    extraAtt.some((a) => isPendingAtt(a));
 
   const workingCount =
     schedRows.filter((r) => r.att?.check_in && !r.att?.check_out && r.status !== "승인대기").length +
-    extraAtt.filter((a) => a.check_in && !a.check_out && a.status !== "pending").length;
+    extraAtt.filter((a) => a.check_in && !a.check_out && !isPendingAtt(a)).length;
 
   return (
     <div className={`dash-part-block${hasPending ? " has-pending" : ""}`}>
@@ -179,7 +181,7 @@ function PartBlock({ part, todayAtt, todaySched, onApprove, onReject }) {
 export function HomeTab({ attendance, schedule, today, onApprove, onReject }) {
   const todayAtt   = useMemo(() => attendance.filter((a) => normalizeDate(a.date) === today), [attendance, today]);
   const todaySched = useMemo(() => schedule.filter((s)   => normalizeDate(s.date) === today), [schedule, today]);
-  const pending    = useMemo(() => todayAtt.filter((a)   => a.status === "pending"),          [todayAtt]);
+  const pending    = useMemo(() => todayAtt.filter((a)   => a.check_in && !a.check_out && String(a.approved) !== "true"), [todayAtt]);
 
   return (
     <div className="page">

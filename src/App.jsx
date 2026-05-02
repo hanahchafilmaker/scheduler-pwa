@@ -2750,69 +2750,84 @@ export default function AdminApp() {
 
         .payslip-print-btn:hover { background: #1f2937; }
 
-        @media print {
-          .sidebar, .tabs-wrap, .payslip-print-btn, .close-btn { display: none !important; }
-          .modal-overlay { position: static; background: none; padding: 0; }
-          .payslip-modal { box-shadow: none; max-height: none; }
-        }
+        /* ================= PRINT (임금명세서 전용) ================= */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
 
-                /* ── EMPTY / LOADING ── */
-        .loading {
-          text-align: center;
-          padding: 24px;
-          color: #9ca3af;
-          font-size: 13px;
-        }
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    width: 100% !important;
+    height: auto !important;
+  }
 
-        .empty {
-          text-align: center;
-          padding: 24px;
-          color: #9ca3af;
-          font-size: 13px;
-        }
+  /* 전체 숨김 */
+  body * {
+    visibility: hidden !important;
+  }
 
-        /* ── RESPONSIVE ── */
-        @media (max-width: 768px) {
-          .sidebar {
-            display: none;
-          }
-          .main-content {
-            margin-left: 0;
-            padding: 16px 14px 80px;
-          }
-          .tabs-wrap {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-bottom: 18px;
-          }
-          .tab-btn {
-            padding: 8px 14px;
-            border-radius: 10px;
-            border: 1.5px solid #e5e7eb;
-            background: #fff;
-            font-size: 13px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-          }
-          .tab-btn.active {
-            background: #f97316;
-            color: #fff;
-            border-color: #f97316;
-          }
-          .form-grid {
-            grid-template-columns: 1fr;
-          }
-          .card-grid {
-            grid-template-columns: 1fr;
-          }
-        }
+  /* 임금명세서만 보이기 */
+  .modal-overlay,
+  .modal-overlay *,
+  .payslip-modal,
+  .payslip-modal * {
+    visibility: visible !important;
+  }
 
-        @media (min-width: 769px) {
-          .tabs-wrap { display: none; }
-        }
-      `}</style>
-    </div>
-  );
+  /* 불필요 UI 제거 */
+  .sidebar,
+  .tabs-wrap,
+  .page-header,
+  .toast,
+  .payslip-print-btn,
+  .close-btn {
+    display: none !important;
+  }
+
+  /* 레이아웃 초기화 */
+  .admin-app {
+    display: block !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+  }
+
+  /* 모달을 일반 문서처럼 */
+  .modal-overlay {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    background: transparent !important;
+    padding: 0 !important;
+    backdrop-filter: none !important;
+  }
+
+  /* 명세서 */
+  .payslip-modal {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .payslip-header {
+    margin-top: 0 !important;
+  }
 }

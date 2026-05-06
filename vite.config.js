@@ -1,10 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import path from "path";
+
+const GAS_PATH =
+  "/macros/s/AKfycbwNkyY9klWD0nDlTtl4xjFjG1z1MVp8uoWa9LEPvkhcoR7VZu8Kk7asDlxYOaOcW8MLkA/exec";
 
 export default defineConfig({
-  // Vercel 배포를 위해 루트 경로('/')로 고정합니다.
-  base: "/", 
+  base: "/",
+
   plugins: [
     react(),
     VitePWA({
@@ -12,7 +16,7 @@ export default defineConfig({
       manifest: {
         name: "스마트 스케줄러",
         short_name: "스케줄러",
-        description: "관리자 대시보드 및 자동 스케줄링 앱",
+        description: "관리자 대시보드 및 직원 출퇴근 앱",
         theme_color: "#ffffff",
         background_color: "#ffffff",
         display: "standalone",
@@ -20,21 +24,53 @@ export default defineConfig({
           {
             src: "icons.jpg",
             sizes: "192x192",
-            type: "image/jpeg"
-          }
-        ]
-      }
-    })
+            type: "image/jpeg",
+          },
+        ],
+      },
+    }),
   ],
+
+  resolve: {
+    alias: {
+      "@shared": path.resolve(__dirname, "src/shared"),
+    },
+  },
+
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, "index.html"),
+        staff: path.resolve(__dirname, "staff.html"),
+      },
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/react")) return "react-vendor";
+          if (id.includes("node_modules")) return "vendor";
+        },
+      },
+    },
+  },
+
   server: {
     proxy: {
       "/api/scheduler": {
         target: "https://script.google.com",
         changeOrigin: true,
         secure: true,
-        rewrite: () =>
-          "/macros/s/AKfycbxJBgfF1oH1qNR0NYayCqdC4D1gHvxZtZQqzTcKLgIVJE2yZBkMvSB69ThRTPUVG88qfA/exec",
-      }
-    }
-  }
+        followRedirects: true,
+        rewrite: (urlPath) =>
+          urlPath.replace(/^\/api\/scheduler/, GAS_PATH),
+      },
+
+      "/api/staff": {
+        target: "https://script.google.com",
+        changeOrigin: true,
+        secure: true,
+        followRedirects: true,
+        rewrite: (urlPath) =>
+          urlPath.replace(/^\/api\/staff/, GAS_PATH),
+      },
+    },
+  },
 });

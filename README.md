@@ -1,16 +1,44 @@
-# React + Vite
+# SHIFT Scheduler PWA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+소규모 매장 운영을 위한 근무표·출퇴근·급여 정산 보조 시스템입니다.  
+Google Sheets를 데이터베이스처럼 사용하고, Google Apps Script를 API 서버로 연결한 React 기반 PWA입니다.
 
-Currently, two official plugins are available:
+## 주요 기능
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### 관리자용
 
-## React Compiler
+- 월별 근무표 생성
+- `input_YYYY_MM` 시트 기반 스케줄 작성
+- `schedule_YYYY_MM` 자동 생성
+- 직원 출퇴근 기록 확인
+- 대타 / 스케줄 외 출근 확인
+- 승인 처리
+- 자동 퇴근 반영
+- 월별 자료 백업
+- 정산 완료 월 숨김
+- 백업 완료 자료 정리
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 직원용
 
-## Expanding the ESLint configuration
+- PIN 로그인
+- 오늘 근무 확인
+- 출근 입력
+- 퇴근 입력
+- 이달 근무 기록 확인
+- 스케줄 외 출근 가능
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 기술 스택
+
+- React
+- Vite
+- PWA
+- Google Sheets
+- Google Apps Script
+- Vite Proxy
+
+## 데이터 구조
+
+### employees
+
+```txt
+employee_id	name	pin	phone	hourly_wage	active

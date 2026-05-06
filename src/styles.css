@@ -1322,3 +1322,44 @@ code {
     grid-template-columns: repeat(3, 1fr) !important;
   }
 }
+
+/* ============================================================
+   styles.css 하단에 추가할 CSS 패치
+   - 지각 뱃지 (.att-badge-late)
+   - 시간외 출근 뱃지 (.att-badge-extra)
+   ============================================================ */
+
+/* ── 출근 상태 인라인 뱃지 ──────────────────────────────────── */
+.att-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.att-badge-late {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.att-badge-extra {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+/* ── row-extra (시간외 출근 행 배경) ─────────────────────────── */
+/* 이미 styles.css에 있지만 없는 경우를 대비 */
+.row-extra {
+  background: #f5f3ff;
+}
+
+/* ── row-late (지각 행 배경) ─────────────────────────────────── */
+.row-late {
+  background: #fffbeb;
+}

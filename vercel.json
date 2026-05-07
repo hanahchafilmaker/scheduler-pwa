@@ -1,12 +1,7 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/scheduler/:path*",
-      "destination": "https://script.google.com/macros/s/AKfycbwNkyY9klWD0nDlTtl4xjFjG1z1MVp8uoWa9LEPvkhcoR7VZu8Kk7asDlxYOaOcW8MLkA/exec/:path*"
-    },
-    {
-      "source": "/api/staff/:path*",
-      "destination": "https://script.google.com/macros/s/AKfycbwNkyY9klWD0nDlTtl4xjFjG1z1MVp8uoWa9LEPvkhcoR7VZu8Kk7asDlxYOaOcW8MLkA/exec/:path*"
-    }
+  "routes": [
+    { "src": "/staff", "dest": "/staff.html" },
+    { "src": "/staff.html", "dest": "/staff.html" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

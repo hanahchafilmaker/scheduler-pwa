@@ -191,10 +191,9 @@ export default function App() {
 
   const handleApprove = useCallback(
     (att, approved) => {
-      const refetch = tab === "home" ? fetchToday : () => fetchAll(selectedMonth);
-      return approveAttendance(att, approved, refetch);
+      const refetch = () => fetchAll(selectedMonth);
     },
-    [tab, selectedMonth, fetchToday, fetchAll, approveAttendance],
+    [tab, selectedMonth, fetchAll, approveAttendance],
   );
 
   const renderTab = () => {

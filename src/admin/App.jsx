@@ -7,9 +7,7 @@ import { AttTab } from "../shared/components/AttTab";
 import { SimTab } from "../shared/components/SimTab";
 import { Toast } from "../shared/components/UI";
 
-// FIX: admin/App.jsx에 중복 정의되어 있던 toMin, calcNightMinutes를
-//      shared/utils에서 import하도록 변경
-import { normalizeDate, safeStr, calcWorkMinutes, calcNightMinutesSimple } from "../shared/utils";
+// FIX: admin/App.jsx??중복 ?�의?�어 ?�던 toMin, calcNightMinutes�?//      shared/utils?�서 import?�도�?변�?import { normalizeDate, safeStr, calcWorkMinutes, calcNightMinutesSimple } from "../shared/utils";
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -33,7 +31,7 @@ function addMonths(ym, offset) {
 
 function monthLabel(ym) {
   const [y, m] = ym.split("-");
-  return `${y}년 ${Number(m)}월`;
+  return `${y}??${Number(m)}??;
 }
 
 function buildSettlement({ attendance = [], employees = [], month }) {
@@ -47,7 +45,7 @@ function buildSettlement({ attendance = [], employees = [], month }) {
       d.startsWith(month) &&
       a.check_in &&
       a.check_out &&
-      // FIX: toBool 방식으로 통일 (GAS가 true/false/boolean 혼재 반환)
+      // FIX: toBool 방식?�로 ?�일 (GAS가 true/false/boolean ?�재 반환)
       (a.approved === true || String(a.approved).toLowerCase() === "true")
     );
   });
@@ -58,7 +56,7 @@ function buildSettlement({ attendance = [], employees = [], month }) {
 
     const wage = Number(emp.hourly_wage || a.hourly_wage || 0);
     const workMin = calcWorkMinutes(a.check_in, a.check_out, a.break_min);
-    // FIX: 중복 정의 제거 → shared/utils의 calcNightMinutesSimple 사용
+    // FIX: 중복 ?�의 ?�거 ??shared/utils??calcNightMinutesSimple ?�용
     const nightMin = calcNightMinutesSimple(a.check_in, a.check_out);
 
     const basePay = Math.round((workMin / 60) * wage);
@@ -129,7 +127,7 @@ export default function App() {
   }, []);
 
   const api = useApi({
-    onError: useCallback((msg) => showToast(msg || "오류가 발생했습니다", "err"), [showToast]),
+    onError: useCallback((msg) => showToast(msg || "?�류가 발생?�습?�다", "err"), [showToast]),
   });
 
   const {
@@ -224,7 +222,7 @@ export default function App() {
               className="ghost-sm"
               onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
             >
-              ◀
+              ?�
             </button>
             <strong>{monthLabel(selectedMonth)}</strong>
             <button
@@ -232,15 +230,13 @@ export default function App() {
               className="ghost-sm"
               onClick={() => setSelectedMonth(currentYM())}
             >
-              이번 달
-            </button>
+              ?�번 ??            </button>
             <button
               type="button"
               className="ghost-sm"
               onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
             >
-              ▶
-            </button>
+              ??            </button>
           </div>
         )}
 

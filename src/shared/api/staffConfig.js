@@ -1,4 +1,5 @@
-const PROD_API =
-  "https://script.google.com/macros/s/AKfycbx10oBcx7NsK2bK_KO-S09J0Znw4VSWr3o8hp8-U06dCrC3F4KZztH833OKqoPUBfnCAg/exec";
+const IS_DEV = import.meta.env.DEV;
 
-export const STAFF_API_URL = import.meta.env.DEV ? "/api/staff" : PROD_API;
+export const STAFF_API_URL = IS_DEV
+  ? "/api/staff"
+  : "https://script.google.com/macros/s/AKfycbwCvilYKpGVECaRcuwKvzI_7FO9BTtoDcBp9gQiFX0h81-biLPKn0uC58m43FY9zsM6Kg/exec";

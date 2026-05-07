@@ -3,23 +3,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "../shared/hooks/useApi";
 
 import { Sidebar, MobileTabs } from "../shared/components/Nav";
-import { HomeTab } from "../shared/components/HomeTab";
-import { ShiftTab } from "../shared/components/ShiftTab";
-import { EmpTab } from "../shared/components/EmpTab";
 import { AttTab } from "../shared/components/AttTab";
 import { SimTab } from "../shared/components/SimTab";
 import { Toast } from "../shared/components/UI";
 
-import { SHIFT_TIME } from "../shared/constants";
 // FIX: admin/App.jsx에 중복 정의되어 있던 toMin, calcNightMinutes를
 //      shared/utils에서 import하도록 변경
-import {
-  normalizeDate,
-  safeStr,
-  calcWorkMinutes,
-  calcNightMinutesSimple,
-  getWeekDates,
-} from "../shared/utils";
+import { normalizeDate, safeStr, calcWorkMinutes, calcNightMinutesSimple } from "../shared/utils";
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -119,9 +109,8 @@ function buildSettlement({ attendance = [], employees = [], month }) {
 }
 
 export default function App() {
-  const [tab, setTab] = useState("home");
+  const [tab, setTab] = useState("att");
   const [toast, setToast] = useState(null);
-  const [weekOffset, setWeekOffset] = useState(0);
   const [settlementOffset, setSettlementOffset] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState(currentYM());
 
@@ -146,27 +135,14 @@ export default function App() {
   const {
     loading,
     employees = [],
-    schedule = [],
     attendance = [],
     monthAttendance: apiMonthAttendance,
-    todayAttendance: apiTodayAttendance,
-    fetchToday,
     fetchAll,
     fetchMonth,
     approveAttendance,
-    addEmployee,
-    updateEmployee,
-    deleteEmployee,
-    addSchedule,
-    updateSchedule,
-    deleteSchedule,
   } = api;
 
   const monthAttendance = apiMonthAttendance || attendance || [];
-  const todayAttendance = apiTodayAttendance || attendance || [];
-
-  const today = todayStr();
-  const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
   const settlementMonth = useMemo(
     () => addMonths(currentYM(), settlementOffset),
@@ -188,18 +164,14 @@ export default function App() {
     [monthAttendance, employees, settlementMonth],
   );
 
-  const fetchRef = useRef({ fetchToday, fetchAll, fetchMonth });
+  const fetchRef = useRef({ fetchAll, fetchMonth });
   useEffect(() => {
-    fetchRef.current = { fetchToday, fetchAll, fetchMonth };
+    fetchRef.current = { fetchAll, fetchMonth };
   });
 
   useEffect(() => {
-    const { fetchToday, fetchAll, fetchMonth } = fetchRef.current;
+    const { fetchAll, fetchMonth } = fetchRef.current;
 
-    if (tab === "home") {
-      fetchToday();
-      return;
-    }
     if (tab === "sim") {
       fetchMonth(settlementMonth);
       setSelectedMonth(settlementMonth);
@@ -209,11 +181,7 @@ export default function App() {
   }, [tab, selectedMonth, settlementMonth]);
 
   const handleRefresh = useCallback(() => {
-    const { fetchToday, fetchAll, fetchMonth } = fetchRef.current;
-    if (tab === "home") {
-      fetchToday();
-      return;
-    }
+    const { fetchAll, fetchMonth } = fetchRef.current;
     if (tab === "sim") {
       fetchMonth(settlementMonth);
       return;
@@ -229,93 +197,7 @@ export default function App() {
     [tab, selectedMonth, fetchToday, fetchAll, approveAttendance],
   );
 
-  const handleSaveEmployee = useCallback(
-    async (form, editingEmp) => {
-      const refetch = () => fetchAll(selectedMonth);
-      if (editingEmp?.employee_id) {
-        await updateEmployee(editingEmp.employee_id, form, refetch);
-        showToast("직원 정보가 수정되었습니다");
-        return;
-      }
-      await addEmployee(form, refetch);
-      showToast("직원이 추가되었습니다");
-    },
-    [selectedMonth, fetchAll, addEmployee, updateEmployee, showToast],
-  );
-
-  const handleDeleteEmployee = useCallback(
-    async (emp) => {
-      const ok = window.confirm(`${emp.name} 직원을 삭제할까요?`);
-      if (!ok) return;
-      await deleteEmployee(emp.employee_id, () => fetchAll(selectedMonth));
-      showToast("직원이 삭제되었습니다");
-    },
-    [selectedMonth, fetchAll, deleteEmployee, showToast],
-  );
-
-  const handleSaveScheduleCell = useCallback(
-    async (cellEdit, employeeId) => {
-      const emp = employees.find((e) => safeStr(e.employee_id) === safeStr(employeeId));
-      const shift = SHIFT_TIME[cellEdit.part] || {};
-      const payload = {
-        date: cellEdit.date,
-        part: cellEdit.part,
-        employee_id: employeeId || "",
-        name: emp?.name || "",
-        planned_start: shift.start || "",
-        planned_end: shift.end || "",
-      };
-      const refetch = () => fetchAll(selectedMonth);
-
-      if (cellEdit.scheduleId) {
-        if (!employeeId) {
-          await deleteSchedule(cellEdit.scheduleId, cellEdit.date, refetch);
-          showToast("근무 배정이 삭제되었습니다");
-          return;
-        }
-        await updateSchedule(cellEdit.scheduleId, payload, refetch);
-        showToast("근무표가 수정되었습니다");
-        return;
-      }
-      if (!employeeId) return;
-      await addSchedule(payload, refetch);
-      showToast("근무가 배정되었습니다");
-    },
-    [employees, selectedMonth, fetchAll, addSchedule, updateSchedule, deleteSchedule, showToast],
-  );
-
   const renderTab = () => {
-    if (tab === "home") {
-      return (
-        <HomeTab
-          attendance={todayAttendance}
-          schedule={schedule}
-          today={today}
-          onApprove={(att) => handleApprove(att, true)}
-          onReject={(att) => handleApprove(att, false)}
-        />
-      );
-    }
-    if (tab === "shift") {
-      return (
-        <ShiftTab
-          weekDates={weekDates}
-          weekOffset={weekOffset}
-          setWeekOffset={setWeekOffset}
-          schedule={schedule}
-          employees={employees}
-          onSaveCell={handleSaveScheduleCell}
-        />
-      );
-    }
-    if (tab === "emp") {
-      return (
-        <EmpTab employees={employees} onSave={handleSaveEmployee} onDelete={handleDeleteEmployee} />
-      );
-    }
-    if (tab === "att") {
-      return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
-    }
     if (tab === "sim") {
       return (
         <SimTab
@@ -326,15 +208,7 @@ export default function App() {
         />
       );
     }
-    return (
-      <HomeTab
-        attendance={todayAttendance}
-        schedule={schedule}
-        today={today}
-        onApprove={(att) => handleApprove(att, true)}
-        onReject={(att) => handleApprove(att, false)}
-      />
-    );
+    return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
   };
 
   return (
@@ -344,7 +218,7 @@ export default function App() {
       <main className="main-content">
         <MobileTabs tab={tab} setTab={setTab} />
 
-        {tab !== "home" && tab !== "sim" && (
+        {tab !== "sim" && (
           <div className="month-toolbar">
             <button
               type="button"

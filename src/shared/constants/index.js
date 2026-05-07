@@ -64,9 +64,6 @@ export const STATUS_BG = {
 /* ================= 네비 ================= */
 
 export const NAV_ITEMS = [
-  { id: "home", label: "홈", icon: "🏠" },
-  { id: "shift", label: "근무표", icon: "📅" },
-  { id: "emp", label: "직원 관리", icon: "👥" },
   { id: "att", label: "출퇴근 기록", icon: "⏱️" },
   { id: "sim", label: "급여 정산", icon: "💴" },
 ];

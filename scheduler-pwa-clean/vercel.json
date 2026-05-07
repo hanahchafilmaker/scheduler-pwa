@@ -1,0 +1,12 @@
+{
+  "routes": [
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/staff\\.html", "dest": "/staff.html" },
+    { "src": "/staff", "dest": "/staff.html" },
+    {
+      "src": "/(sw\\.js|registerSW\\.js|manifest\\.webmanifest|workbox-.*\\.js|icons.*)",
+      "dest": "/$1"
+    },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}

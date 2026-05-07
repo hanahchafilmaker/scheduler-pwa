@@ -4,7 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
 const GAS_PATH =
-  "/macros/s/AKfycbyHU9b2OEeLMY9z9S94M7XWhfOYV7AwmZ8DHTzeBDspD3dGnf9GT2xCRzCaAQGTZ342zQ/exec";
+  "/macros/s/AKfycbwNkyY9klWD0nDlTtl4xjFjG1z1MVp8uoWa9LEPvkhcoR7VZu8Kk7asDlxYOaOcW8MLkA/exec";
 
 export default defineConfig({
   base: "/",

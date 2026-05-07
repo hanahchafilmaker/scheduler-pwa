@@ -37,12 +37,7 @@ function getAutoStatus(a) {
   const realStart = toMin(a.check_in);
   let realEnd = toMin(a.check_out);
 
-  if (
-    planStart === null ||
-    planEnd === null ||
-    realStart === null ||
-    realEnd === null
-  ) {
+  if (planStart === null || planEnd === null || realStart === null || realEnd === null) {
     return a.status || "정상";
   }
 
@@ -105,8 +100,9 @@ function needsManualApproval(a, status) {
 
 export function AttTab({ attendance = [], onApprove }) {
   const displayList = useMemo(
-    () => [...attendance].reverse().slice(0, 100),
-    [attendance]
+    () =>
+      [...attendance].sort((a, b) => normalizeDate(b.date).localeCompare(normalizeDate(a.date))),
+    [attendance],
   );
 
   return (
@@ -132,11 +128,7 @@ export function AttTab({ attendance = [], onApprove }) {
 
           <tbody>
             {displayList.map((a) => {
-              const min = calcWorkMinutes(
-                a.check_in,
-                a.check_out,
-                a.break_min
-              );
+              const min = calcWorkMinutes(a.check_in, a.check_out, a.break_min);
 
               const status = getAutoStatus(a);
               const diffText = getDiffText(a, status);
@@ -144,12 +136,7 @@ export function AttTab({ attendance = [], onApprove }) {
               const needApproval = needsManualApproval(a, status);
 
               return (
-                <tr
-                  key={
-                    a.attendance_id ||
-                    `${a.employee_id}-${a.date}-${a.check_in}`
-                  }
-                >
+                <tr key={a.attendance_id || `${a.employee_id}-${a.date}-${a.check_in}`}>
                   <td>{normalizeDate(a.date)}</td>
 
                   <td>

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { PARTS, PART_LABEL, SHIFT_TIME, STATUS_BG, STATUS_COLOR } from "../constants";
-import { normalizeDate, safeStr, formatTime, getStatus } from "../utils";
+import { normalizeDate, safeStr, formatTime, getStatus, toBool } from "../utils";
 
 // ── Approval banner ───────────────────────────────────────────────────────────
 function ApprovalBanner({ approvals, onApprove, onReject }) {
@@ -14,12 +14,14 @@ function ApprovalBanner({ approvals, onApprove, onReject }) {
             <div className="pending-info">
               <strong>{att.name}</strong>
               <span className="pending-meta">
-                {PART_LABEL[att.part] || att.part || "파트미정"} ·{" "}
-                {formatTime(att.check_in)} 출근 요청
+                {PART_LABEL[att.part] || att.part || "파트미정"} · {formatTime(att.check_in)} 출근
+                요청
               </span>
             </div>
             <div className="pending-actions">
-              <button className="approve-btn" onClick={() => onApprove(att)}>✓ 승인</button>
+              <button className="approve-btn" onClick={() => onApprove(att)}>
+                ✓ 승인
+              </button>
             </div>
           </div>
         ))}
@@ -31,15 +33,19 @@ function ApprovalBanner({ approvals, onApprove, onReject }) {
 // ── Per-employee row inside a part block ──────────────────────────────────────
 function EmployeeRow({ s, att, status, shift, onApprove, onReject }) {
   const isPending = status === "승인대기";
-  const isAbsent  = status === "미출근";
-  const isLate    = status === "지각";
-  const isDone    = !!att?.check_out;
+  const isAbsent = status === "미출근";
+  const isLate = status === "지각";
+  const isDone = !!att?.check_out;
 
-  const rowClass = isPending ? "row-pending"
-    : isAbsent ? "row-absent"
-    : isLate   ? "row-late"
-    : isDone   ? "row-done"
-    : "row-working";
+  const rowClass = isPending
+    ? "row-pending"
+    : isAbsent
+      ? "row-absent"
+      : isLate
+        ? "row-late"
+        : isDone
+          ? "row-done"
+          : "row-working";
 
   return (
     <div className={`dash-emp-row ${rowClass}`}>
@@ -60,15 +66,19 @@ function EmployeeRow({ s, att, status, shift, onApprove, onReject }) {
         {isPending ? (
           <div className="dash-approve-wrap">
             <span className="dash-badge pending">{formatTime(att.check_in)} 요청</span>
-            <button className="dash-approve-btn" onClick={() => onApprove(att)}>✓ 승인</button>
-            <button className="dash-reject-btn"  onClick={() => onReject(att)}>✕</button>
+            <button className="dash-approve-btn" onClick={() => onApprove(att)}>
+              ✓ 승인
+            </button>
+            <button className="dash-reject-btn" onClick={() => onReject(att)}>
+              ✕
+            </button>
           </div>
         ) : (
           <span
             className="dash-badge"
             style={{
-              background: STATUS_BG[status]    || "#f9fafb",
-              color:      STATUS_COLOR[status] || "#374151",
+              background: STATUS_BG[status] || "#f9fafb",
+              color: STATUS_COLOR[status] || "#374151",
             }}
           >
             {status}
@@ -81,7 +91,7 @@ function EmployeeRow({ s, att, status, shift, onApprove, onReject }) {
 
 // ── Extra attendance row (not on schedule) ────────────────────────────────────
 function ExtraRow({ a, onApprove, onReject }) {
-  const isPending = a.check_in && !a.check_out && String(a.approved) !== "true";
+  const isPending = a.check_in && !a.check_out && !toBool(a.approved);
   return (
     <div className={`dash-emp-row ${isPending ? "row-pending" : "row-extra"}`}>
       <div className="dash-emp-name">
@@ -98,8 +108,12 @@ function ExtraRow({ a, onApprove, onReject }) {
         {isPending ? (
           <div className="dash-approve-wrap">
             <span className="dash-badge pending">{formatTime(a.check_in)} 요청</span>
-            <button className="dash-approve-btn" onClick={() => onApprove(a)}>✓ 승인</button>
-            <button className="dash-reject-btn"  onClick={() => onReject(a)}>✕</button>
+            <button className="dash-approve-btn" onClick={() => onApprove(a)}>
+              ✓ 승인
+            </button>
+            <button className="dash-reject-btn" onClick={() => onReject(a)}>
+              ✕
+            </button>
           </div>
         ) : (
           <span className="dash-badge" style={{ background: "#f5f3ff", color: "#7c3aed" }}>
@@ -119,40 +133,41 @@ function PartBlock({ part, todayAtt, todaySched, onApprove, onReject }) {
 
   const sched = todaySched
     .filter((s) => s.part === part)
-    .filter((s, i, arr) =>
-      arr.findIndex((x) => safeStr(x.employee_id) === safeStr(s.employee_id)) === i
+    .filter(
+      (s, i, arr) => arr.findIndex((x) => safeStr(x.employee_id) === safeStr(s.employee_id)) === i,
     );
 
   const schedRows = sched.map((s) => {
     const att = partAtt.find((a) => safeStr(a.employee_id) === safeStr(s.employee_id));
     const status = !att
       ? "미출근"
-      : (att.check_in && !att.check_out && String(att.approved) !== "true")
-      ? "승인대기"
-      : getStatus(s, att);
+      : att.check_in && !att.check_out && !toBool(att.approved)
+        ? "승인대기"
+        : getStatus(s, att);
     return { s, att, status };
   });
 
   const extraAtt = partAtt.filter(
-    (a) => !sched.some((s) => safeStr(s.employee_id) === safeStr(a.employee_id))
+    (a) => !sched.some((s) => safeStr(s.employee_id) === safeStr(a.employee_id)),
   );
 
-  const isPendingAtt = (a) => a.check_in && !a.check_out && String(a.approved) !== "true";
+  const isPendingAtt = (a) => a.check_in && !a.check_out && !toBool(a.approved);
 
   const hasPending =
-    schedRows.some((r) => r.status === "승인대기") ||
-    extraAtt.some((a) => isPendingAtt(a));
+    schedRows.some((r) => r.status === "승인대기") || extraAtt.some((a) => isPendingAtt(a));
 
   const workingCount =
-    schedRows.filter((r) => r.att?.check_in && !r.att?.check_out && r.status !== "승인대기").length +
-    extraAtt.filter((a) => a.check_in && !a.check_out && !isPendingAtt(a)).length;
+    schedRows.filter((r) => r.att?.check_in && !r.att?.check_out && r.status !== "승인대기")
+      .length + extraAtt.filter((a) => a.check_in && !a.check_out && !isPendingAtt(a)).length;
 
   return (
     <div className={`dash-part-block${hasPending ? " has-pending" : ""}`}>
       <div className="dash-part-head">
         <div className="dash-part-title">
           <strong>{PART_LABEL[part]}</strong>
-          <span className="dash-part-time">{shift.start} – {shift.end}</span>
+          <span className="dash-part-time">
+            {shift.start} – {shift.end}
+          </span>
         </div>
         <div className="dash-part-counts">
           <span className="dpc working">{workingCount}명 근무중</span>
@@ -164,8 +179,12 @@ function PartBlock({ part, todayAtt, todaySched, onApprove, onReject }) {
         {schedRows.map(({ s, att, status }) => (
           <EmployeeRow
             key={s.schedule_id}
-            s={s} att={att} status={status} shift={shift}
-            onApprove={onApprove} onReject={onReject}
+            s={s}
+            att={att}
+            status={status}
+            shift={shift}
+            onApprove={onApprove}
+            onReject={onReject}
           />
         ))}
         {extraAtt.map((a) => (
@@ -181,18 +200,30 @@ function PartBlock({ part, todayAtt, todaySched, onApprove, onReject }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export function HomeTab({ attendance, schedule, today, onApprove, onReject }) {
-  const todayAtt   = useMemo(() => attendance.filter((a) => normalizeDate(a.date) === today), [attendance, today]);
-  const todaySched = useMemo(() => schedule.filter((s)   => normalizeDate(s.date) === today), [schedule, today]);
-  const pending    = useMemo(() => todayAtt.filter((a)   => a.check_in && !a.check_out && String(a.approved) !== "true"), [todayAtt]);
+  const todayAtt = useMemo(
+    () => attendance.filter((a) => normalizeDate(a.date) === today),
+    [attendance, today],
+  );
+  const todaySched = useMemo(
+    () => schedule.filter((s) => normalizeDate(s.date) === today),
+    [schedule, today],
+  );
+  const pending = useMemo(
+    () => todayAtt.filter((a) => a.check_in && !a.check_out && !toBool(a.approved)),
+    [todayAtt],
+  );
 
   return (
     <div className="page">
       <ApprovalBanner approvals={pending} onApprove={onApprove} onReject={onReject} />
       {PARTS.map((part) => (
         <PartBlock
-          key={part} part={part}
-          todayAtt={todayAtt} todaySched={todaySched}
-          onApprove={onApprove} onReject={onReject}
+          key={part}
+          part={part}
+          todayAtt={todayAtt}
+          todaySched={todaySched}
+          onApprove={onApprove}
+          onReject={onReject}
         />
       ))}
     </div>

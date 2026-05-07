@@ -13,7 +13,13 @@ import { Toast } from "../shared/components/UI";
 import { SHIFT_TIME } from "../shared/constants";
 // FIX: admin/App.jsx에 중복 정의되어 있던 toMin, calcNightMinutes를
 //      shared/utils에서 import하도록 변경
-import { normalizeDate, safeStr, calcWorkMinutes, calcNightMinutesSimple } from "../shared/utils";
+import {
+  normalizeDate,
+  safeStr,
+  calcWorkMinutes,
+  calcNightMinutesSimple,
+  getWeekDates,
+} from "../shared/utils";
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -40,25 +46,8 @@ function monthLabel(ym) {
   return `${y}년 ${Number(m)}월`;
 }
 
-function getWeekDates(offset = 0) {
-  const now = new Date();
-  const day = now.getDay();
-  const mondayDiff = day === 0 ? -6 : 1 - day;
-
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + mondayDiff + offset * 7);
-
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-  });
-}
-
 function buildSettlement({ attendance = [], employees = [], month }) {
-  const empMap = new Map(
-    employees.map((e) => [safeStr(e.employee_id), e])
-  );
+  const empMap = new Map(employees.map((e) => [safeStr(e.employee_id), e]));
 
   const rowsMap = new Map();
 
@@ -151,10 +140,7 @@ export default function App() {
   }, []);
 
   const api = useApi({
-    onError: useCallback(
-      (msg) => showToast(msg || "오류가 발생했습니다", "err"),
-      [showToast]
-    ),
+    onError: useCallback((msg) => showToast(msg || "오류가 발생했습니다", "err"), [showToast]),
   });
 
   const {
@@ -184,12 +170,12 @@ export default function App() {
 
   const settlementMonth = useMemo(
     () => addMonths(currentYM(), settlementOffset),
-    [settlementOffset]
+    [settlementOffset],
   );
 
   const monthRange = useMemo(
     () => ({ month: settlementMonth, label: monthLabel(settlementMonth) }),
-    [settlementMonth]
+    [settlementMonth],
   );
 
   const settlement = useMemo(
@@ -199,7 +185,7 @@ export default function App() {
         employees,
         month: settlementMonth,
       }),
-    [monthAttendance, employees, settlementMonth]
+    [monthAttendance, employees, settlementMonth],
   );
 
   const fetchRef = useRef({ fetchToday, fetchAll, fetchMonth });
@@ -224,8 +210,14 @@ export default function App() {
 
   const handleRefresh = useCallback(() => {
     const { fetchToday, fetchAll, fetchMonth } = fetchRef.current;
-    if (tab === "home") { fetchToday(); return; }
-    if (tab === "sim") { fetchMonth(settlementMonth); return; }
+    if (tab === "home") {
+      fetchToday();
+      return;
+    }
+    if (tab === "sim") {
+      fetchMonth(settlementMonth);
+      return;
+    }
     fetchAll(selectedMonth);
   }, [tab, selectedMonth, settlementMonth]);
 
@@ -234,7 +226,7 @@ export default function App() {
       const refetch = tab === "home" ? fetchToday : () => fetchAll(selectedMonth);
       return approveAttendance(att, approved, refetch);
     },
-    [tab, selectedMonth, fetchToday, fetchAll, approveAttendance]
+    [tab, selectedMonth, fetchToday, fetchAll, approveAttendance],
   );
 
   const handleSaveEmployee = useCallback(
@@ -248,7 +240,7 @@ export default function App() {
       await addEmployee(form, refetch);
       showToast("직원이 추가되었습니다");
     },
-    [selectedMonth, fetchAll, addEmployee, updateEmployee, showToast]
+    [selectedMonth, fetchAll, addEmployee, updateEmployee, showToast],
   );
 
   const handleDeleteEmployee = useCallback(
@@ -258,14 +250,12 @@ export default function App() {
       await deleteEmployee(emp.employee_id, () => fetchAll(selectedMonth));
       showToast("직원이 삭제되었습니다");
     },
-    [selectedMonth, fetchAll, deleteEmployee, showToast]
+    [selectedMonth, fetchAll, deleteEmployee, showToast],
   );
 
   const handleSaveScheduleCell = useCallback(
     async (cellEdit, employeeId) => {
-      const emp = employees.find(
-        (e) => safeStr(e.employee_id) === safeStr(employeeId)
-      );
+      const emp = employees.find((e) => safeStr(e.employee_id) === safeStr(employeeId));
       const shift = SHIFT_TIME[cellEdit.part] || {};
       const payload = {
         date: cellEdit.date,
@@ -291,7 +281,7 @@ export default function App() {
       await addSchedule(payload, refetch);
       showToast("근무가 배정되었습니다");
     },
-    [employees, selectedMonth, fetchAll, addSchedule, updateSchedule, deleteSchedule, showToast]
+    [employees, selectedMonth, fetchAll, addSchedule, updateSchedule, deleteSchedule, showToast],
   );
 
   const renderTab = () => {
@@ -320,20 +310,11 @@ export default function App() {
     }
     if (tab === "emp") {
       return (
-        <EmpTab
-          employees={employees}
-          onSave={handleSaveEmployee}
-          onDelete={handleDeleteEmployee}
-        />
+        <EmpTab employees={employees} onSave={handleSaveEmployee} onDelete={handleDeleteEmployee} />
       );
     }
     if (tab === "att") {
-      return (
-        <AttTab
-          attendance={monthAttendance}
-          onApprove={handleApprove}
-        />
-      );
+      return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
     }
     if (tab === "sim") {
       return (
@@ -358,12 +339,7 @@ export default function App() {
 
   return (
     <div className="admin-app">
-      <Sidebar
-        tab={tab}
-        setTab={setTab}
-        loading={loading}
-        onRefresh={handleRefresh}
-      />
+      <Sidebar tab={tab} setTab={setTab} loading={loading} onRefresh={handleRefresh} />
 
       <main className="main-content">
         <MobileTabs tab={tab} setTab={setTab} />

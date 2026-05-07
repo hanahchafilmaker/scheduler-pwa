@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  getDateString,
-  normalizeDate,
-  safeStr,
-  calcWorkMinutes,
-  toBool,
-} from "@shared/utils";
+import { getDateString, normalizeDate, safeStr, calcWorkMinutes, toBool } from "@shared/utils";
 import {
   fetchStaffEmployees,
   fetchStaffToday,
@@ -20,9 +14,7 @@ import "./staff.css";
 
 function nowTime() {
   const n = new Date();
-  return `${String(n.getHours()).padStart(2, "0")}:${String(
-    n.getMinutes()
-  ).padStart(2, "0")}`;
+  return `${String(n.getHours()).padStart(2, "0")}:${String(n.getMinutes()).padStart(2, "0")}`;
 }
 
 function getMonthKey() {
@@ -69,17 +61,6 @@ export default function StaffApp() {
 
         const data = await fetchStaffEmployees();
 
-        console.log("직원 데이터:", data);
-        console.log(
-          "직원 PIN 확인:",
-          data.map((e) => ({
-            name: e.name,
-            pin: e.pin,
-            pinType: typeof e.pin,
-            active: e.active,
-          }))
-        );
-
         if (!mounted) return;
 
         setEmployees(Array.isArray(data) ? data : []);
@@ -122,7 +103,7 @@ export default function StaffApp() {
         showToast("오늘 데이터를 불러오지 못했습니다");
       }
     },
-    [showToast]
+    [showToast],
   );
 
   const loadMonth = useCallback(
@@ -137,7 +118,7 @@ export default function StaffApp() {
         showToast("이달 기록을 불러오지 못했습니다");
       }
     },
-    [showToast]
+    [showToast],
   );
 
   const handleLogin = async () => {
@@ -157,17 +138,6 @@ export default function StaffApp() {
       setPinError("직원 데이터를 불러오지 못했습니다. 새로고침 해주세요");
       return;
     }
-
-    console.log("입력 PIN:", pin);
-    console.log(
-      "비교 대상 PIN:",
-      employees.map((e) => ({
-        name: e.name,
-        pin: e.pin,
-        normalizedPin: String(e.pin ?? "").trim(),
-        active: e.active,
-      }))
-    );
 
     const found = employees.find((e) => {
       const empPin = String(e.pin ?? "").trim();
@@ -207,7 +177,7 @@ export default function StaffApp() {
       todayData.attendance.find(
         (a) =>
           normalizeDate(a.date) === today &&
-          safeStr(a.employee_id) === safeStr(employee.employee_id)
+          safeStr(a.employee_id) === safeStr(employee.employee_id),
       ) || null
     );
   }, [todayData, employee, today]);
@@ -219,7 +189,7 @@ export default function StaffApp() {
       todayData.schedule.find(
         (s) =>
           normalizeDate(s.date) === today &&
-          safeStr(s.employee_id) === safeStr(employee.employee_id)
+          safeStr(s.employee_id) === safeStr(employee.employee_id),
       ) || null
     );
   }, [todayData, employee, today]);
@@ -232,26 +202,16 @@ export default function StaffApp() {
 
   const approved = toBool(todayAttendance?.approved);
 
-  const isPending =
+  const isPending = !!todayAttendance?.check_in && !todayAttendance?.check_out && !approved;
+
+  const isWorking = !!todayAttendance?.check_in && !todayAttendance?.check_out && approved;
+
+  const isDone = !!todayAttendance?.check_in && !!todayAttendance?.check_out && approved;
+
+  const isRejected =
     !!todayAttendance?.check_in &&
     !todayAttendance?.check_out &&
-    !approved;
-
-  const isWorking =
-    !!todayAttendance?.check_in &&
-    !todayAttendance?.check_out &&
-    approved;
-
-  const isDone =
-    !!todayAttendance?.check_in &&
-    !!todayAttendance?.check_out &&
-    approved;
-
-  const isRejected = false;
-    !!todayAttendance?.check_in &&
-    !todayAttendance?.check_out &&
-    (todayAttendance?.approved === false ||
-      String(todayAttendance?.approved).toLowerCase() === "false");
+    toBool(todayAttendance?.approved) === false;
 
   const handleCheckIn = async () => {
     if (!employee) return;
@@ -310,15 +270,12 @@ export default function StaffApp() {
   };
 
   const stats = useMemo(() => {
-    const approvedRecords = records.filter(
-      (r) => r.check_in && r.check_out && toBool(r.approved)
-    );
+    const approvedRecords = records.filter((r) => r.check_in && r.check_out && toBool(r.approved));
 
     return {
       totalMin: approvedRecords.reduce(
-        (sum, r) =>
-          sum + calcWorkMinutes(r.check_in, r.check_out, r.break_min),
-        0
+        (sum, r) => sum + calcWorkMinutes(r.check_in, r.check_out, r.break_min),
+        0,
       ),
       late: approvedRecords.filter((r) => r.status === "지각").length,
       early: approvedRecords.filter((r) => r.status === "조퇴").length,

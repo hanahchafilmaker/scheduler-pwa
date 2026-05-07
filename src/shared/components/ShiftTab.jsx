@@ -1,44 +1,54 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PARTS, SHIFT_TIME } from "../constants";
 import { normalizeDate, safeStr } from "../utils";
 import { Modal, Field } from "./UI";
 
-const DAY_KO    = ["일", "월", "화", "수", "목", "금", "토"];
+const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 const DAY_COLOR = { 0: "#dc2626", 6: "#2563eb" };
 
 export function ShiftTab({
-  weekDates    = [],
-  weekOffset   = 0,
+  weekDates = [],
+  weekOffset = 0,
   setWeekOffset,
-  schedule     = [],
-  employees    = [],
+  schedule = [],
+  employees = [],
   onSaveCell,
 }) {
-  const [cellEdit,  setCellEdit]  = useState(null);
+  const [cellEdit, setCellEdit] = useState(null);
   const [cellEmpId, setCellEmpId] = useState("");
 
-  // 1. 현재 시간 및 날짜 계산 로직
-  const { todayStr, currentPart } = useMemo(() => {
+  // 1. 현재 시간 및 날짜 계산 로직 (1분마다 갱신)
+  const getNowSnapshot = () => {
     const now = new Date();
     const yyyy = now.getFullYear();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const dd = String(now.getDate()).padStart(2, '0');
-    const today = `${yyyy}-${mm}-${dd}`; // "2026-05-06"
-
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    const today = `${yyyy}-${mm}-${dd}`;
     const hour = now.getHours();
     let part = "";
-    // SHIFT_TIME 상의 시간 범위와 매칭 (이미지 기준)
     if (hour >= 7 && hour < 13) part = "open";
     else if (hour >= 13 && hour < 18) part = "middle";
     else if (hour >= 18 && hour < 23) part = "close";
-
     return { todayStr: today, currentPart: part };
+  };
+
+  const [{ todayStr, currentPart }, setNowSnapshot] = useState(getNowSnapshot);
+
+  useEffect(() => {
+    const id = setInterval(() => setNowSnapshot(getNowSnapshot()), 60_000);
+    return () => clearInterval(id);
   }, []);
 
+  const scheduleMap = useMemo(() => {
+    const map = new Map();
+    schedule.forEach((s) => {
+      map.set(`${normalizeDate(s.date)}:${s.part}`, s);
+    });
+    return map;
+  }, [schedule]);
+
   const openCell = (date, part) => {
-    const existing = schedule.find(
-      (s) => s.part === part && normalizeDate(s.date) === date
-    );
+    const existing = scheduleMap.get(`${date}:${part}`);
     setCellEdit({
       date,
       part,
@@ -53,8 +63,7 @@ export function ShiftTab({
     setCellEdit(null);
   };
 
-  const rangeLabel =
-    weekDates.length === 7 ? `${weekDates[0]} – ${weekDates[6]}` : "";
+  const rangeLabel = weekDates.length === 7 ? `${weekDates[0]} – ${weekDates[6]}` : "";
 
   return (
     <div className="page">
@@ -79,11 +88,11 @@ export function ShiftTab({
                   const dow = new Date(d).getDay();
                   const isToday = d === todayStr; // 오늘 여부 확인
                   return (
-                    <th 
-                      key={d} 
-                      style={{ 
+                    <th
+                      key={d}
+                      style={{
                         color: DAY_COLOR[dow],
-                        backgroundColor: isToday ? "#fff7ed" : "transparent" // 오늘 날짜 헤더 강조
+                        backgroundColor: isToday ? "#fff7ed" : "transparent", // 오늘 날짜 헤더 강조
                       }}
                     >
                       {DAY_KO[dow]}
@@ -98,7 +107,7 @@ export function ShiftTab({
             <tbody>
               {PARTS.map((part) => (
                 <tr key={part}>
-                  <td 
+                  <td
                     className="part-label-cell"
                     style={{ backgroundColor: part === currentPart ? "#fff7ed" : "transparent" }}
                   >
@@ -110,10 +119,8 @@ export function ShiftTab({
                     </div>
                   </td>
                   {weekDates.map((date) => {
-                    const entry = schedule.find(
-                      (s) => s.part === part && normalizeDate(s.date) === date
-                    );
-                    
+                    const entry = scheduleMap.get(`${date}:${part}`);
+
                     // 현재 활성화된 셀(오늘 + 현재 파트) 판별
                     const isNowActive = date === todayStr && part === currentPart;
 
@@ -122,28 +129,39 @@ export function ShiftTab({
                         key={date}
                         className={`shift-cell ${isNowActive ? "active-now-cell" : ""}`}
                         style={{
-                          backgroundColor: isNowActive ? "#fff7ed" : (date === todayStr ? "#fafafa" : "white"),
+                          backgroundColor: isNowActive
+                            ? "#fff7ed"
+                            : date === todayStr
+                              ? "#fafafa"
+                              : "white",
                           border: isNowActive ? "2px solid #f97316" : "1px solid #eee",
-                          position: "relative"
+                          position: "relative",
                         }}
                         onClick={() => openCell(date, part)}
                       >
                         {entry ? (
-                          <span className="cell-name" style={{ fontWeight: isNowActive ? "800" : "400" }}>
+                          <span
+                            className="cell-name"
+                            style={{ fontWeight: isNowActive ? "800" : "400" }}
+                          >
                             {entry.name}
                           </span>
                         ) : (
                           <span className="cell-empty">+</span>
                         )}
                         {isNowActive && (
-                          <div style={{
-                            position: "absolute",
-                            top: "2px",
-                            right: "4px",
-                            fontSize: "10px",
-                            color: "#f97316",
-                            fontWeight: "bold"
-                          }}>NOW</div>
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: "2px",
+                              right: "4px",
+                              fontSize: "10px",
+                              color: "#f97316",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            NOW
+                          </div>
                         )}
                       </td>
                     );
@@ -168,18 +186,12 @@ export function ShiftTab({
           </div>
 
           <Field label="직원 선택">
-            <select
-              value={cellEmpId}
-              onChange={(e) => setCellEmpId(e.target.value)}
-            >
+            <select value={cellEmpId} onChange={(e) => setCellEmpId(e.target.value)}>
               <option value="">— 미배정 —</option>
               {employees
                 .filter((e) => e.active !== false)
                 .map((emp) => (
-                  <option
-                    key={emp.employee_id}
-                    value={safeStr(emp.employee_id)}
-                  >
+                  <option key={emp.employee_id} value={safeStr(emp.employee_id)}>
                     {emp.name}
                   </option>
                 ))}

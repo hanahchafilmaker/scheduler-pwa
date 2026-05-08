@@ -1,4 +1,4 @@
-﻿/* ================= 근무 타입 ================= */
+/* ================= 근무 타입 ================= */
 
 export const WORK_TYPE = {
   OPEN: "open",
@@ -61,6 +61,7 @@ export const STATUS_BG = {
 /* ================= 네비 (단일 정의) ================= */
 
 export const NAV_ITEMS = [
+  { id: "today", label: "오늘 현황",   icon: "🏪" },
   { id: "att",   label: "출퇴근 기록", icon: "⏱️" },
   { id: "shift", label: "스케줄 조회", icon: "📅" },
   { id: "sim",   label: "급여 정산",   icon: "💴" },
@@ -70,6 +71,7 @@ export const NAV_ITEMS = [
 
 export function getPageTitle(tab) {
   return {
+    today: { title: "오늘 현황",   sub: "오늘 매장 운영 상황 한눈에 보기" },
     att:   { title: "출퇴근 기록", sub: "실제 근무 기록 확인 및 승인" },
     shift: { title: "스케줄 조회", sub: "Google Sheets 기준 원본 스케줄 확인" },
     sim:   { title: "급여 정산",   sub: "실제 출퇴근 기준 인건비 계산" },
@@ -85,3 +87,16 @@ export const EMPTY_EMP_FORM = {
   pin: "",
   active: true,
 };
+
+/* ================= 대타 요청 상태 ================= */
+
+export const SUBSTITUTE_STATUS = {
+  REQUESTED: "requested",
+  APPROVED:  "approved",
+  REJECTED:  "rejected",
+  FULFILLED: "fulfilled",
+};
+
+/* ================= 자동퇴근 유예 시간 (분) ================= */
+
+export const AUTO_CHECKOUT_GRACE_MIN = 30;

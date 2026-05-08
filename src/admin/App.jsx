@@ -315,7 +315,6 @@ export default function App() {
           setWeekOffset={setWeekOffset}
           schedule={schedule}
           employees={employees}
-          onSaveCell={handleSaveCell}
         />
       );
     }

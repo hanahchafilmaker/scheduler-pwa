@@ -28,7 +28,9 @@
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 .btn-sheets-link:hover {
   background: #e0e9ff;
@@ -60,12 +62,14 @@
   cursor: pointer;
   color: #6b7280;
   font-weight: 500;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
 .view-toggle .toggle-btn.active {
   background: #fff;
   color: #111827;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .period-nav {
@@ -208,8 +212,12 @@
 }
 
 /* 일/토 */
-.shift-grid .date-col.sunday .date-num  { color: #f87171; }
-.shift-grid .date-col.saturday .date-num { color: #60a5fa; }
+.shift-grid .date-col.sunday .date-num {
+  color: #f87171;
+}
+.shift-grid .date-col.saturday .date-num {
+  color: #60a5fa;
+}
 
 /* ── 셀 (조회 전용) ── */
 .shift-cell.readonly {
@@ -315,11 +323,245 @@
 
 /* ── 모바일 ── */
 @media (max-width: 640px) {
-  .shift-tab-header { flex-direction: column; align-items: flex-start; }
-  .period-label { min-width: 100px; font-size: 13px; }
-  .shift-grid { font-size: 11px; }
-  .shift-grid .emp-col { min-width: 52px; }
-  .shift-grid .date-col { min-width: 44px; }
-  .shift-chip { min-width: 38px; padding: 3px 5px; }
-  .shift-chip .shift-time { font-size: 9px; }
+  .shift-tab-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .period-label {
+    min-width: 100px;
+    font-size: 13px;
+  }
+  .shift-grid {
+    font-size: 11px;
+  }
+  .shift-grid .emp-col {
+    min-width: 52px;
+  }
+  .shift-grid .date-col {
+    min-width: 44px;
+  }
+  .shift-chip {
+    min-width: 38px;
+    padding: 3px 5px;
+  }
+  .shift-chip .shift-time {
+    font-size: 9px;
+  }
+}
+
+.shift-grid {
+  table-layout: fixed;
+}
+
+.shift-grid th,
+.shift-grid td {
+  width: 88px;
+}
+
+.shift-cell {
+  height: 76px;
+  padding: 6px 4px !important;
+  vertical-align: top;
+}
+
+.shift-cell.readonly {
+  min-height: 76px;
+}
+
+.shift-chip {
+  width: 72px;
+  min-height: 20px;
+  padding: 4px 6px;
+  margin: 2px auto;
+  justify-content: center;
+}
+
+.shift-chip .shift-time {
+  display: none;
+}
+
+.shift-chip .shift-part-badge {
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.shift-cell > .shift-chip {
+  display: flex;
+}
+/* ================= 조회 전용 ShiftTab patch ================= */
+
+.shift-grid {
+  table-layout: fixed;
+}
+
+.shift-grid th,
+.shift-grid td {
+  width: 88px;
+}
+
+.shift-cell {
+  height: 76px;
+  padding: 6px 4px !important;
+  vertical-align: top;
+}
+
+.shift-cell.readonly {
+  cursor: default;
+  pointer-events: none;
+}
+
+.shift-cell-filled {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 60px;
+}
+
+.cell-name {
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #111827;
+}
+
+.cell-employee-mini {
+  font-size: 10px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.cell-time-mini {
+  display: none;
+}
+
+.shift-mobile-list {
+  display: none;
+}
+
+.shift-day-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow:
+    0 1px 4px rgba(17, 24, 39, 0.06),
+    0 4px 16px rgba(17, 24, 39, 0.04);
+}
+
+.shift-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.shift-day-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.shift-day-left strong {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.shift-day-left span {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.shift-day-right {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.shift-day-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shift-part-card {
+  width: 100%;
+  border: 1.5px solid #eceff3;
+  border-radius: 14px;
+  padding: 12px;
+  background: #fafafa;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.shift-part-card.readonly {
+  cursor: default;
+}
+
+.shift-part-card.readonly:hover {
+  transform: none;
+}
+
+.shift-part-card.empty {
+  border-style: dashed;
+  color: #9ca3af;
+  background: #fcfcfd;
+}
+
+.shift-part-card.filled {
+  background: #fff8f3;
+  border-color: #fed7aa;
+}
+
+.shift-part-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.shift-part-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.shift-part-time {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 700;
+}
+
+.shift-part-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.shift-part-employee {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.shift-part-empty {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .shift-card-table,
+  .shift-wrap {
+    display: none;
+  }
+
+  .shift-mobile-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 }

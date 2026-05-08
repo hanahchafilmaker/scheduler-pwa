@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { PARTS, SHIFT_TIME } from "../constants";
-import { normalizeDate, safeStr } from "../utils";
-import { Modal, Field } from "./UI";
+import { normalizeDate } from "../utils";
 import "./ShiftTab.css";
 
 const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
@@ -18,11 +17,15 @@ function formatDayLabel(dateStr) {
   };
 }
 
+function getEntries(schedule, date) {
+  return schedule.filter((s) => normalizeDate(s.date) === date);
+}
+
 function getEntry(schedule, date, part) {
   return schedule.find((s) => s.part === part && normalizeDate(s.date) === date) || null;
 }
 
-function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule, openCell }) {
+function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule }) {
   const rangeLabel = weekDates.length === 7 ? `${weekDates[0]} – ${weekDates[6]}` : "";
 
   return (
@@ -44,14 +47,14 @@ function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule, ope
 
       <div className="card shift-card-table" style={{ padding: 0, overflow: "hidden" }}>
         <div className="shift-wrap">
-          <table className="shift-table">
+          <table className="shift-table shift-grid">
             <thead>
               <tr>
                 <th className="part-col">파트</th>
                 {weekDates.map((d) => {
                   const meta = formatDayLabel(d);
                   return (
-                    <th key={d} style={{ color: meta.color }}>
+                    <th key={d} className="date-col" style={{ color: meta.color }}>
                       {meta.day}
                       <div className="date-sm">{meta.shortDate}</div>
                     </th>
@@ -59,34 +62,26 @@ function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule, ope
                 })}
               </tr>
             </thead>
+
             <tbody>
               {PARTS.map((part) => (
                 <tr key={part}>
                   <td className="part-label-cell">
                     <strong>{part}</strong>
-                    <div className="time-hint">
-                      {SHIFT_TIME[part]?.start}~{SHIFT_TIME[part]?.end}
-                    </div>
                   </td>
 
                   {weekDates.map((date) => {
                     const entry = getEntry(schedule, date, part);
 
                     return (
-                      <td
-                        key={`${date}_${part}`}
-                        className={`shift-cell ${entry ? "filled" : "empty"}`}
-                        onClick={() => openCell(date, part)}
-                      >
+                      <td key={`${date}_${part}`} className="shift-cell readonly">
                         {entry ? (
                           <div className="shift-cell-filled">
-                            <span className="cell-name">{entry.name}</span>
-                            <span className="cell-time-mini">
-                              {SHIFT_TIME[part]?.start}~{SHIFT_TIME[part]?.end}
-                            </span>
+                            <span className="cell-name">{part}</span>
+                            <span className="cell-employee-mini">{entry.name}</span>
                           </div>
                         ) : (
-                          <span className="cell-empty">+ 배정</span>
+                          <span className="cell-empty">-</span>
                         )}
                       </td>
                     );
@@ -101,7 +96,7 @@ function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule, ope
   );
 }
 
-function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule, openCell }) {
+function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule }) {
   const rangeLabel = weekDates.length === 7 ? `${weekDates[0]} – ${weekDates[6]}` : "";
 
   return (
@@ -124,6 +119,7 @@ function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule, open
       <div className="shift-mobile-list">
         {weekDates.map((date) => {
           const meta = formatDayLabel(date);
+          const entries = getEntries(schedule, date);
 
           return (
             <section key={date} className="shift-day-card">
@@ -137,15 +133,13 @@ function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule, open
 
               <div className="shift-day-parts">
                 {PARTS.map((part) => {
-                  const entry = getEntry(schedule, date, part);
+                  const entry = entries.find((e) => e.part === part);
                   const shift = SHIFT_TIME[part] || {};
 
                   return (
-                    <button
+                    <div
                       key={`${date}_${part}`}
-                      type="button"
-                      className={`shift-part-card ${entry ? "filled" : "empty"}`}
-                      onClick={() => openCell(date, part)}
+                      className={`shift-part-card readonly ${entry ? "filled" : "empty"}`}
                     >
                       <div className="shift-part-top">
                         <span className="shift-part-name">{part}</span>
@@ -158,10 +152,10 @@ function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule, open
                         {entry ? (
                           <strong className="shift-part-employee">{entry.name}</strong>
                         ) : (
-                          <span className="shift-part-empty">+ 직원 배정</span>
+                          <span className="shift-part-empty">미배정</span>
                         )}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -173,16 +167,7 @@ function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule, open
   );
 }
 
-export function ShiftTab({
-  weekDates = [],
-  weekOffset = 0,
-  setWeekOffset,
-  schedule = [],
-  employees = [],
-  onSaveCell,
-}) {
-  const [cellEdit, setCellEdit] = useState(null);
-  const [cellEmpId, setCellEmpId] = useState("");
+export function ShiftTab({ weekDates = [], weekOffset = 0, setWeekOffset, schedule = [] }) {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth <= 768 : false,
   );
@@ -196,26 +181,6 @@ export function ShiftTab({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const activeEmployees = useMemo(() => employees.filter((e) => e.active !== false), [employees]);
-
-  const openCell = (date, part) => {
-    const existing = schedule.find((s) => s.part === part && normalizeDate(s.date) === date);
-
-    setCellEdit({
-      date,
-      part,
-      scheduleId: existing?.schedule_id ?? existing?.id ?? null,
-    });
-
-    setCellEmpId(existing ? safeStr(existing.employee_id) : "");
-  };
-
-  const saveCell = () => {
-    if (!cellEdit) return;
-    onSaveCell(cellEdit, cellEmpId);
-    setCellEdit(null);
-  };
-
   return (
     <div className="page">
       {isMobile ? (
@@ -224,7 +189,6 @@ export function ShiftTab({
           weekOffset={weekOffset}
           setWeekOffset={setWeekOffset}
           schedule={schedule}
-          openCell={openCell}
         />
       ) : (
         <DesktopShiftTable
@@ -232,41 +196,7 @@ export function ShiftTab({
           weekOffset={weekOffset}
           setWeekOffset={setWeekOffset}
           schedule={schedule}
-          openCell={openCell}
         />
-      )}
-
-      {cellEdit && (
-        <Modal onClose={() => setCellEdit(null)}>
-          <div className="modal-head">
-            <strong>
-              {cellEdit.date} · {cellEdit.part}
-            </strong>
-            <button className="close-btn" onClick={() => setCellEdit(null)}>
-              ×
-            </button>
-          </div>
-
-          <Field label="직원 선택">
-            <select value={cellEmpId} onChange={(e) => setCellEmpId(e.target.value)}>
-              <option value="">— 미배정 —</option>
-              {activeEmployees.map((emp) => (
-                <option key={emp.employee_id} value={safeStr(emp.employee_id)}>
-                  {emp.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <div className="modal-foot">
-            <button type="button" className="ghost-sm" onClick={() => setCellEdit(null)}>
-              취소
-            </button>
-            <button type="button" className="primary-sm" onClick={saveCell}>
-              저장
-            </button>
-          </div>
-        </Modal>
       )}
     </div>
   );

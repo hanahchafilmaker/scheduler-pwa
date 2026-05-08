@@ -1673,3 +1673,88 @@ code {
     font-size: 11px;
   }
 }
+/* ── Payslip modal mobile polish ───────────────────────────── */
+@media (max-width: 768px) {
+  .payslip-modal {
+    padding: 18px;
+    max-height: 92vh;
+    border-radius: 18px;
+  }
+
+  .payslip-header {
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .payslip-title {
+    font-size: 20px;
+  }
+
+  .payslip-net-banner {
+    padding: 16px 14px;
+    margin-bottom: 16px;
+  }
+
+  .payslip-net-amount {
+    font-size: 24px;
+  }
+
+  .payslip-info-grid {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .payslip-pay-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .payslip-deduct-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .payslip-row {
+    grid-template-columns: 1.4fr 0.8fr 0.8fr 1.2fr 1fr;
+    font-size: 11px;
+  }
+
+  .payslip-row.header {
+    font-size: 9px;
+  }
+
+  .payslip-summary {
+    padding: 12px 14px;
+  }
+
+  .ps-row.total {
+    font-size: 15px;
+  }
+
+  .payslip-foot {
+    font-size: 11px;
+  }
+
+  .payslip-print-btn {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 520px) {
+  .payslip-modal {
+    padding: 14px;
+  }
+
+  .payslip-pay-grid,
+  .payslip-deduct-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payslip-row {
+    grid-template-columns: 1.3fr 0.8fr 0.8fr 1fr 1fr;
+    gap: 6px;
+  }
+
+  .payslip-net-amount {
+    font-size: 22px;
+  }
+}

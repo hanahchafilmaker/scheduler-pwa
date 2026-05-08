@@ -4,6 +4,45 @@
    UTF-8
    ================================================================ */
 
+/* ── Summary Bar ────────────────────────────────────────────────── */
+.today-summary-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  margin-bottom: 20px;
+  padding: 14px 16px;
+
+  border: 1px solid #eceff3;
+  border-radius: 18px;
+
+  background: #fafbfc;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  color: #374151;
+  font-size: 13px;
+}
+
+.summary-item strong {
+  font-size: 15px;
+  color: #111827;
+}
+
+.summary-label {
+  color: #6b7280;
+}
+
+.summary-item.subtle {
+  margin-left: auto;
+  color: #9ca3af;
+  gap: 14px;
+}
+
 /* ── 그리드: 2열 (모바일 1열) ──────────────────────────────────── */
 .today-grid {
   display: grid;
@@ -135,10 +174,51 @@
   white-space: nowrap;
 }
 
-.today-badge-sub     { background: #fef3c7; color: #92400e; }
-.today-badge-extra   { background: #f3f4f6; color: #374151; }
-.today-badge-pending { background: #fee2e2; color: #991b1b; }
-.today-badge-absent  { background: #fee2e2; color: #991b1b; }
+.today-badge-sub {
+  background: #fef3c7;
+  color: #92400e;
+}
+.today-badge-extra {
+  background: #f3f4f6;
+  color: #374151;
+}
+.today-badge-pending {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.today-badge-absent {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.today-badge-late {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+/* ── Time Block ────────────────────────────────────────────────── */
+.time-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  margin-top: 6px;
+}
+
+.planned-time {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.actual-time {
+  font-size: 13px;
+  color: #374151;
+}
+
+/* ── No-show Warning ────────────────────────────────────────────── */
+.today-card.warning {
+  border-color: #fecaca;
+  background: #fffafa;
+}
 
 /* ── 승인 버튼 (기존 App.css의 .approve-btn 에 없으면 여기 정의) ── */
 .approve-btn {
@@ -152,7 +232,9 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.approve-btn:hover { background: #1d4ed8; }
+.approve-btn:hover {
+  background: #1d4ed8;
+}
 
 /* ── 승인/반려 버튼 묶음 ────────────────────────────────────────── */
 .approve-actions {
@@ -172,7 +254,9 @@
   cursor: pointer;
   white-space: nowrap;
 }
-.reject-btn:hover { background: #dc2626; }
+.reject-btn:hover {
+  background: #dc2626;
+}
 
 /* ── 자동퇴근 실행 버튼 ─────────────────────────────────────────── */
 .auto-checkout-btn {
@@ -187,4 +271,29 @@
   white-space: nowrap;
   margin-top: 4px;
 }
-.auto-checkout-btn:hover { background: #7c3aed; }
+.auto-checkout-btn:hover {
+  background: #7c3aed;
+}
+
+/* ── 모바일 ────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .today-summary-bar {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .summary-item.subtle {
+    margin-left: 0;
+  }
+
+  .today-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .today-card-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

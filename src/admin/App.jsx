@@ -89,8 +89,8 @@ function buildSettlement({ attendance = [], employees = [], month }) {
 
   return {
     rows,
-    totalPay:      rows.reduce((sum, r) => sum + r.amount, 0),
-    totalHours:    rows.reduce((sum, r) => sum + r.hours, 0),
+    totalPay: rows.reduce((sum, r) => sum + r.amount, 0),
+    totalHours: rows.reduce((sum, r) => sum + r.hours, 0),
     totalWorkDays: rows.reduce((sum, r) => sum + r.workDays, 0),
   };
 }
@@ -143,10 +143,17 @@ export default function App() {
     [settlementOffset],
   );
 
-  const monthRange = useMemo(
-    () => ({ month: settlementMonth, label: monthLabel(settlementMonth) }),
-    [settlementMonth],
-  );
+  const monthRange = useMemo(() => {
+    const payrollMonth = addMonths(settlementMonth, 1);
+    const [py, pm] = payrollMonth.split("-");
+    return {
+      month: settlementMonth,
+      label: monthLabel(settlementMonth),
+      workMonth: settlementMonth,
+      payrollMonth: payrollMonth,
+      payDateLabel: `${py}.${pm}.10`,
+    };
+  }, [settlementMonth]);
 
   const settlement = useMemo(
     () => buildSettlement({ attendance: monthAttendance, employees, month: settlementMonth }),
@@ -173,7 +180,10 @@ export default function App() {
 
   const handleRefresh = useCallback(() => {
     const { fetchAll, fetchMonth } = fetchRef.current;
-    if (tab === "sim") { fetchMonth(settlementMonth); return; }
+    if (tab === "sim") {
+      fetchMonth(settlementMonth);
+      return;
+    }
     fetchAll(selectedMonth);
   }, [tab, selectedMonth, settlementMonth]);
 
@@ -191,10 +201,7 @@ export default function App() {
       const n = new Date();
       const hh = String(n.getHours()).padStart(2, "0");
       const mm = String(n.getMinutes()).padStart(2, "0");
-      updateAttendance(
-        { ...att, check_out: `${hh}:${mm}` },
-        () => fetchToday(),
-      );
+      updateAttendance({ ...att, check_out: `${hh}:${mm}` }, () => fetchToday());
     },
     [updateAttendance, fetchToday],
   );
@@ -222,13 +229,7 @@ export default function App() {
       );
     }
     if (tab === "shift") {
-      return (
-        <ShiftTab
-          schedule={schedule}
-          employees={employees}
-          selectedMonth={selectedMonth}
-        />
-      );
+      return <ShiftTab schedule={schedule} employees={employees} selectedMonth={selectedMonth} />;
     }
     return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
   };
@@ -242,17 +243,26 @@ export default function App() {
 
         {!TABS_WITHOUT_MONTH_BAR.has(tab) && (
           <div className="month-toolbar">
-            <button type="button" className="ghost-sm"
-              onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}>
+            <button
+              type="button"
+              className="ghost-sm"
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
+            >
               ◀
             </button>
             <strong>{monthLabel(selectedMonth)}</strong>
-            <button type="button" className="ghost-sm"
-              onClick={() => setSelectedMonth(currentYM())}>
+            <button
+              type="button"
+              className="ghost-sm"
+              onClick={() => setSelectedMonth(currentYM())}
+            >
               이번 달
             </button>
-            <button type="button" className="ghost-sm"
-              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}>
+            <button
+              type="button"
+              className="ghost-sm"
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+            >
               ▶
             </button>
           </div>

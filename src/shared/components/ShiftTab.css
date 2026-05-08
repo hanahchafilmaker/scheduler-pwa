@@ -1,6 +1,8 @@
 /* ================================================================
    ShiftTab — 조회 전용 스케줄 그리드
-   src/shared/components/ShiftTab.css (또는 기존 App.css에 추가)
+   src/shared/components/ShiftTab.css
+   UTF-8
+   Linear + Notion + iOS 위젯 스타일
    ================================================================ */
 
 /* ── 헤더 ── */
@@ -10,25 +12,27 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .btn-sheets-link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
-  background: #1a73e8;
-  color: #fff;
-  border-radius: 6px;
+  padding: 6px 14px;
+  background: #f0f4ff;
+  color: #3b5bdb;
+  border: 1px solid #c5d0fa;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 .btn-sheets-link:hover {
-  background: #1558c0;
+  background: #e0e9ff;
+  border-color: #a5b4fc;
 }
 
 /* ── 컨트롤 바 ── */
@@ -36,31 +40,32 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 10px;
 }
 
 .view-toggle {
   display: flex;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  overflow: hidden;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
 }
 .view-toggle .toggle-btn {
-  padding: 5px 14px;
+  padding: 4px 14px;
   font-size: 13px;
-  background: #fff;
+  background: transparent;
   border: none;
+  border-radius: 6px;
   cursor: pointer;
-  color: #374151;
+  color: #6b7280;
+  font-weight: 500;
   transition: background 0.12s, color 0.12s;
 }
-.view-toggle .toggle-btn + .toggle-btn {
-  border-left: 1px solid #d1d5db;
-}
 .view-toggle .toggle-btn.active {
-  background: #4f46e5;
-  color: #fff;
+  background: #fff;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .period-nav {
@@ -72,6 +77,7 @@
   min-width: 120px;
   text-align: center;
   font-size: 14px;
+  color: #111827;
 }
 
 /* ── 필터 ── */
@@ -79,151 +85,241 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 .shift-filters select {
-  padding: 5px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  padding: 5px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   font-size: 13px;
   background: #fff;
+  color: #374151;
   cursor: pointer;
+  outline: none;
+  transition: border-color 0.12s;
+}
+.shift-filters select:focus {
+  border-color: #a5b4fc;
 }
 
 /* ── 그리드 래퍼 ── */
 .shift-grid-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
 }
 
 /* ── 그리드 테이블 ── */
 .shift-grid {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
   min-width: 480px;
   font-size: 12px;
+  background: #fff;
 }
-.shift-grid th,
+
+/* 헤더 셀 */
+.shift-grid th {
+  background: #fafafa;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 10px 8px;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: center;
+}
+/* 바디 셀 */
 .shift-grid td {
-  border: 1px solid #e5e7eb;
-  padding: 4px 6px;
+  padding: 8px 6px;
   text-align: center;
   vertical-align: top;
+  border-bottom: 1px solid #f7f7f7;
+  transition: background 0.1s;
 }
-.shift-grid thead th {
-  background: #f9fafb;
-  font-weight: 600;
-  white-space: nowrap;
+/* 행 hover */
+.shift-grid tbody tr:hover td {
+  background: #fafbff;
 }
 
 /* 직원 컬럼 */
 .shift-grid .emp-col {
-  min-width: 64px;
+  min-width: 68px;
   text-align: left;
   white-space: nowrap;
   position: sticky;
   left: 0;
-  background: #fff;
-  z-index: 1;
+  z-index: 2;
+  background: #fafafa;
+  padding-left: 12px;
+  border-right: 1px solid #f0f0f0;
 }
 .shift-grid thead .emp-col {
-  background: #f9fafb;
+  background: #fafafa;
+  z-index: 3;
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.shift-grid tbody .emp-col {
+  background: #fff;
+}
+.shift-grid tbody tr:hover .emp-col {
+  background: #fafbff;
+}
+.shift-grid tbody .emp-col strong {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1f2937;
 }
 
 /* 날짜 헤더 */
 .shift-grid .date-col {
-  min-width: 52px;
+  min-width: 58px;
 }
 .shift-grid .date-col .day-name {
-  font-size: 11px;
-  color: #6b7280;
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 400;
+  margin-bottom: 2px;
 }
 .shift-grid .date-col .date-num {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
+  color: #374151;
 }
+
+/* 오늘 */
 .shift-grid .date-col.today {
-  background: #eff6ff;
+  background: #f0f5ff;
 }
 .shift-grid .date-col.today .date-num {
-  color: #2563eb;
+  color: #3b5bdb;
 }
-.shift-grid .date-col.sunday .date-num {
-  color: #ef4444;
+.shift-grid th.today::after {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #3b5bdb;
+  margin: 3px auto 0;
 }
-.shift-grid .date-col.saturday .date-num {
-  color: #3b82f6;
-}
+
+/* 일/토 */
+.shift-grid .date-col.sunday .date-num  { color: #f87171; }
+.shift-grid .date-col.saturday .date-num { color: #60a5fa; }
 
 /* ── 셀 (조회 전용) ── */
 .shift-cell.readonly {
   cursor: default;
-  pointer-events: none; /* 클릭 완전 차단 */
-  min-height: 32px;
+  pointer-events: none;
+  min-height: 40px;
 }
 .shift-cell.today {
-  background: #eff6ff;
-}
-.shift-cell.has-shift {
-  background: #fafafa;
+  background: #f8faff;
 }
 
-/* ── 시프트 뱃지 ── */
-.shift-badge {
-  display: flex;
+/* ── shift-chip: 파트 pill + 시간 분리 ── */
+.shift-chip {
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  margin-bottom: 2px;
-  font-size: 11px;
-  background: #e0e7ff;
-  color: #3730a3;
+  gap: 2px;
+  padding: 4px 7px;
+  border-radius: 7px;
+  margin: 2px auto;
+  min-width: 46px;
+  border: 1px solid transparent;
 }
-.shift-badge .shift-part {
+
+/* 파트명 pill */
+.shift-chip .shift-part-badge {
+  font-size: 10px;
   font-weight: 600;
   line-height: 1.2;
+  letter-spacing: 0.01em;
 }
-.shift-badge .shift-time {
+
+/* 시간 텍스트 */
+.shift-chip .shift-time {
   font-size: 10px;
-  color: #6b7280;
+  font-weight: 400;
+  opacity: 0.75;
   white-space: nowrap;
 }
 
-/* 파트별 색상 — 기존 파트 키에 맞게 조정하세요 */
-.shift-badge.part-open  { background: #d1fae5; color: #065f46; }
-.shift-badge.part-mid   { background: #fef9c3; color: #713f12; }
-.shift-badge.part-close { background: #fee2e2; color: #991b1b; }
-.shift-badge.part-extra { background: #f3f4f6; color: #374151; }
-.shift-badge.part-default { background: #e0e7ff; color: #3730a3; }
+/* 파트별 색상 — 연한 배경, 어두운 텍스트 */
+/* middle 은 GAS 키가 "middle" */
+.shift-chip-open {
+  background: #ecfdf5;
+  border-color: #d1fae5;
+  color: #065f46;
+}
+.shift-chip-middle {
+  background: #eff6ff;
+  border-color: #dbeafe;
+  color: #1e40af;
+}
+.shift-chip-close {
+  background: #fff7f7;
+  border-color: #fee2e2;
+  color: #991b1b;
+}
+.shift-chip-extra {
+  background: #f5f3ff;
+  border-color: #ede9fe;
+  color: #5b21b6;
+}
+.shift-chip-default {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+
+/* 다중 chip 세로 쌓기 */
+.shift-cell {
+  display: table-cell;
+}
+.shift-cell > .shift-chip {
+  display: flex;
+}
 
 /* ── 범례 ── */
 .shift-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-  font-size: 12px;
-}
-.legend-item {
-  display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: #e0e7ff;
-  color: #3730a3;
+  gap: 6px;
+  margin-top: 14px;
 }
-.legend-item.part-open  { background: #d1fae5; color: #065f46; }
-.legend-item.part-mid   { background: #fef9c3; color: #713f12; }
-.legend-item.part-close { background: #fee2e2; color: #991b1b; }
-.legend-item.part-extra { background: #f3f4f6; color: #374151; }
+.legend-chip {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: default;
+}
+.legend-chip .shift-part-badge {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ── 빈 상태 ── */
+.shift-grid .empty {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+  padding: 32px 0;
+}
 
 /* ── 모바일 ── */
 @media (max-width: 640px) {
   .shift-tab-header { flex-direction: column; align-items: flex-start; }
   .period-label { min-width: 100px; font-size: 13px; }
   .shift-grid { font-size: 11px; }
-  .shift-grid .emp-col { min-width: 50px; }
-  .shift-grid .date-col { min-width: 40px; }
+  .shift-grid .emp-col { min-width: 52px; }
+  .shift-grid .date-col { min-width: 44px; }
+  .shift-chip { min-width: 38px; padding: 3px 5px; }
+  .shift-chip .shift-time { font-size: 9px; }
 }

@@ -60,22 +60,33 @@ function Section({ color, title, count, empty, children }) {
           {count}
         </span>
       </div>
-      {count === 0
-        ? <p className="today-empty">{empty}</p>
-        : <div className="today-cards">{children}</div>
-      }
+      {count === 0 ? (
+        <p className="today-empty">{empty}</p>
+      ) : (
+        <div className="today-cards">{children}</div>
+      )}
     </div>
   );
 }
 
 // ── 근무중 / 승인대기 / 자동퇴근 예정 카드 ─────────────────────────────────
 //   attendance row 기반
-function AttCard({ a, onApprove, showElapsed = false }) {
+function AttCard({ a, schedule, onApprove, showElapsed = false }) {
   // GAS는 boolean을 문자열 "true"/"false"로 내려주기도 함 → toBool 사용
   const approved = toBool(a.approved);
-  const isSub    = toBool(a.is_substitute);
+  const isSub = toBool(a.is_substitute);
   // schedule_id 없거나 part === "extra" → 스케줄 외 출근
-  const isExtra  = !a.schedule_id || a.part === "extra";
+  const isExtra = !a.schedule_id || a.part === "extra";
+
+  // 지각 판단
+  const isLate = (() => {
+    if (!a.check_in || !a.planned_start) return false;
+    const [ph, pm] = String(a.planned_start).split(":").map(Number);
+    const [ch, cm] = String(a.check_in).split(":").map(Number);
+    const planned = ph * 60 + pm;
+    const checkin = ch * 60 + cm;
+    return checkin - planned > 5;
+  })();
 
   return (
     <div className="today-card">
@@ -84,15 +95,10 @@ function AttCard({ a, onApprove, showElapsed = false }) {
         <strong className="today-name">{a.name || a.employee_id}</strong>
 
         <div className="today-badges">
-          {isSub && (
-            <span className="today-badge today-badge-sub">대타</span>
-          )}
-          {isExtra && !isSub && (
-            <span className="today-badge today-badge-extra">스케줄외</span>
-          )}
-          {!approved && (
-            <span className="today-badge today-badge-pending">미승인</span>
-          )}
+          {isSub && <span className="today-badge today-badge-sub">대타</span>}
+          {isExtra && !isSub && <span className="today-badge today-badge-extra">스케줄외</span>}
+          {isLate && <span className="today-badge today-badge-late">지각</span>}
+          {!approved && <span className="today-badge today-badge-pending">미승인</span>}
         </div>
 
         {/* 파트 */}
@@ -104,11 +110,18 @@ function AttCard({ a, onApprove, showElapsed = false }) {
       </div>
 
       <div className="today-card-right">
-        <span className="today-time">
-          {formatTime(a.check_in) || "-"}
-          {" → "}
-          {a.check_out ? formatTime(a.check_out) : "근무중"}
-        </span>
+        {/* 예정 시간과 실제 시간 */}
+        <div className="time-block">
+          {schedule && (
+            <div className="planned-time">
+              예정 {schedule.planned_start || "--:--"} ~ {schedule.planned_end || "--:--"}
+            </div>
+          )}
+          <div className="actual-time">
+            실제 {formatTime(a.check_in) || "--:--"}
+            {a.check_out ? ` ~ ${formatTime(a.check_out)}` : " 출근"}
+          </div>
+        </div>
 
         {showElapsed && !a.check_out && (
           <span className="today-time" style={{ color: "#059669" }}>
@@ -119,18 +132,10 @@ function AttCard({ a, onApprove, showElapsed = false }) {
         {/* 승인 / 반려 버튼 — approved !== true 인 경우만 */}
         {!approved && onApprove && (
           <div className="approve-actions">
-            <button
-              type="button"
-              className="approve-btn"
-              onClick={() => onApprove(a, true)}
-            >
+            <button type="button" className="approve-btn" onClick={() => onApprove(a, true)}>
               승인
             </button>
-            <button
-              type="button"
-              className="reject-btn"
-              onClick={() => onApprove(a, false)}
-            >
+            <button type="button" className="reject-btn" onClick={() => onApprove(a, false)}>
               반려
             </button>
           </div>
@@ -143,8 +148,22 @@ function AttCard({ a, onApprove, showElapsed = false }) {
 // ── 미출근 카드 ──────────────────────────────────────────────────────────────
 //   schedule row 기반 — attendance 필드 절대 혼용 금지
 function AbsentCard({ s, isScheduled }) {
+  const isLateNoShow = (() => {
+    if (!s.planned_start) return false;
+
+    const now = new Date();
+    const [hh, mm] = s.planned_start.split(":").map(Number);
+
+    const planned = hh * 60 + mm;
+    const current = now.getHours() * 60 + now.getMinutes();
+
+    return current - planned > 15;
+  })();
+
   return (
-    <div className={`today-card${isScheduled ? "" : " today-card-absent"}`}>
+    <div
+      className={`today-card${isScheduled ? "" : " today-card-absent"}${isLateNoShow ? " warning" : ""}`}
+    >
       <div className="today-card-left">
         {/* schedule.name 이 없으면 employee_id 표시 */}
         <strong className="today-name">{s.name || s.employee_id}</strong>
@@ -173,9 +192,9 @@ function AbsentCard({ s, isScheduled }) {
 }
 
 // ── 자동퇴근 예정 카드 (강조 스타일) ─────────────────────────────────────────
-function AutoCard({ a, onApprove, onAutoCheckout }) {
+function AutoCard({ a, schedule, onApprove, onAutoCheckout }) {
   const approved = toBool(a.approved);
-  const isSub    = toBool(a.is_substitute);
+  const isSub = toBool(a.is_substitute);
 
   return (
     <div className="today-card" style={{ borderColor: "#c4b5fd", background: "#faf5ff" }}>
@@ -186,40 +205,31 @@ function AutoCard({ a, onApprove, onAutoCheckout }) {
           <span className="today-badge" style={{ background: "#ede9fe", color: "#6d28d9" }}>
             자동퇴근 예정
           </span>
-          {!approved && (
-            <span className="today-badge today-badge-pending">미승인</span>
-          )}
+          {!approved && <span className="today-badge today-badge-pending">미승인</span>}
         </div>
         <span className="today-time">{elapsedLabel(a.check_in)}</span>
       </div>
       <div className="today-card-right">
-        <span className="today-time">
-          {formatTime(a.check_in)} → 근무중
-        </span>
+        <div className="time-block">
+          {schedule && (
+            <div className="planned-time">
+              예정 {schedule.planned_start || "--:--"} ~ {schedule.planned_end || "--:--"}
+            </div>
+          )}
+          <div className="actual-time">{formatTime(a.check_in)} → 근무중</div>
+        </div>
         {!approved && onApprove && (
           <div className="approve-actions">
-            <button
-              type="button"
-              className="approve-btn"
-              onClick={() => onApprove(a, true)}
-            >
+            <button type="button" className="approve-btn" onClick={() => onApprove(a, true)}>
               승인
             </button>
-            <button
-              type="button"
-              className="reject-btn"
-              onClick={() => onApprove(a, false)}
-            >
+            <button type="button" className="reject-btn" onClick={() => onApprove(a, false)}>
               반려
             </button>
           </div>
         )}
         {onAutoCheckout && (
-          <button
-            type="button"
-            className="auto-checkout-btn"
-            onClick={() => onAutoCheckout(a)}
-          >
+          <button type="button" className="auto-checkout-btn" onClick={() => onAutoCheckout(a)}>
             자동퇴근
           </button>
         )}
@@ -238,8 +248,14 @@ function AutoCard({ a, onApprove, onAutoCheckout }) {
  *   employees        {array}    직원 배열 (필요 시 보조용; name은 attendance에 포함)
  *   onApprove        {function} (att, true) → approveAttendance 콜백
  */
-export function TodayTab({ todayAttendance = [], schedule = [], employees = [], onApprove, onAutoCheckout }) {
-  const now      = nowMin();
+export function TodayTab({
+  todayAttendance = [],
+  schedule = [],
+  employees = [],
+  onApprove,
+  onAutoCheckout,
+}) {
+  const now = nowMin();
   const todayStr = useMemo(() => normalizeDate(new Date()), []);
 
   // ── 오늘 스케줄만 필터 (schedule 배열에서)
@@ -250,13 +266,42 @@ export function TodayTab({ todayAttendance = [], schedule = [], employees = [], 
 
   // ── 오늘 check_in 있는 employee_id Set (미출근 판단용)
   const checkedInIds = useMemo(
-    () => new Set(
-      todayAttendance
-        .filter((a) => a.check_in)
-        .map((a) => String(a.employee_id))
-    ),
+    () => new Set(todayAttendance.filter((a) => a.check_in).map((a) => String(a.employee_id))),
     [todayAttendance],
   );
+
+  // ── Summary 계산
+  const summary = useMemo(() => {
+    const scheduleEmployeeIds = new Set(todaySchedules.map((s) => String(s.employee_id)));
+
+    const workingAttendances = todayAttendance.filter((a) => a.check_in && !a.check_out);
+
+    const absentSchedules = todaySchedules.filter((s) => !checkedInIds.has(String(s.employee_id)));
+
+    const substituteCount = todayAttendance.filter(
+      (a) => toBool(a.is_substitute) || String(a.part).toLowerCase() === "extra",
+    ).length;
+
+    const lateCount = todayAttendance.filter((a) => {
+      if (!a.check_in || !a.planned_start) return false;
+
+      const [ph, pm] = String(a.planned_start).split(":").map(Number);
+      const [ch, cm] = String(a.check_in).split(":").map(Number);
+
+      const planned = ph * 60 + pm;
+      const checkin = ch * 60 + cm;
+
+      return checkin - planned > 5;
+    }).length;
+
+    return {
+      total: scheduleEmployeeIds.size,
+      working: workingAttendances.length,
+      absent: absentSchedules.length,
+      substitute: substituteCount,
+      late: lateCount,
+    };
+  }, [todaySchedules, checkedInIds, todayAttendance]);
 
   // ── 1. 현재 근무중: check_in O, check_out X
   const working = useMemo(
@@ -282,7 +327,7 @@ export function TodayTab({ todayAttendance = [], schedule = [], employees = [], 
     return todaySchedules
       .filter((s) => !checkedInIds.has(String(s.employee_id)))
       .map((s) => {
-        const planned = toMin(s.planned_start);   // schedule 필드
+        const planned = toMin(s.planned_start); // schedule 필드
         const isScheduled = planned === null || now <= planned;
         return { s, isScheduled };
       });
@@ -293,11 +338,9 @@ export function TodayTab({ todayAttendance = [], schedule = [], employees = [], 
   const autoCheckout = useMemo(() => {
     return todayAttendance.filter((a) => {
       if (!a.check_in || a.check_out) return false;
-      const sched = todaySchedules.find(
-        (s) => String(s.employee_id) === String(a.employee_id)
-      );
+      const sched = todaySchedules.find((s) => String(s.employee_id) === String(a.employee_id));
       if (!sched) return false;
-      const end = toMin(sched.planned_end);   // schedule 필드
+      const end = toMin(sched.planned_end); // schedule 필드
       return end !== null && now > end + AUTO_CHECKOUT_GRACE_MIN;
     });
   }, [todayAttendance, todaySchedules, now]);
@@ -307,6 +350,29 @@ export function TodayTab({ todayAttendance = [], schedule = [], employees = [], 
       <div className="card">
         <SectionTitle>오늘 현황 — {todayStr}</SectionTitle>
 
+        {/* Summary Bar */}
+        <div className="today-summary-bar">
+          <div className="summary-item">
+            <span className="summary-label">전체</span>
+            <strong>{summary.total}명</strong>
+          </div>
+
+          <div className="summary-item">
+            <span className="summary-label">근무중</span>
+            <strong>{summary.working}명</strong>
+          </div>
+
+          <div className="summary-item">
+            <span className="summary-label">미출근</span>
+            <strong>{summary.absent}명</strong>
+          </div>
+
+          <div className="summary-item subtle">
+            <span>대타 {summary.substitute}건</span>
+            <span>지각 {summary.late}건</span>
+          </div>
+        </div>
+
         <div className="today-grid">
           {/* 1. 현재 근무중 */}
           <Section
@@ -315,14 +381,20 @@ export function TodayTab({ todayAttendance = [], schedule = [], employees = [], 
             count={working.length}
             empty="현재 근무중인 직원이 없습니다"
           >
-            {working.map((a) => (
-              <AttCard
-                key={a.attendance_id || `${a.employee_id}-in`}
-                a={a}
-                onApprove={onApprove}
-                showElapsed
-              />
-            ))}
+            {working.map((a) => {
+              const sched = todaySchedules.find(
+                (s) => String(s.employee_id) === String(a.employee_id),
+              );
+              return (
+                <AttCard
+                  key={a.attendance_id || `${a.employee_id}-in`}
+                  a={a}
+                  schedule={sched}
+                  onApprove={onApprove}
+                  showElapsed
+                />
+              );
+            })}
           </Section>
 
           {/* 2. 승인대기 */}
@@ -332,13 +404,19 @@ export function TodayTab({ todayAttendance = [], schedule = [], employees = [], 
             count={pending.length}
             empty="승인 대기 기록이 없습니다"
           >
-            {pending.map((a) => (
-              <AttCard
-                key={a.attendance_id || `${a.employee_id}-pend`}
-                a={a}
-                onApprove={onApprove}
-              />
-            ))}
+            {pending.map((a) => {
+              const sched = todaySchedules.find(
+                (s) => String(s.employee_id) === String(a.employee_id),
+              );
+              return (
+                <AttCard
+                  key={a.attendance_id || `${a.employee_id}-pend`}
+                  a={a}
+                  schedule={sched}
+                  onApprove={onApprove}
+                />
+              );
+            })}
           </Section>
 
           {/* 3. 미출근 / 예정 */}
@@ -364,14 +442,20 @@ export function TodayTab({ todayAttendance = [], schedule = [], employees = [], 
             count={autoCheckout.length}
             empty="자동퇴근 예정 직원이 없습니다"
           >
-            {autoCheckout.map((a) => (
-              <AutoCard
-                key={a.attendance_id || `${a.employee_id}-auto`}
-                a={a}
-                onApprove={onApprove}
-                onAutoCheckout={onAutoCheckout}
-              />
-            ))}
+            {autoCheckout.map((a) => {
+              const sched = todaySchedules.find(
+                (s) => String(s.employee_id) === String(a.employee_id),
+              );
+              return (
+                <AutoCard
+                  key={a.attendance_id || `${a.employee_id}-auto`}
+                  a={a}
+                  schedule={sched}
+                  onApprove={onApprove}
+                  onAutoCheckout={onAutoCheckout}
+                />
+              );
+            })}
           </Section>
         </div>
       </div>

@@ -9,14 +9,20 @@ function DayTable({ days, hours, nightHours, amount }) {
   return (
     <div className="sim-days-table">
       <div className="sim-days-head">
-        <span>날짜</span><span>출근</span><span>퇴근</span>
-        <span>근무</span><span>야간</span><span>금액</span>
+        <span>날짜</span>
+        <span>출근</span>
+        <span>퇴근</span>
+        <span>근무</span>
+        <span>야간</span>
+        <span>금액</span>
       </div>
       {days.map((d, i) => {
         const dayKr = DAY_KR[new Date(d.date).getDay()];
         return (
           <div key={i} className="sim-days-row">
-            <span>{d.date.slice(5)} ({dayKr})</span>
+            <span>
+              {d.date.slice(5)} ({dayKr})
+            </span>
             <span>{formatTime(d.check_in)}</span>
             <span>{formatTime(d.check_out)}</span>
             <span>{(d.workMin / 60).toFixed(1)}h</span>
@@ -26,7 +32,9 @@ function DayTable({ days, hours, nightHours, amount }) {
         );
       })}
       <div className="sim-days-total">
-        <span>합계</span><span /><span />
+        <span>합계</span>
+        <span />
+        <span />
         <span>{hours.toFixed(1)}h</span>
         <span>{nightHours.toFixed(1)}h</span>
         <span className="sim-days-pay">{fmtKRW(amount)}</span>
@@ -47,7 +55,9 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
         <div className="sim-emp-avatar">{e.name.slice(0, 1)}</div>
         <div className="sim-emp-info">
           <strong>{e.name}</strong>
-          <span>{fmtKRW(e.wage)}/h · {e.workDays}일 출근 · {e.hours.toFixed(1)}h</span>
+          <span>
+            {fmtKRW(e.wage)}/h · {e.workDays}일 출근 · {e.hours.toFixed(1)}h
+          </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div className="sim-emp-total">{fmtKRW(e.amount)}</div>
@@ -75,16 +85,35 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
           <span>야간 시간</span>
           <strong>{e.nightHours.toFixed(1)}h</strong>
         </div>
-        <div className="sim-detail-item" style={{
-          background: "#111827", borderRadius: 10, padding: 10,
-          display: "flex", flexDirection: "column", gap: 4,
-        }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>합계</span>
-          <strong style={{ fontSize: 15, fontWeight: 900, color: "#f97316" }}>{fmtKRW(e.amount)}</strong>
+        <div
+          className="sim-detail-item"
+          style={{
+            background: "#111827",
+            borderRadius: 10,
+            padding: 10,
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <span
+            style={{ fontSize: 10, fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}
+          >
+            합계
+          </span>
+          <strong style={{ fontSize: 15, fontWeight: 900, color: "#f97316" }}>
+            {fmtKRW(e.amount)}
+          </strong>
         </div>
       </div>
 
-      <button className="payslip-btn" onClick={(ev) => { ev.stopPropagation(); onPayslip(); }}>
+      <button
+        className="payslip-btn"
+        onClick={(ev) => {
+          ev.stopPropagation();
+          onPayslip();
+        }}
+      >
         📄 임금명세서 출력
       </button>
 
@@ -98,30 +127,34 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
 // ── Main export ───────────────────────────────────────────────────────────────
 export function SimTab({ settlement, monthRange, settlementOffset, setSettlementOffset }) {
   const [expandedEmp, setExpandedEmp] = useState(null);
-  const [payslipEmp,  setPayslipEmp]  = useState(null);
+  const [payslipEmp, setPayslipEmp] = useState(null);
 
-  const toggleExpand = (id) =>
-    setExpandedEmp((prev) => (prev === id ? null : id));
+  const toggleExpand = (id) => setExpandedEmp((prev) => (prev === id ? null : id));
 
   return (
     <div className="page">
       {/* Month navigator */}
       <div className="cal-month-nav">
-        <button className="cal-nav-btn" onClick={() => setSettlementOffset((o) => o - 1)}>◀</button>
+        <button className="cal-nav-btn" onClick={() => setSettlementOffset((o) => o - 1)}>
+          ◀
+        </button>
         <span className="cal-month-label">{monthRange.label}</span>
-        <button className="cal-nav-btn" onClick={() => setSettlementOffset((o) => o + 1)}>▶</button>
+        <button className="cal-nav-btn" onClick={() => setSettlementOffset((o) => o + 1)}>
+          ▶
+        </button>
       </div>
 
       {/* Total banner */}
       <div className="sim-total-banner">
         <div className="sim-total-left">
-          <span className="sim-total-month">{monthRange.label}</span>
-          <span className="sim-total-desc">인건비 총합계</span>
+          <span className="sim-total-month">{monthRange.label} 근무분</span>
+          <span className="sim-total-desc">지급 예정일: {monthRange.payDateLabel}</span>
         </div>
         <div className="sim-total-right">
           <div className="sim-total-amount">{fmtKRW(settlement.totalPay)}</div>
           <div className="sim-total-meta">
-            {settlement.rows.length}명 · {settlement.totalHours.toFixed(1)}h · {settlement.totalWorkDays}일
+            {settlement.rows.length}명 · {settlement.totalHours.toFixed(1)}h ·{" "}
+            {settlement.totalWorkDays}일
           </div>
         </div>
       </div>
@@ -149,11 +182,7 @@ export function SimTab({ settlement, monthRange, settlementOffset, setSettlement
       )}
 
       {/* Payslip modal */}
-      <PayslipModal
-        emp={payslipEmp}
-        monthRange={monthRange}
-        onClose={() => setPayslipEmp(null)}
-      />
+      <PayslipModal emp={payslipEmp} monthRange={monthRange} onClose={() => setPayslipEmp(null)} />
     </div>
   );
 }

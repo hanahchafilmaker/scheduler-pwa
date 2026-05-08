@@ -285,14 +285,14 @@ export function ShiftTab({ schedule = [], employees = [], selectedMonth }) {
                             .join(" ")}
                         >
                           {shifts.map((s, i) => (
-                            <div key={i} className={`shift-badge part-${s.part || "default"}`}>
-                              <span className="shift-part">
+                            <div key={i} className={`shift-chip shift-chip-${s.part || "default"}`}>
+                              <span className="shift-part-badge">
                                 {PART_LABEL[s.part] || s.part || ""}
                               </span>
                               {(s.planned_start || s.planned_end) && (
                                 <span className="shift-time">
                                   {s.planned_start}
-                                  {s.planned_end ? `~${s.planned_end}` : ""}
+                                  {s.planned_end ? `\u2013${s.planned_end}` : ""}
                                 </span>
                               )}
                             </div>
@@ -311,8 +311,8 @@ export function ShiftTab({ schedule = [], employees = [], selectedMonth }) {
         {parts.length > 0 && (
           <div className="shift-legend">
             {parts.map((p) => (
-              <span key={p} className={`legend-item part-${p}`}>
-                {PART_LABEL[p] || p}
+              <span key={p} className={`shift-chip shift-chip-${p} legend-chip`}>
+                <span className="shift-part-badge">{PART_LABEL[p] || p}</span>
               </span>
             ))}
           </div>

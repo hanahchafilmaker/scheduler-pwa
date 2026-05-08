@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useApi } from "../shared/hooks/useApi";
 import { Sidebar, MobileTabs } from "../shared/components/Nav";
 import { AttTab } from "../shared/components/AttTab";
+import { ShiftTab } from "../shared/components/ShiftTab";
 import { SimTab } from "../shared/components/SimTab";
 import { Toast } from "../shared/components/UI";
 import { normalizeDate, safeStr, calcWorkMinutes, calcNightMinutesSimple } from "../shared/utils";
@@ -124,6 +125,7 @@ export default function App() {
   const {
     loading,
     employees = [],
+    schedule = [],
     attendance = [],
     monthAttendance: apiMonthAttendance,
     fetchAll,
@@ -195,6 +197,10 @@ export default function App() {
         />
       );
     }
+    // ── 추가: shift 탭 ──
+    if (tab === "shift") {
+      return <ShiftTab schedule={schedule} employees={employees} selectedMonth={selectedMonth} />;
+    }
     return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
   };
 
@@ -205,7 +211,8 @@ export default function App() {
       <main className="main-content">
         <MobileTabs tab={tab} setTab={setTab} />
 
-        {tab !== "sim" && (
+        {/* shift 탭과 sim 탭은 month-toolbar 숨김 (자체 네비게이션 보유) */}
+        {tab !== "sim" && tab !== "shift" && (
           <div className="month-toolbar">
             <button
               type="button"

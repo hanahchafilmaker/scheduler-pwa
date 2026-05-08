@@ -8,6 +8,7 @@ import { ShiftTab } from "../shared/components/ShiftTab";
 import { SimTab } from "../shared/components/SimTab";
 import { Toast } from "../shared/components/UI";
 import { normalizeDate, safeStr, calcWorkMinutes, calcNightMinutesSimple } from "../shared/utils";
+import { SHIFT_TIME } from "../shared/constants";
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -27,6 +28,21 @@ function addMonths(ym, offset) {
 function monthLabel(ym) {
   const [y, m] = ym.split("-");
   return `${y}년 ${Number(m)}월`;
+}
+
+function getWeekDates(offset = 0) {
+  const now = new Date();
+  const day = now.getDay();
+  const mondayDiff = day === 0 ? -6 : 1 - day;
+
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayDiff + offset * 7);
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  });
 }
 
 // 정산: approved=true 기록만 반영
@@ -103,6 +119,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [settlementOffset, setSettlementOffset] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState(currentYM());
+  const [weekOffset, setWeekOffset] = useState(0);
 
   const toastTimerRef = useRef(null);
 
@@ -134,6 +151,9 @@ export default function App() {
     fetchToday,
     approveAttendance,
     updateAttendance,
+    addSchedule,
+    updateSchedule,
+    deleteSchedule,
   } = api;
 
   const monthAttendance = apiMonthAttendance || attendance || [];
@@ -142,6 +162,8 @@ export default function App() {
     () => addMonths(currentYM(), settlementOffset),
     [settlementOffset],
   );
+
+  const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
   const monthRange = useMemo(() => {
     const payrollMonth = addMonths(settlementMonth, 1);
@@ -221,7 +243,45 @@ export default function App() {
       fetchAll(selectedMonth);
       return;
     }
+
+    if (tab === "shift") {
+      fetchAll(selectedMonth);
+    }
   }, [tab, fetchToday, fetchMonth, fetchAll, settlementMonth, selectedMonth]);
+
+  const handleSaveCell = useCallback(
+    (cellEdit, employeeId) => {
+      const emp = employees.find((e) => safeStr(e.employee_id) === safeStr(employeeId));
+
+      const shift = SHIFT_TIME[cellEdit.part] || {};
+
+      const payload = {
+        date: cellEdit.date,
+        part: cellEdit.part,
+        employee_id: employeeId || "",
+        name: emp?.name || "",
+        planned_start: shift.start || "",
+        planned_end: shift.end || "",
+      };
+
+      const refetch = () => fetchAll(selectedMonth);
+
+      if (cellEdit.scheduleId) {
+        if (!employeeId) {
+          deleteSchedule(cellEdit.scheduleId, cellEdit.date, refetch);
+          return;
+        }
+
+        updateSchedule(cellEdit.scheduleId, payload, refetch);
+        return;
+      }
+
+      if (!employeeId) return;
+
+      addSchedule(payload, refetch);
+    },
+    [employees, selectedMonth, fetchAll, addSchedule, updateSchedule, deleteSchedule],
+  );
 
   const renderTab = () => {
     if (tab === "today") {
@@ -248,7 +308,16 @@ export default function App() {
     }
 
     if (tab === "shift") {
-      return <ShiftTab schedule={schedule} employees={employees} selectedMonth={selectedMonth} />;
+      return (
+        <ShiftTab
+          weekDates={weekDates}
+          weekOffset={weekOffset}
+          setWeekOffset={setWeekOffset}
+          schedule={schedule}
+          employees={employees}
+          onSaveCell={handleSaveCell}
+        />
+      );
     }
 
     return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;

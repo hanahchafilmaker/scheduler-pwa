@@ -74,7 +74,7 @@ export default function StaffApp() {
         if (!mounted) return;
 
         setEmployees([]);
-        setPinError("직원 데이터를 불러오지 못했습니다");
+        setPinError("직원 데이터를 불러오지 못했습니다.");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -100,7 +100,7 @@ export default function StaffApp() {
         });
       } catch (err) {
         console.error("오늘 데이터 fetch 실패:", err);
-        showToast("오늘 데이터를 불러오지 못했습니다");
+        showToast("오늘 데이터를 불러오지 못했습니다.");
       }
     },
     [showToast],
@@ -114,8 +114,8 @@ export default function StaffApp() {
         const data = await fetchStaffMonth(empId, getMonthKey());
         setRecords(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("이달 기록 fetch 실패:", err);
-        showToast("이달 기록을 불러오지 못했습니다");
+        console.error("이번 달 기록 fetch 실패:", err);
+        showToast("이번 달 기록을 불러오지 못했습니다.");
       }
     },
     [showToast],
@@ -236,7 +236,7 @@ export default function StaffApp() {
       await loadMonth(employee.employee_id);
     } catch (err) {
       console.error("출근 실패:", err);
-      showToast(err?.message || "출근 저장 실패");
+      showToast(err?.message || "출근 처리 실패");
     } finally {
       setActionLoading(false);
     }
@@ -263,7 +263,7 @@ export default function StaffApp() {
       await loadMonth(employee.employee_id);
     } catch (err) {
       console.error("퇴근 실패:", err);
-      showToast(err?.message || "퇴근 저장 실패");
+      showToast(err?.message || "퇴근 처리 실패");
     } finally {
       setActionLoading(false);
     }

@@ -39,7 +39,8 @@ export function MobileTabs({ tab, setTab }) {
           className={`mobile-tab ${tab === item.id ? "active" : ""}`}
           onClick={() => setTab(item.id)}
         >
-          <span>{item.icon}</span>
+          <span className="mobile-tab-icon">{item.icon}</span>
+          <span className="mobile-tab-label">{item.label}</span>
         </button>
       ))}
     </div>

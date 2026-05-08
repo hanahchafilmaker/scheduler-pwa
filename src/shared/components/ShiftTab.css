@@ -2,108 +2,87 @@
    ShiftTab — 조회 전용 스케줄 그리드
    src/shared/components/ShiftTab.css
    UTF-8
-   Linear + Notion + iOS 위젯 스타일
    ================================================================ */
 
 /* ── 헤더 ── */
 .shift-tab-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 16px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
-
-.btn-sheets-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  background: #f0f4ff;
-  color: #3b5bdb;
-  border: 1px solid #c5d0fa;
-  border-radius: 8px;
+.shift-header-copy h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  color: #111827;
+}
+.shift-header-copy p {
+  margin: 4px 0 0;
   font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-  white-space: nowrap;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
+  color: #9ca3af;
+  font-weight: 600;
 }
-.btn-sheets-link:hover {
-  background: #e0e9ff;
-  border-color: #a5b4fc;
-}
-
-/* ── 컨트롤 바 ── */
-.shift-controls {
+.shift-header-controls {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 10px;
-  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
-
-.view-toggle {
+.week-nav.modern {
   display: flex;
-  background: #f3f4f6;
-  border-radius: 8px;
-  padding: 3px;
-  gap: 2px;
-}
-.view-toggle .toggle-btn {
-  padding: 4px 14px;
-  font-size: 13px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  color: #6b7280;
-  font-weight: 500;
-  transition:
-    background 0.12s,
-    color 0.12s;
-}
-.view-toggle .toggle-btn.active {
-  background: #fff;
-  color: #111827;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.period-nav {
-  display: flex;
-  align-items: center;
   gap: 6px;
 }
-.period-label {
-  min-width: 120px;
-  text-align: center;
-  font-size: 14px;
-  color: #111827;
-}
-
-/* ── 필터 ── */
-.shift-filters {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-.shift-filters select {
-  padding: 5px 12px;
+.week-nav.modern button {
+  padding: 8px 12px;
+  border-radius: 10px;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 13px;
   background: #fff;
   color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
   cursor: pointer;
-  outline: none;
-  transition: border-color 0.12s;
+  transition: all 0.15s ease;
 }
-.shift-filters select:focus {
-  border-color: #a5b4fc;
+.week-nav.modern button:hover {
+  border-color: #fed7aa;
+  background: #fff8f3;
+  color: #ea580c;
+}
+.shift-range-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid #f3f4f6;
+}
+
+/* ── 헤더 모바일 ── */
+@media (max-width: 768px) {
+  .shift-tab-header {
+    align-items: stretch;
+  }
+  .shift-header-copy h2 {
+    font-size: 18px;
+  }
+  .shift-header-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .week-nav.modern {
+    width: 100%;
+  }
+  .week-nav.modern button {
+    flex: 1;
+  }
+  .shift-range-pill {
+    text-align: center;
+  }
 }
 
 /* ── 그리드 래퍼 ── */
@@ -122,6 +101,7 @@
   min-width: 480px;
   font-size: 12px;
   background: #fff;
+  table-layout: fixed;
 }
 
 /* 헤더 셀 */
@@ -132,7 +112,9 @@
   padding: 10px 8px;
   border-bottom: 1px solid #f0f0f0;
   text-align: center;
+  width: 88px;
 }
+
 /* 바디 셀 */
 .shift-grid td {
   padding: 8px 6px;
@@ -140,7 +122,9 @@
   vertical-align: top;
   border-bottom: 1px solid #f7f7f7;
   transition: background 0.1s;
+  width: 88px;
 }
+
 /* 행 hover */
 .shift-grid tbody tr:hover td {
   background: #fafbff;
@@ -219,47 +203,47 @@
   color: #60a5fa;
 }
 
-/* ── 셀 (조회 전용) ── */
+/* ── 셀 ── */
+.shift-cell {
+  height: 76px;
+  padding: 6px 4px !important;
+  vertical-align: top;
+}
 .shift-cell.readonly {
   cursor: default;
   pointer-events: none;
-  min-height: 40px;
 }
 .shift-cell.today {
   background: #f8faff;
 }
 
-/* ── shift-chip: 파트 pill + 시간 분리 ── */
+/* ── shift-chip ── */
 .shift-chip {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 4px 7px;
+  padding: 4px 6px;
   border-radius: 7px;
   margin: 2px auto;
   min-width: 46px;
+  width: 72px;
+  min-height: 20px;
   border: 1px solid transparent;
+  justify-content: center;
 }
-
-/* 파트명 pill */
 .shift-chip .shift-part-badge {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.01em;
-}
-
-/* 시간 텍스트 */
-.shift-chip .shift-time {
-  font-size: 10px;
-  font-weight: 400;
-  opacity: 0.75;
   white-space: nowrap;
 }
+.shift-chip .shift-time {
+  display: none;
+}
 
-/* 파트별 색상 — 연한 배경, 어두운 텍스트 */
-/* middle 은 GAS 키가 "middle" */
+/* 파트별 색상 */
 .shift-chip-open {
   background: #ecfdf5;
   border-color: #d1fae5;
@@ -286,12 +270,28 @@
   color: #374151;
 }
 
-/* 다중 chip 세로 쌓기 */
-.shift-cell {
-  display: table-cell;
-}
-.shift-cell > .shift-chip {
+/* ── 셀 내부 레이아웃 ── */
+.shift-cell-filled {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  min-height: 60px;
+}
+.cell-name {
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #111827;
+}
+.cell-employee-mini {
+  font-size: 10px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.cell-time-mini {
+  display: none;
 }
 
 /* ── 범례 ── */
@@ -321,16 +321,119 @@
   padding: 32px 0;
 }
 
-/* ── 모바일 ── */
-@media (max-width: 640px) {
-  .shift-tab-header {
+/* ── 모바일 카드 ── */
+.shift-mobile-list {
+  display: none;
+}
+.shift-day-card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow:
+    0 1px 4px rgba(17, 24, 39, 0.06),
+    0 4px 16px rgba(17, 24, 39, 0.04);
+}
+.shift-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.shift-day-left {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.shift-day-left strong {
+  font-size: 18px;
+  font-weight: 900;
+}
+.shift-day-left span {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 700;
+}
+.shift-day-right {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+.shift-day-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.shift-part-card {
+  width: 100%;
+  border: 1.5px solid #eceff3;
+  border-radius: 14px;
+  padding: 12px;
+  background: #fafafa;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+.shift-part-card.readonly {
+  cursor: default;
+}
+.shift-part-card.readonly:hover {
+  transform: none;
+}
+.shift-part-card.empty {
+  border-style: dashed;
+  color: #9ca3af;
+  background: #fcfcfd;
+}
+.shift-part-card.filled {
+  background: #fff8f3;
+  border-color: #fed7aa;
+}
+.shift-part-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.shift-part-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+}
+.shift-part-time {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 700;
+}
+.shift-part-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.shift-part-employee {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
+.shift-part-empty {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+/* ── 반응형 ── */
+@media (max-width: 768px) {
+  .shift-card-table,
+  .shift-wrap {
+    display: none;
+  }
+  .shift-mobile-list {
+    display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    gap: 12px;
   }
-  .period-label {
-    min-width: 100px;
-    font-size: 13px;
-  }
+}
+
+@media (max-width: 640px) {
   .shift-grid {
     font-size: 11px;
   }
@@ -343,225 +446,5 @@
   .shift-chip {
     min-width: 38px;
     padding: 3px 5px;
-  }
-  .shift-chip .shift-time {
-    font-size: 9px;
-  }
-}
-
-.shift-grid {
-  table-layout: fixed;
-}
-
-.shift-grid th,
-.shift-grid td {
-  width: 88px;
-}
-
-.shift-cell {
-  height: 76px;
-  padding: 6px 4px !important;
-  vertical-align: top;
-}
-
-.shift-cell.readonly {
-  min-height: 76px;
-}
-
-.shift-chip {
-  width: 72px;
-  min-height: 20px;
-  padding: 4px 6px;
-  margin: 2px auto;
-  justify-content: center;
-}
-
-.shift-chip .shift-time {
-  display: none;
-}
-
-.shift-chip .shift-part-badge {
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.shift-cell > .shift-chip {
-  display: flex;
-}
-/* ================= 조회 전용 ShiftTab patch ================= */
-
-.shift-grid {
-  table-layout: fixed;
-}
-
-.shift-grid th,
-.shift-grid td {
-  width: 88px;
-}
-
-.shift-cell {
-  height: 76px;
-  padding: 6px 4px !important;
-  vertical-align: top;
-}
-
-.shift-cell.readonly {
-  cursor: default;
-  pointer-events: none;
-}
-
-.shift-cell-filled {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  min-height: 60px;
-}
-
-.cell-name {
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
-  color: #111827;
-}
-
-.cell-employee-mini {
-  font-size: 10px;
-  color: #6b7280;
-  white-space: nowrap;
-}
-
-.cell-time-mini {
-  display: none;
-}
-
-.shift-mobile-list {
-  display: none;
-}
-
-.shift-day-card {
-  background: #fff;
-  border-radius: 18px;
-  padding: 14px;
-  box-shadow:
-    0 1px 4px rgba(17, 24, 39, 0.06),
-    0 4px 16px rgba(17, 24, 39, 0.04);
-}
-
-.shift-day-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.shift-day-left {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.shift-day-left strong {
-  font-size: 18px;
-  font-weight: 900;
-}
-
-.shift-day-left span {
-  font-size: 14px;
-  color: #6b7280;
-  font-weight: 700;
-}
-
-.shift-day-right {
-  font-size: 11px;
-  color: #9ca3af;
-  font-weight: 600;
-}
-
-.shift-day-parts {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.shift-part-card {
-  width: 100%;
-  border: 1.5px solid #eceff3;
-  border-radius: 14px;
-  padding: 12px;
-  background: #fafafa;
-  text-align: left;
-  transition: all 0.15s ease;
-}
-
-.shift-part-card.readonly {
-  cursor: default;
-}
-
-.shift-part-card.readonly:hover {
-  transform: none;
-}
-
-.shift-part-card.empty {
-  border-style: dashed;
-  color: #9ca3af;
-  background: #fcfcfd;
-}
-
-.shift-part-card.filled {
-  background: #fff8f3;
-  border-color: #fed7aa;
-}
-
-.shift-part-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.shift-part-name {
-  font-size: 14px;
-  font-weight: 800;
-  color: #111827;
-}
-
-.shift-part-time {
-  font-size: 11px;
-  color: #9ca3af;
-  font-weight: 700;
-}
-
-.shift-part-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.shift-part-employee {
-  font-size: 15px;
-  font-weight: 800;
-  color: #111827;
-}
-
-.shift-part-empty {
-  font-size: 13px;
-  font-weight: 700;
-  color: #9ca3af;
-}
-
-@media (max-width: 768px) {
-  .shift-card-table,
-  .shift-wrap {
-    display: none;
-  }
-
-  .shift-mobile-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
   }
 }

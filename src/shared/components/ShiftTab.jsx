@@ -25,25 +25,39 @@ function getEntry(schedule, date, part) {
   return schedule.find((s) => s.part === part && normalizeDate(s.date) === date) || null;
 }
 
-function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule }) {
+/* ── 공통 헤더 ── */
+function ShiftHeader({ weekDates, weekOffset, setWeekOffset }) {
   const rangeLabel = weekDates.length === 7 ? `${weekDates[0]} – ${weekDates[6]}` : "";
 
   return (
-    <>
-      <div className="shift-toolbar">
-        <div className="week-nav">
+    <div className="shift-tab-header">
+      <div className="shift-header-copy">
+        <h2>스케줄 조회</h2>
+        <p>이번 주 근무 배정을 한눈에 확인합니다</p>
+      </div>
+      <div className="shift-header-controls">
+        <div className="week-nav modern">
           <button type="button" onClick={() => setWeekOffset(weekOffset - 1)}>
-            ‹
+            이전 주
           </button>
           <button type="button" onClick={() => setWeekOffset(0)}>
-            오늘
+            이번 주
           </button>
           <button type="button" onClick={() => setWeekOffset(weekOffset + 1)}>
-            ›
+            다음 주
           </button>
         </div>
-        <span className="week-range">{rangeLabel}</span>
+        <div className="shift-range-pill">{rangeLabel}</div>
       </div>
+    </div>
+  );
+}
+
+/* ── 데스크탑 테이블 ── */
+function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule }) {
+  return (
+    <>
+      <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
 
       <div className="card shift-card-table" style={{ padding: 0, overflow: "hidden" }}>
         <div className="shift-wrap">
@@ -96,25 +110,11 @@ function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule }) {
   );
 }
 
+/* ── 모바일 카드 ── */
 function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule }) {
-  const rangeLabel = weekDates.length === 7 ? `${weekDates[0]} – ${weekDates[6]}` : "";
-
   return (
     <>
-      <div className="shift-toolbar shift-toolbar-mobile">
-        <div className="week-nav">
-          <button type="button" onClick={() => setWeekOffset(weekOffset - 1)}>
-            ‹
-          </button>
-          <button type="button" onClick={() => setWeekOffset(0)}>
-            오늘
-          </button>
-          <button type="button" onClick={() => setWeekOffset(weekOffset + 1)}>
-            ›
-          </button>
-        </div>
-        <span className="week-range">{rangeLabel}</span>
-      </div>
+      <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
 
       <div className="shift-mobile-list">
         {weekDates.map((date) => {
@@ -167,16 +167,14 @@ function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule }) {
   );
 }
 
+/* ── 메인 export ── */
 export function ShiftTab({ weekDates = [], weekOffset = 0, setWeekOffset, schedule = [] }) {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" ? window.innerWidth <= 768 : false,
   );
 
   useEffect(() => {
-    const onResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);

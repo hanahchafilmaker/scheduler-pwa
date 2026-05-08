@@ -182,6 +182,20 @@ export default function App() {
     [selectedMonth, fetchAll, approveAttendance],
   );
 
+  // 자동퇴근 실행: 현재 시각으로 check_out 기록 후 오늘 탭 재조회
+  const handleAutoCheckout = useCallback(
+    (att) => {
+      const n = new Date();
+      const hh = String(n.getHours()).padStart(2, "0");
+      const mm = String(n.getMinutes()).padStart(2, "0");
+      api.updateAttendance(
+        { ...att, check_out: `${hh}:${mm}` },
+        () => api.fetchToday(),
+      );
+    },
+    [api],
+  );
+
   const renderTab = () => {
     if (tab === "today") {
       return (
@@ -190,6 +204,7 @@ export default function App() {
           schedule={schedule}
           employees={employees}
           onApprove={handleApprove}
+          onAutoCheckout={handleAutoCheckout}
         />
       );
     }

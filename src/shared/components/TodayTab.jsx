@@ -116,15 +116,24 @@ function AttCard({ a, onApprove, showElapsed = false }) {
           </span>
         )}
 
-        {/* 승인 버튼 — approved !== true 인 경우만 */}
+        {/* 승인 / 반려 버튼 — approved !== true 인 경우만 */}
         {!approved && onApprove && (
-          <button
-            type="button"
-            className="approve-btn"
-            onClick={() => onApprove(a, true)}
-          >
-            승인
-          </button>
+          <div className="approve-actions">
+            <button
+              type="button"
+              className="approve-btn"
+              onClick={() => onApprove(a, true)}
+            >
+              승인
+            </button>
+            <button
+              type="button"
+              className="reject-btn"
+              onClick={() => onApprove(a, false)}
+            >
+              반려
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -164,7 +173,7 @@ function AbsentCard({ s, isScheduled }) {
 }
 
 // ── 자동퇴근 예정 카드 (강조 스타일) ─────────────────────────────────────────
-function AutoCard({ a, onApprove }) {
+function AutoCard({ a, onApprove, onAutoCheckout }) {
   const approved = toBool(a.approved);
   const isSub    = toBool(a.is_substitute);
 
@@ -188,12 +197,30 @@ function AutoCard({ a, onApprove }) {
           {formatTime(a.check_in)} → 근무중
         </span>
         {!approved && onApprove && (
+          <div className="approve-actions">
+            <button
+              type="button"
+              className="approve-btn"
+              onClick={() => onApprove(a, true)}
+            >
+              승인
+            </button>
+            <button
+              type="button"
+              className="reject-btn"
+              onClick={() => onApprove(a, false)}
+            >
+              반려
+            </button>
+          </div>
+        )}
+        {onAutoCheckout && (
           <button
             type="button"
-            className="approve-btn"
-            onClick={() => onApprove(a, true)}
+            className="auto-checkout-btn"
+            onClick={() => onAutoCheckout(a)}
           >
-            승인
+            자동퇴근
           </button>
         )}
       </div>
@@ -211,7 +238,7 @@ function AutoCard({ a, onApprove }) {
  *   employees        {array}    직원 배열 (필요 시 보조용; name은 attendance에 포함)
  *   onApprove        {function} (att, true) → approveAttendance 콜백
  */
-export function TodayTab({ todayAttendance = [], schedule = [], employees = [], onApprove }) {
+export function TodayTab({ todayAttendance = [], schedule = [], employees = [], onApprove, onAutoCheckout }) {
   const now      = nowMin();
   const todayStr = useMemo(() => normalizeDate(new Date()), []);
 
@@ -342,6 +369,7 @@ export function TodayTab({ todayAttendance = [], schedule = [], employees = [], 
                 key={a.attendance_id || `${a.employee_id}-auto`}
                 a={a}
                 onApprove={onApprove}
+                onAutoCheckout={onAutoCheckout}
               />
             ))}
           </Section>

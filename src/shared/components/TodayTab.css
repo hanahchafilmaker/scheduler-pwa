@@ -153,3 +153,38 @@
   white-space: nowrap;
 }
 .approve-btn:hover { background: #1d4ed8; }
+
+/* ── 승인/반려 버튼 묶음 ────────────────────────────────────────── */
+.approve-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* ── 반려 버튼 ─────────────────────────────────────────────────── */
+.reject-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.reject-btn:hover { background: #dc2626; }
+
+/* ── 자동퇴근 실행 버튼 ─────────────────────────────────────────── */
+.auto-checkout-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #8b5cf6;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-top: 4px;
+}
+.auto-checkout-btn:hover { background: #7c3aed; }

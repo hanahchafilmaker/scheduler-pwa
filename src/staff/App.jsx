@@ -202,16 +202,20 @@ export default function StaffApp() {
 
   const approved = toBool(todayAttendance?.approved);
 
-  const isPending = !!todayAttendance?.check_in && !todayAttendance?.check_out && !approved;
+  // approved 가 명시적으로 false 인 경우만 반려
+  const isRejected =
+    !!todayAttendance?.check_in &&
+    !todayAttendance?.check_out &&
+    (todayAttendance?.approved === false ||
+      String(todayAttendance?.approved).toLowerCase() === "false");
+
+  // 반려는 pending 에 포함하지 않음
+  const isPending =
+    !!todayAttendance?.check_in && !todayAttendance?.check_out && !approved && !isRejected;
 
   const isWorking = !!todayAttendance?.check_in && !todayAttendance?.check_out && approved;
 
   const isDone = !!todayAttendance?.check_in && !!todayAttendance?.check_out && approved;
-
-  const isRejected =
-    !!todayAttendance?.check_in &&
-    !todayAttendance?.check_out &&
-    toBool(todayAttendance?.approved) === false;
 
   const handleCheckIn = async () => {
     if (!employee) return;

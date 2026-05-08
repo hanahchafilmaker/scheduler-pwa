@@ -131,7 +131,9 @@ export default function App() {
     monthAttendance: apiMonthAttendance,
     fetchAll,
     fetchMonth,
+    fetchToday,
     approveAttendance,
+    updateAttendance,
   } = api;
 
   const monthAttendance = apiMonthAttendance || attendance || [];
@@ -183,17 +185,18 @@ export default function App() {
   );
 
   // 자동퇴근 실행: 현재 시각으로 check_out 기록 후 오늘 탭 재조회
+  // approved 는 변경하지 않음 — GAS 자동 승인 여부 확인 전까지 유지
   const handleAutoCheckout = useCallback(
     (att) => {
       const n = new Date();
       const hh = String(n.getHours()).padStart(2, "0");
       const mm = String(n.getMinutes()).padStart(2, "0");
-      api.updateAttendance(
+      updateAttendance(
         { ...att, check_out: `${hh}:${mm}` },
-        () => api.fetchToday(),
+        () => fetchToday(),
       );
     },
-    [api],
+    [updateAttendance, fetchToday],
   );
 
   const renderTab = () => {

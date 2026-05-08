@@ -173,13 +173,26 @@ export default function StaffApp() {
   const todayAttendance = useMemo(() => {
     if (!employee) return null;
 
-    return (
-      todayData.attendance.find(
+    // 오늘 날짜 + 해당 직원의 attendance 전체 목록
+    // 1일 1레코드가 아닌 "1회 출근 = 1 attendance row" 구조 대응
+    const myTodayAttendances = todayData.attendance
+      .filter(
         (a) =>
           normalizeDate(a.date) === today &&
           safeStr(a.employee_id) === safeStr(employee.employee_id),
-      ) || null
-    );
+      )
+      .sort((a, b) => {
+        // check_in 내림차순 — 가장 최근 출근이 앞으로
+        const ta = String(a.check_in || "00:00");
+        const tb = String(b.check_in || "00:00");
+        return tb.localeCompare(ta);
+      });
+
+    // 우선순위 1: 현재 진행중인 attendance (check_in O, check_out X)
+    const active = myTodayAttendances.find((a) => a.check_in && !a.check_out);
+
+    // 우선순위 2: 없으면 가장 최근 attendance
+    return active || myTodayAttendances[0] || null;
   }, [todayData, employee, today]);
 
   const todaySchedule = useMemo(() => {
@@ -202,16 +215,17 @@ export default function StaffApp() {
 
   const approved = toBool(todayAttendance?.approved);
 
-  // approved 가 명시적으로 false 인 경우만 반려
   const isRejected =
     !!todayAttendance?.check_in &&
     !todayAttendance?.check_out &&
     (todayAttendance?.approved === false ||
       String(todayAttendance?.approved).toLowerCase() === "false");
 
-  // 반려는 pending 에 포함하지 않음
   const isPending =
-    !!todayAttendance?.check_in && !todayAttendance?.check_out && !approved && !isRejected;
+    !!todayAttendance?.check_in &&
+    !todayAttendance?.check_out &&
+    !approved &&
+    !isRejected;
 
   const isWorking = !!todayAttendance?.check_in && !todayAttendance?.check_out && approved;
 

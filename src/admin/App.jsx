@@ -150,13 +150,18 @@ export default function App() {
       month: settlementMonth,
       label: monthLabel(settlementMonth),
       workMonth: settlementMonth,
-      payrollMonth: payrollMonth,
+      payrollMonth,
       payDateLabel: `${py}.${pm}.10`,
     };
   }, [settlementMonth]);
 
   const settlement = useMemo(
-    () => buildSettlement({ attendance: monthAttendance, employees, month: settlementMonth }),
+    () =>
+      buildSettlement({
+        attendance: monthAttendance,
+        employees,
+        month: settlementMonth,
+      }),
     [monthAttendance, employees, settlementMonth],
   );
 
@@ -172,20 +177,16 @@ export default function App() {
     } else if (tab === "sim") {
       fetchRef.current.fetchMonth(settlementMonth);
       setSelectedMonth(settlementMonth);
+    } else if (tab === "today") {
+      fetchToday();
     }
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tab, fetchToday, selectedMonth, settlementMonth]);
 
   useEffect(() => {
     if (tab === "att") {
       fetchRef.current.fetchAll(selectedMonth);
     }
-  }, [selectedMonth]); // eslint-disable-line react-hooks/exhaustive-deps
-
-
-
-
-
-
+  }, [selectedMonth, tab]);
 
   const handleApprove = useCallback(
     (att, approved) => {
@@ -194,17 +195,33 @@ export default function App() {
     [selectedMonth, fetchAll, approveAttendance],
   );
 
-  // 자동퇴근 실행: 현재 시각으로 check_out 기록 후 오늘 탭 재조회
-  // approved 는 변경하지 않음 — GAS 자동 승인 여부 확인 전까지 유지
   const handleAutoCheckout = useCallback(
     (att) => {
       const n = new Date();
       const hh = String(n.getHours()).padStart(2, "0");
       const mm = String(n.getMinutes()).padStart(2, "0");
+
       updateAttendance({ ...att, check_out: `${hh}:${mm}` }, () => fetchToday());
     },
     [updateAttendance, fetchToday],
   );
+
+  const handleRefresh = useCallback(() => {
+    if (tab === "today") {
+      fetchToday();
+      return;
+    }
+
+    if (tab === "sim") {
+      fetchMonth(settlementMonth);
+      return;
+    }
+
+    if (tab === "att") {
+      fetchAll(selectedMonth);
+      return;
+    }
+  }, [tab, fetchToday, fetchMonth, fetchAll, settlementMonth, selectedMonth]);
 
   const renderTab = () => {
     if (tab === "today") {
@@ -218,6 +235,7 @@ export default function App() {
         />
       );
     }
+
     if (tab === "sim") {
       return (
         <SimTab
@@ -228,9 +246,11 @@ export default function App() {
         />
       );
     }
+
     if (tab === "shift") {
       return <ShiftTab schedule={schedule} employees={employees} selectedMonth={selectedMonth} />;
     }
+
     return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
   };
 
@@ -250,7 +270,9 @@ export default function App() {
             >
               ◀
             </button>
+
             <strong>{monthLabel(selectedMonth)}</strong>
+
             <button
               type="button"
               className="ghost-sm"
@@ -258,6 +280,7 @@ export default function App() {
             >
               이번 달
             </button>
+
             <button
               type="button"
               className="ghost-sm"

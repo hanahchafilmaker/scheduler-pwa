@@ -167,25 +167,25 @@ export default function App() {
   }, [fetchAll, fetchMonth]);
 
   useEffect(() => {
-    const { fetchAll, fetchMonth } = fetchRef.current;
-    if (tab === "sim") {
-      fetchMonth(settlementMonth);
+    if (tab === "att") {
+      fetchRef.current.fetchAll(selectedMonth);
+    } else if (tab === "sim") {
+      fetchRef.current.fetchMonth(settlementMonth);
       setSelectedMonth(settlementMonth);
-      return;
     }
-    if (tab !== "today") {
-      fetchAll(selectedMonth);
-    }
-  }, [tab, selectedMonth, settlementMonth]);
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleRefresh = useCallback(() => {
-    const { fetchAll, fetchMonth } = fetchRef.current;
-    if (tab === "sim") {
-      fetchMonth(settlementMonth);
-      return;
+  useEffect(() => {
+    if (tab === "att") {
+      fetchRef.current.fetchAll(selectedMonth);
     }
-    fetchAll(selectedMonth);
-  }, [tab, selectedMonth, settlementMonth]);
+  }, [selectedMonth]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
+
+
+
+
 
   const handleApprove = useCallback(
     (att, approved) => {

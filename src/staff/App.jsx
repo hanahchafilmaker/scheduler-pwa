@@ -252,7 +252,6 @@ export default function StaffApp() {
 
       showToast("출근 요청 완료");
       await loadToday(employee.employee_id);
-      await loadMonth(employee.employee_id);
     } catch (err) {
       console.error("출근 실패:", err);
       showToast(err?.message || "출근 처리 실패");
@@ -279,7 +278,6 @@ export default function StaffApp() {
 
       showToast("퇴근 완료");
       await loadToday(employee.employee_id);
-      await loadMonth(employee.employee_id);
     } catch (err) {
       console.error("퇴근 실패:", err);
       showToast(err?.message || "퇴근 처리 실패");

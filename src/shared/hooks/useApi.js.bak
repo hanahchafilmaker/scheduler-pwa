@@ -1,0 +1,312 @@
+// src/shared/hooks/useApi.js
+// UTF-8 ???œê? ê¹¨ì§ ì£¼ì˜
+//
+// ?¤ì œ GAS API êµ¬ì¡° ê¸°ë°˜:
+//   GET  ?action=admin_today        ??{ ok, employees, attendance(?¤ëŠ˜) }
+//   GET  ?action=all&month=YYYY-MM  ??{ ok, employees, schedule, attendance }
+//   POST { action, ... }            ??{ ok, error? }
+//
+// GAS approve payload:
+//   { action: "approve_attendance", attendance_id, approved, date }
+//
+// ?íƒœ ë¶„ë¦¬ ?ì¹™:
+//   todayAttendance  ??admin_today.attendance  (TodayTab ?„ìš©)
+//   monthAttendance  ??all.attendance           (AttTab / SimTab ?„ìš©)
+//   schedule         ??all.schedule (?´ë²ˆ???€ë²ˆë‹¬ ë³‘í•©, TodayTab???¬ìš© ê°€??
+//
+// TodayTab ?´ë? fetch ê¸ˆì? ????hook ?ì„œ ?°ì´??ê³µê¸‰
+
+import { useState, useCallback, useEffect, useRef } from "react";
+import { API_URL } from "../api/config";
+import { normalizeDate, safeStr } from "../utils";
+
+function currentYM() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function prevYM() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function useApi({ onError } = {}) {
+  const [loading, setLoading] = useState(true);
+
+  const [employees,        setEmployees]        = useState([]);
+  const [schedule,         setSchedule]         = useState([]);   // ?´ë²ˆ???€ë²ˆë‹¬ ë³‘í•©
+  const [todayAttendance,  setTodayAttendance]  = useState([]);   // ?¤ëŠ˜ ?„ìš©
+  const [monthAttendance,  setMonthAttendance]  = useState([]);   // ?´ë²ˆ???„ìš©
+
+  // ê¸°ì¡´ ì»´í¬?ŒíŠ¸ ?¸í™˜ (AttTab??attendance prop??ë°›ëŠ” ê²½ìš°)
+  const attendance    = monthAttendance;
+  const setAttendance = setMonthAttendance;
+
+  // stale closure ë°©ì???ref
+  const employeesRef       = useRef([]);
+  const scheduleRef        = useRef([]);
+  const todayAttRef        = useRef([]);
+  const monthAttRef        = useRef([]);
+
+  useEffect(() => { employeesRef.current      = employees;       }, [employees]);
+  useEffect(() => { scheduleRef.current       = schedule;        }, [schedule]);
+  useEffect(() => { todayAttRef.current       = todayAttendance; }, [todayAttendance]);
+  useEffect(() => { monthAttRef.current       = monthAttendance; }, [monthAttendance]);
+
+  // ?€?€ fetch: ?¤ëŠ˜ ??š© ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  // todayAttendance + schedule(?´ë²ˆ???€ë²ˆë‹¬) ë¡œë“œ
+  // TodayTab?€ ???°ì´?°ë? propsë¡?ë°›ëŠ”?????´ë? fetch ?†ìŒ
+  <<»õÄÚµå>>
+
+  // ?€?€ fetch: ???„ì²´ (AttTab / SimTab ?„ìš©) ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  const fetchAll = useCallback(async (month) => {
+    setLoading(true);
+    const ym = month || currentYM();
+    try {
+      const res  = await fetch(`${API_URL}?action=all&month=${ym}&t=${Date.now()}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "?„ì²´ ?°ì´??ë¶ˆëŸ¬?¤ê¸° ?¤íŒ¨");
+
+      setEmployees(data.employees || []);
+      setSchedule(data.schedule  || []);
+      // monthAttendance ?ë§Œ ?€????todayAttendance ?ˆë? ??–´?°ê¸° ê¸ˆì?
+      setMonthAttendance(data.attendance || []);
+    } catch (err) {
+      console.error(err);
+      onError?.(`${ym} ?°ì´?°ë? ë¶ˆëŸ¬?¤ì? ëª»í–ˆ?µë‹ˆ??);
+    } finally {
+      setLoading(false);
+    }
+  }, [onError]);
+
+  const fetchMonth = fetchAll; // alias
+
+  useEffect(() => {
+    fetchToday();
+  }, [fetchToday]);
+
+  // ?€?€ POST ê¸°ë³¸ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  const post = useCallback(async (body) => {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return res.json();
+  }, []);
+
+  // ?€?€ optimisticPost: ?™ê????…ë°?´íŠ¸ + ?¤íŒ¨ ??ë¡¤ë°± ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  // TodayTab overwrite ê¸ˆì? ?ì¹™ ì¤€??
+  //   ??applyOptimistic ?ì„œ today/month ê°ê°ë§?ê±´ë“œë¦?  //   ???œë²„ ?‘ë‹µ ?±ê³µ ??refetch ë¡??•í™•???œë²„ ?íƒœ ë°˜ì˜
+  const optimisticPost = useCallback(
+    async (body, applyOptimistic, refetch) => {
+      const snap = {
+        employees:      employeesRef.current,
+        schedule:       scheduleRef.current,
+        todayAtt:       todayAttRef.current,
+        monthAtt:       monthAttRef.current,
+      };
+
+      applyOptimistic();
+
+      try {
+        const result = await post(body);
+        if (!result?.ok) throw new Error(result?.error || "?œë²„ ?¤ë¥˜");
+      } catch (err) {
+        // ë¡¤ë°±
+        setEmployees(snap.employees);
+        setSchedule(snap.schedule);
+        setTodayAttendance(snap.todayAtt);
+        setMonthAttendance(snap.monthAtt);
+        onError?.(err.message || "?€???¤íŒ¨. ?¤ì‹œ ?œë„?´ì£¼?¸ìš”.");
+        return;
+      }
+
+      refetch ? refetch() : fetchToday();
+    },
+    [post, fetchToday, onError],
+  );
+
+  // ?€?€ Attendance ?¹ì¸ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  // GAS payload: { action, attendance_id, approved, date }
+  // ?œê·¸?ˆì²˜: onApprove(att, true)  ??TodayTab / AttTab ê³µí†µ ?¨í„´
+  const approveAttendance = useCallback(
+    (att, approved, refetch) =>
+      optimisticPost(
+        {
+          action:        "approve_attendance",
+          attendance_id: att.attendance_id,   // ?¤ì œ ?„ë“œëª?          approved,
+          date:          att.date,            // ?¤ì œ ?„ë“œëª?        },
+        () => {
+          // todayAttendance ?™ê???ë°˜ì˜
+          setTodayAttendance((prev) =>
+            prev.map((a) =>
+              a.attendance_id === att.attendance_id
+                ? { ...a, approved, needs_approval: false }
+                : a
+            )
+          );
+          // monthAttendance ?™ê???ë°˜ì˜ (AttTab ??
+          setMonthAttendance((prev) =>
+            prev.map((a) =>
+              a.attendance_id === att.attendance_id
+                ? { ...a, approved, needs_approval: false }
+                : a
+            )
+          );
+        },
+        refetch,
+      ),
+    [optimisticPost],
+  );
+
+  // ?€?€ Attendance ?˜ì • ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  const updateAttendance = useCallback(
+    (attEdit, refetch) =>
+      optimisticPost(
+        {
+          action:        "update_attendance",
+          attendance_id: attEdit.attendance_id,
+          date:          attEdit.date,
+          check_in:      attEdit.check_in,
+          check_out:     attEdit.check_out,
+          break_min:     Number(attEdit.break_min) || 0,
+          memo:          attEdit.memo,
+        },
+        () => {
+          setTodayAttendance((prev) =>
+            prev.map((a) => a.attendance_id === attEdit.attendance_id ? { ...a, ...attEdit } : a)
+          );
+          setMonthAttendance((prev) =>
+            prev.map((a) => a.attendance_id === attEdit.attendance_id ? { ...a, ...attEdit } : a)
+          );
+        },
+        refetch,
+      ),
+    [optimisticPost],
+  );
+
+  // ?€?€ Employee CRUD ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  const addEmployee = useCallback(
+    (payload, refetch) => {
+      const tempId = "TMP_" + Date.now();
+      return optimisticPost(
+        { action: "add_employee", ...payload },
+        () => setEmployees((prev) => [...prev, { employee_id: tempId, ...payload, active: true }]),
+        refetch,
+      );
+    },
+    [optimisticPost],
+  );
+
+  const updateEmployee = useCallback(
+    (empId, payload, refetch) =>
+      optimisticPost(
+        { action: "update_employee", employee_id: empId, ...payload },
+        () =>
+          setEmployees((prev) =>
+            prev.map((e) =>
+              safeStr(e.employee_id) === safeStr(empId) ? { ...e, ...payload } : e
+            )
+          ),
+        refetch,
+      ),
+    [optimisticPost],
+  );
+
+  const deleteEmployee = useCallback(
+    (empId, refetch) =>
+      optimisticPost(
+        { action: "delete_employee", employee_id: empId },
+        () => setEmployees((prev) => prev.filter((e) => safeStr(e.employee_id) !== safeStr(empId))),
+        refetch,
+      ),
+    [optimisticPost],
+  );
+
+  // ?€?€ Schedule CRUD ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  // schedule ?„ë“œ: schedule_id, employee_id, name, date, part, planned_start, planned_end
+  const addSchedule = useCallback(
+    (data, refetch) => {
+      const tempId = "TMP_SCH_" + Date.now();
+      return optimisticPost(
+        { action: "add_schedule", ...data },
+        () =>
+          setSchedule((prev) => {
+            const idx = prev.findIndex(
+              (s) => normalizeDate(s.date) === data.date && s.part === data.part
+            );
+            if (idx !== -1) {
+              const next = [...prev];
+              next[idx] = {
+                ...next[idx],
+                employee_id:   data.employee_id,
+                name:          data.name,
+                planned_start: data.planned_start,  // schedule ?„ë“œ
+                planned_end:   data.planned_end,    // schedule ?„ë“œ
+              };
+              return next;
+            }
+            return [...prev, { schedule_id: tempId, ...data }];
+          }),
+        refetch,
+      );
+    },
+    [optimisticPost],
+  );
+
+  const updateSchedule = useCallback(
+    (scheduleId, data, refetch) =>
+      optimisticPost(
+        { action: "update_schedule", schedule_id: scheduleId, ...data },
+        () =>
+          setSchedule((prev) =>
+            prev.map((s) => s.schedule_id === scheduleId ? { ...s, ...data } : s)
+          ),
+        refetch,
+      ),
+    [optimisticPost],
+  );
+
+  const deleteSchedule = useCallback(
+    (scheduleId, date, refetch) =>
+      optimisticPost(
+        { action: "delete_schedule", schedule_id: scheduleId, date },
+        () => setSchedule((prev) => prev.filter((s) => s.schedule_id !== scheduleId)),
+        refetch,
+      ),
+    [optimisticPost],
+  );
+
+  return {
+    loading,
+
+    employees,    setEmployees,
+    schedule,     setSchedule,
+
+    // ê¸°ì¡´ ì»´í¬?ŒíŠ¸ ?¸í™˜ (attendance = monthAttendance)
+    attendance,   setAttendance,
+
+    // ë¶„ë¦¬ state (? ê·œ)
+    todayAttendance,  setTodayAttendance,
+    monthAttendance,  setMonthAttendance,
+
+    fetchToday,
+    fetchAll,
+    fetchMonth,   // alias of fetchAll
+
+    post,
+
+    approveAttendance,
+    updateAttendance,
+
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
+
+    addSchedule,
+    updateSchedule,
+    deleteSchedule,
+  };
+}
+

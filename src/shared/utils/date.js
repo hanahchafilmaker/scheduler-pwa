@@ -1,12 +1,15 @@
+// src/shared/utils/date.js
+// UTF-8 — 한글 깨짐 주의
+
 export function getDateString(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const y   = d.getFullYear();
+  const m   = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
-// FIX: "YYYY-MM-DD" 문자열을 new Date()로 파싱하면 UTC 기준으로 처리되어
-//      KST(+9) 환경에서 하루 밀리는 버그 수정 → 문자열 직접 파싱
+// FIX: "YYYY-MM-DD" 를 new Date()로 파싱하면 UTC 기준 → KST 환경에서 하루 밀림
+//      문자열이면 그대로 반환, Date/ISO 면 로컬 기준으로 변환
 export function normalizeDate(v) {
   if (!v) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(String(v))) return String(v);
@@ -16,8 +19,8 @@ export function normalizeDate(v) {
 }
 
 export function getWeekDates(offset = 0) {
-  const now = new Date();
-  const day = now.getDay();
+  const now    = new Date();
+  const day    = now.getDay();
   const monday = new Date(now);
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
 
@@ -30,12 +33,12 @@ export function getWeekDates(offset = 0) {
 
 export function getMonthRange(base = new Date()) {
   const start = new Date(base.getFullYear(), base.getMonth(), 1);
-  const end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
-  const ym = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}`;
+  const end   = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+  const ym    = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}`;
 
   return {
     start: getDateString(start),
-    end: getDateString(end),
+    end:   getDateString(end),
     label: `${base.getFullYear()}년 ${base.getMonth() + 1}월`,
     ym,
   };
@@ -48,15 +51,18 @@ function toMin(t) {
   return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
 }
 
+// schedule row 기반 상태 계산
+// attendance 필드: check_in, check_out
+// schedule  필드: planned_start, planned_end
 export function getStatus(scheduled, att) {
   if (!att?.check_in) return "예정";
 
-  const planStart = toMin(scheduled.planned_start);
-  let planEnd = toMin(scheduled.planned_end);
+  const planStart = toMin(scheduled.planned_start);   // schedule 필드
+  let   planEnd   = toMin(scheduled.planned_end);     // schedule 필드
   if (planEnd < planStart) planEnd += 24 * 60;
 
   const realStart = toMin(att.check_in);
-  let realEnd = att.check_out ? toMin(att.check_out) : null;
+  let   realEnd   = att.check_out ? toMin(att.check_out) : null;
   if (realEnd !== null && realEnd < realStart) realEnd += 24 * 60;
 
   if (!att.check_out) {

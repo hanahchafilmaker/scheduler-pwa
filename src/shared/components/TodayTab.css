@@ -1,7 +1,7 @@
 /* ================================================================
    TodayTab — 오늘 운영 현황
    src/shared/components/TodayTab.css
-   (기존 App.css 또는 index.css에 @import 하거나 직접 추가)
+   UTF-8
    ================================================================ */
 
 /* ── 그리드: 2열 (모바일 1열) ──────────────────────────────────── */
@@ -80,6 +80,7 @@
   border: 1px solid #e5e7eb;
   background: #fafafa;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .today-card-absent {
@@ -100,6 +101,8 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .today-name {
@@ -136,3 +139,17 @@
 .today-badge-extra   { background: #f3f4f6; color: #374151; }
 .today-badge-pending { background: #fee2e2; color: #991b1b; }
 .today-badge-absent  { background: #fee2e2; color: #991b1b; }
+
+/* ── 승인 버튼 (기존 App.css의 .approve-btn 에 없으면 여기 정의) ── */
+.approve-btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.approve-btn:hover { background: #1d4ed8; }

@@ -1,3 +1,21 @@
+// src/shared/hooks/useApi.js
+// UTF-8 — 한글 깨짐 주의
+//
+// 실제 GAS API 구조 기반:
+//   GET  ?action=admin_today        → { ok, employees, attendance(오늘) }
+//   GET  ?action=all&month=YYYY-MM  → { ok, employees, schedule, attendance }
+//   POST { action, ... }            → { ok, error? }
+//
+// GAS approve payload:
+//   { action: "approve_attendance", attendance_id, approved, date }
+//
+// 상태 분리 원칙:
+//   todayAttendance  ← admin_today.attendance  (TodayTab 전용)
+//   monthAttendance  ← all.attendance           (AttTab / SimTab 전용)
+//   schedule         ← all.schedule (이번달+저번달 병합, TodayTab도 사용 가능)
+//
+// TodayTab 내부 fetch 금지 — 이 hook 에서 데이터 공급
+
 import { useState, useCallback, useEffect, useRef } from "react";
 import { API_URL } from "../api/config";
 import { normalizeDate, safeStr } from "../utils";
@@ -16,30 +34,31 @@ function prevYM() {
 export function useApi({ onError } = {}) {
   const [loading, setLoading] = useState(true);
 
-  const [employees, setEmployees] = useState([]);
-  const [schedule, setSchedule] = useState([]);
+  const [employees,        setEmployees]        = useState([]);
+  const [schedule,         setSchedule]         = useState([]);   // 이번달+저번달 병합
+  const [todayAttendance,  setTodayAttendance]  = useState([]);   // 오늘 전용
+  const [monthAttendance,  setMonthAttendance]  = useState([]);   // 이번달 전용
 
-  // 오늘 근태와 월 근태 분리
-  const [todayAttendance, setTodayAttendance] = useState([]);
-  const [monthAttendance, setMonthAttendance] = useState([]);
-
-  // 기존 컴포넌트 호환용 — 월 전체 데이터를 기본 attendance로 노출
-  const attendance = monthAttendance;
+  // 기존 컴포넌트 호환 (AttTab이 attendance prop을 받는 경우)
+  const attendance    = monthAttendance;
   const setAttendance = setMonthAttendance;
 
-  // useRef로 최신 state 참조 유지 (optimisticPost 롤백용)
-  const employeesRef = useRef([]);
-  const scheduleRef = useRef([]);
-  const todayAttendanceRef = useRef([]);
-  const monthAttendanceRef = useRef([]);
+  // stale closure 방지용 ref
+  const employeesRef       = useRef([]);
+  const scheduleRef        = useRef([]);
+  const todayAttRef        = useRef([]);
+  const monthAttRef        = useRef([]);
 
-  useEffect(() => { employeesRef.current = employees; }, [employees]);
-  useEffect(() => { scheduleRef.current = schedule; }, [schedule]);
-  useEffect(() => { todayAttendanceRef.current = todayAttendance; }, [todayAttendance]);
-  useEffect(() => { monthAttendanceRef.current = monthAttendance; }, [monthAttendance]);
+  useEffect(() => { employeesRef.current      = employees;       }, [employees]);
+  useEffect(() => { scheduleRef.current       = schedule;        }, [schedule]);
+  useEffect(() => { todayAttRef.current       = todayAttendance; }, [todayAttendance]);
+  useEffect(() => { monthAttRef.current       = monthAttendance; }, [monthAttendance]);
 
-  // ── 홈 탭: 오늘 attendance + 이번달&저번달 schedule 병합 ─────────────
+  // ── fetch: 오늘 탭용 ─────────────────────────────────────────────────────
+  // todayAttendance + schedule(이번달&저번달) 로드
+  // TodayTab은 이 데이터를 props로 받는다 — 내부 fetch 없음
   const fetchToday = useCallback(async () => {
+    setLoading(true);
     try {
       const thisMon = currentYM();
       const prevMon = prevYM();
@@ -51,21 +70,20 @@ export function useApi({ onError } = {}) {
       ]);
 
       const todayData = await todayRes.json();
-      const thisData = await thisRes.json();
-      const prevData = await prevRes.json();
+      const thisData  = await thisRes.json();
+      const prevData  = await prevRes.json();
 
-      if (!todayData.ok) {
-        throw new Error(todayData.error || "오늘 데이터 불러오기 실패");
-      }
+      if (!todayData.ok) throw new Error(todayData.error || "오늘 데이터 불러오기 실패");
 
       setEmployees(todayData.employees || []);
+      // 오늘 attendance — todayAttendance 에만 저장 (monthAttendance 절대 덮어쓰기 금지)
       setTodayAttendance(todayData.attendance || []);
 
-      const mergedSchedule = [
+      // schedule 은 이번달+저번달 병합 — TodayTab 의 todaySchedules 필터링에 사용
+      setSchedule([
         ...(prevData.schedule || []),
         ...(thisData.schedule || []),
-      ];
-      setSchedule(mergedSchedule);
+      ]);
     } catch (err) {
       console.error(err);
       onError?.("오늘 데이터를 불러오지 못했습니다");
@@ -74,43 +92,34 @@ export function useApi({ onError } = {}) {
     }
   }, [onError]);
 
-  // FIX: fetchAll과 fetchMonth가 동일한 로직을 중복 — month 파라미터로 통합
-  //      fetchMonth는 하위 호환을 위해 fetchAll의 alias로 유지
-  const fetchAll = useCallback(
-    async (month) => {
-      setLoading(true);
-      const ym = month || currentYM();
+  // ── fetch: 월 전체 (AttTab / SimTab 전용) ────────────────────────────────
+  const fetchAll = useCallback(async (month) => {
+    setLoading(true);
+    const ym = month || currentYM();
+    try {
+      const res  = await fetch(`${API_URL}?action=all&month=${ym}&t=${Date.now()}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "전체 데이터 불러오기 실패");
 
-      try {
-        const res = await fetch(
-          `${API_URL}?action=all&month=${ym}&t=${Date.now()}`
-        );
-        const data = await res.json();
+      setEmployees(data.employees || []);
+      setSchedule(data.schedule  || []);
+      // monthAttendance 에만 저장 — todayAttendance 절대 덮어쓰기 금지
+      setMonthAttendance(data.attendance || []);
+    } catch (err) {
+      console.error(err);
+      onError?.(`${ym} 데이터를 불러오지 못했습니다`);
+    } finally {
+      setLoading(false);
+    }
+  }, [onError]);
 
-        if (!data.ok) {
-          throw new Error(data.error || "전체 데이터 불러오기 실패");
-        }
-
-        setEmployees(data.employees || []);
-        setSchedule(data.schedule || []);
-        setMonthAttendance(data.attendance || []);
-      } catch (err) {
-        console.error(err);
-        onError?.(`${ym} 전체 데이터를 불러오지 못했습니다`);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [onError]
-  );
-
-  // fetchMonth는 fetchAll의 alias (sim 탭 등 기존 호출부 호환)
-  const fetchMonth = fetchAll;
+  const fetchMonth = fetchAll; // alias
 
   useEffect(() => {
     fetchToday();
   }, [fetchToday]);
 
+  // ── POST 기본 ────────────────────────────────────────────────────────────
   const post = useCallback(async (body) => {
     const res = await fetch(API_URL, {
       method: "POST",
@@ -119,63 +128,53 @@ export function useApi({ onError } = {}) {
     return res.json();
   }, []);
 
-  // optimistic: ref로 스냅샷 → 즉시 반영 → 실패 시 롤백
-  // FIX: 구버전은 state를 deps에 직접 넣어 stale 클로저 문제 발생
-  //      → ref 패턴으로 항상 최신 값을 참조하도록 수정
+  // ── optimisticPost: 낙관적 업데이트 + 실패 시 롤백 ──────────────────────
+  // TodayTab overwrite 금지 원칙 준수:
+  //   → applyOptimistic 에서 today/month 각각만 건드림
+  //   → 서버 응답 성공 후 refetch 로 정확한 서버 상태 반영
   const optimisticPost = useCallback(
     async (body, applyOptimistic, refetch) => {
-      const snapshot = {
-        employees: employeesRef.current,
-        schedule: scheduleRef.current,
-        todayAttendance: todayAttendanceRef.current,
-        monthAttendance: monthAttendanceRef.current,
+      const snap = {
+        employees:      employeesRef.current,
+        schedule:       scheduleRef.current,
+        todayAtt:       todayAttRef.current,
+        monthAtt:       monthAttRef.current,
       };
 
       applyOptimistic();
 
       try {
         const result = await post(body);
-
-        if (!result?.ok) {
-          throw new Error(result?.error || "서버 오류");
-        }
+        if (!result?.ok) throw new Error(result?.error || "서버 오류");
       } catch (err) {
-        setEmployees(snapshot.employees);
-        setSchedule(snapshot.schedule);
-        setTodayAttendance(snapshot.todayAttendance);
-        setMonthAttendance(snapshot.monthAttendance);
-
+        // 롤백
+        setEmployees(snap.employees);
+        setSchedule(snap.schedule);
+        setTodayAttendance(snap.todayAtt);
+        setMonthAttendance(snap.monthAtt);
         onError?.(err.message || "저장 실패. 다시 시도해주세요.");
         return;
       }
 
-      if (refetch) {
-        refetch();
-      } else {
-        fetchToday();
-      }
+      refetch ? refetch() : fetchToday();
     },
-    [post, fetchToday, onError]
+    [post, fetchToday, onError],
   );
 
-  // ── Attendance ───────────────────────────────────────────────────
+  // ── Attendance 승인 ──────────────────────────────────────────────────────
+  // GAS payload: { action, attendance_id, approved, date }
+  // 시그니처: onApprove(att, true)  ← TodayTab / AttTab 공통 패턴
   const approveAttendance = useCallback(
     (att, approved, refetch) =>
       optimisticPost(
         {
-          action: "approve_attendance",
-          attendance_id: att.attendance_id,
+          action:        "approve_attendance",
+          attendance_id: att.attendance_id,   // 실제 필드명
           approved,
-          date: att.date,
+          date:          att.date,            // 실제 필드명
         },
         () => {
-          setMonthAttendance((prev) =>
-            prev.map((a) =>
-              a.attendance_id === att.attendance_id
-                ? { ...a, approved, needs_approval: false }
-                : a
-            )
-          );
+          // todayAttendance 낙관적 반영
           setTodayAttendance((prev) =>
             prev.map((a) =>
               a.attendance_id === att.attendance_id
@@ -183,60 +182,57 @@ export function useApi({ onError } = {}) {
                 : a
             )
           );
+          // monthAttendance 낙관적 반영 (AttTab 용)
+          setMonthAttendance((prev) =>
+            prev.map((a) =>
+              a.attendance_id === att.attendance_id
+                ? { ...a, approved, needs_approval: false }
+                : a
+            )
+          );
         },
-        refetch
+        refetch,
       ),
-    [optimisticPost]
+    [optimisticPost],
   );
 
+  // ── Attendance 수정 ──────────────────────────────────────────────────────
   const updateAttendance = useCallback(
     (attEdit, refetch) =>
       optimisticPost(
         {
-          action: "update_attendance",
+          action:        "update_attendance",
           attendance_id: attEdit.attendance_id,
-          date: attEdit.date,
-          check_in: attEdit.check_in,
-          check_out: attEdit.check_out,
-          break_min: Number(attEdit.break_min) || 0,
-          memo: attEdit.memo,
+          date:          attEdit.date,
+          check_in:      attEdit.check_in,
+          check_out:     attEdit.check_out,
+          break_min:     Number(attEdit.break_min) || 0,
+          memo:          attEdit.memo,
         },
         () => {
-          setMonthAttendance((prev) =>
-            prev.map((a) =>
-              a.attendance_id === attEdit.attendance_id
-                ? { ...a, ...attEdit }
-                : a
-            )
-          );
           setTodayAttendance((prev) =>
-            prev.map((a) =>
-              a.attendance_id === attEdit.attendance_id
-                ? { ...a, ...attEdit }
-                : a
-            )
+            prev.map((a) => a.attendance_id === attEdit.attendance_id ? { ...a, ...attEdit } : a)
+          );
+          setMonthAttendance((prev) =>
+            prev.map((a) => a.attendance_id === attEdit.attendance_id ? { ...a, ...attEdit } : a)
           );
         },
-        refetch
+        refetch,
       ),
-    [optimisticPost]
+    [optimisticPost],
   );
 
-  // ── Employee ─────────────────────────────────────────────────────
+  // ── Employee CRUD ─────────────────────────────────────────────────────────
   const addEmployee = useCallback(
     (payload, refetch) => {
       const tempId = "TMP_" + Date.now();
       return optimisticPost(
         { action: "add_employee", ...payload },
-        () =>
-          setEmployees((prev) => [
-            ...prev,
-            { employee_id: tempId, ...payload, active: true },
-          ]),
-        refetch
+        () => setEmployees((prev) => [...prev, { employee_id: tempId, ...payload, active: true }]),
+        refetch,
       );
     },
-    [optimisticPost]
+    [optimisticPost],
   );
 
   const updateEmployee = useCallback(
@@ -246,30 +242,26 @@ export function useApi({ onError } = {}) {
         () =>
           setEmployees((prev) =>
             prev.map((e) =>
-              safeStr(e.employee_id) === safeStr(empId)
-                ? { ...e, ...payload }
-                : e
+              safeStr(e.employee_id) === safeStr(empId) ? { ...e, ...payload } : e
             )
           ),
-        refetch
+        refetch,
       ),
-    [optimisticPost]
+    [optimisticPost],
   );
 
   const deleteEmployee = useCallback(
     (empId, refetch) =>
       optimisticPost(
         { action: "delete_employee", employee_id: empId },
-        () =>
-          setEmployees((prev) =>
-            prev.filter((e) => safeStr(e.employee_id) !== safeStr(empId))
-          ),
-        refetch
+        () => setEmployees((prev) => prev.filter((e) => safeStr(e.employee_id) !== safeStr(empId))),
+        refetch,
       ),
-    [optimisticPost]
+    [optimisticPost],
   );
 
-  // ── Schedule ─────────────────────────────────────────────────────
+  // ── Schedule CRUD ─────────────────────────────────────────────────────────
+  // schedule 필드: schedule_id, employee_id, name, date, part, planned_start, planned_end
   const addSchedule = useCallback(
     (data, refetch) => {
       const tempId = "TMP_SCH_" + Date.now();
@@ -284,19 +276,19 @@ export function useApi({ onError } = {}) {
               const next = [...prev];
               next[idx] = {
                 ...next[idx],
-                employee_id: data.employee_id,
-                name: data.name,
-                planned_start: data.planned_start,
-                planned_end: data.planned_end,
+                employee_id:   data.employee_id,
+                name:          data.name,
+                planned_start: data.planned_start,  // schedule 필드
+                planned_end:   data.planned_end,    // schedule 필드
               };
               return next;
             }
             return [...prev, { schedule_id: tempId, ...data }];
           }),
-        refetch
+        refetch,
       );
     },
-    [optimisticPost]
+    [optimisticPost],
   );
 
   const updateSchedule = useCallback(
@@ -305,50 +297,39 @@ export function useApi({ onError } = {}) {
         { action: "update_schedule", schedule_id: scheduleId, ...data },
         () =>
           setSchedule((prev) =>
-            prev.map((s) =>
-              s.schedule_id === scheduleId ? { ...s, ...data } : s
-            )
+            prev.map((s) => s.schedule_id === scheduleId ? { ...s, ...data } : s)
           ),
-        refetch
+        refetch,
       ),
-    [optimisticPost]
+    [optimisticPost],
   );
 
   const deleteSchedule = useCallback(
     (scheduleId, date, refetch) =>
       optimisticPost(
         { action: "delete_schedule", schedule_id: scheduleId, date },
-        () =>
-          setSchedule((prev) =>
-            prev.filter((s) => s.schedule_id !== scheduleId)
-          ),
-        refetch
+        () => setSchedule((prev) => prev.filter((s) => s.schedule_id !== scheduleId)),
+        refetch,
       ),
-    [optimisticPost]
+    [optimisticPost],
   );
 
   return {
     loading,
 
-    employees,
-    setEmployees,
+    employees,    setEmployees,
+    schedule,     setSchedule,
 
-    schedule,
-    setSchedule,
+    // 기존 컴포넌트 호환 (attendance = monthAttendance)
+    attendance,   setAttendance,
 
-    // 기존 호환
-    attendance,
-    setAttendance,
-
-    // 신규 분리 state
-    todayAttendance,
-    setTodayAttendance,
-    monthAttendance,
-    setMonthAttendance,
+    // 분리 state (신규)
+    todayAttendance,  setTodayAttendance,
+    monthAttendance,  setMonthAttendance,
 
     fetchToday,
     fetchAll,
-    fetchMonth,
+    fetchMonth,   // alias of fetchAll
 
     post,
 

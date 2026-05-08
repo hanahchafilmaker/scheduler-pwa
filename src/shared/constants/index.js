@@ -1,34 +1,42 @@
-﻿/* ================= 근무 타입 ================= */
+// src/shared/constants/index.js
+// UTF-8 — 한글 깨짐 주의
+// 실제 프로젝트 필드명 기준 — 임의 필드 추가 금지
+
+/* ================= 근무 타입 ================= */
 
 export const WORK_TYPE = {
-  OPEN: "open",
-  MIDDLE: "middle",
-  CLOSE: "close",
-  EXTRA: "extra",
+  OPEN:     "open",
+  MIDDLE:   "middle",
+  CLOSE:    "close",
+  EXTRA:    "extra",
   OVERTIME: "overtime",
 };
 
 export const WORK_TYPE_LABEL = {
-  open: "오픈",
-  middle: "미들",
-  close: "마감",
-  extra: "대타",
+  open:     "오픈",
+  middle:   "미들",
+  close:    "마감",
+  extra:    "대타",
   overtime: "시간외",
 };
 
-/* ================= 관리자용 ================= */
+/* ================= 파트 ================= */
 
 export const PARTS = ["open", "middle", "close"];
 
 export const PART_LABEL = {
-  open: "오픈",
+  open:   "오픈",
   middle: "미들",
-  close: "마감",
-  extra: "대타",
-  대타: "대타",
+  close:  "마감",
+  extra:  "대타",
+  대타:   "대타",
 };
 
 export const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
+
+/* ================= 시프트 기준 시간 ================= */
+// AttTab 의 getAutoStatus 에서 사용
+// schedule.planned_start / planned_end 와 별개로 part 기반 기준값
 
 export const SHIFT_TIME = {
   open:   { start: "07:00", end: "11:00", hours: 4 },
@@ -46,6 +54,7 @@ export const STATUS_COLOR = {
   조퇴:     "#d97706",
   연장:     "#7c3aed",
   퇴근누락: "#dc2626",
+  대타:     "#7c3aed",
 };
 
 export const STATUS_BG = {
@@ -56,9 +65,10 @@ export const STATUS_BG = {
   조퇴:     "#fffbeb",
   연장:     "#f5f3ff",
   퇴근누락: "#fef2f2",
+  대타:     "#f5f3ff",
 };
 
-/* ================= 네비 (단일 정의) ================= */
+/* ================= 네비 ================= */
 
 export const NAV_ITEMS = [
   { id: "today", label: "오늘 현황",   icon: "🏪" },
@@ -81,14 +91,14 @@ export function getPageTitle(tab) {
 /* ================= 직원 폼 기본값 ================= */
 
 export const EMPTY_EMP_FORM = {
-  name: "",
-  phone: "",
-  hourly_wage: "",
-  pin: "",
-  active: true,
+  name:        "",
+  phone:       "",
+  hourly_wage: "",   // employee 실제 필드
+  pin:         "",
+  active:      true,
 };
 
-/* ================= 대타 요청 상태 ================= */
+/* ================= 대타 상태 ================= */
 
 export const SUBSTITUTE_STATUS = {
   REQUESTED: "requested",
@@ -99,4 +109,14 @@ export const SUBSTITUTE_STATUS = {
 
 /* ================= 자동퇴근 유예 시간 (분) ================= */
 
+// TodayTab 자동퇴근 예정 판단:
+//   now > schedule.planned_end(분) + AUTO_CHECKOUT_GRACE_MIN
 export const AUTO_CHECKOUT_GRACE_MIN = 30;
+
+/* ================= 미출근 판단 유예 시간 ================= */
+
+// TodayTab 미출근 판단:
+//   now > schedule.planned_start(분) → 미출근
+//   now <= schedule.planned_start(분) → 출근 예정
+// (유예 없이 planned_start 그대로 기준 — 필요시 여기 상수로 조정)
+export const ABSENT_GRACE_MIN = 0;

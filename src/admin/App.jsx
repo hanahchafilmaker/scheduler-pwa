@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useApi } from "../shared/hooks/useApi";
 import { Sidebar, MobileTabs } from "../shared/components/Nav";
@@ -103,21 +103,13 @@ export default function App() {
 
   const showToast = useCallback((msg, type = "ok") => {
     setToast({ msg, type });
-
-    if (toastTimerRef.current) {
-      window.clearTimeout(toastTimerRef.current);
-    }
-
-    toastTimerRef.current = window.setTimeout(() => {
-      setToast(null);
-    }, 2400);
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 2400);
   }, []);
 
   useEffect(() => {
     return () => {
-      if (toastTimerRef.current) {
-        window.clearTimeout(toastTimerRef.current);
-      }
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     };
   }, []);
 
@@ -144,20 +136,12 @@ export default function App() {
   );
 
   const monthRange = useMemo(
-    () => ({
-      month: settlementMonth,
-      label: monthLabel(settlementMonth),
-    }),
+    () => ({ month: settlementMonth, label: monthLabel(settlementMonth) }),
     [settlementMonth],
   );
 
   const settlement = useMemo(
-    () =>
-      buildSettlement({
-        attendance: monthAttendance,
-        employees,
-        month: settlementMonth,
-      }),
+    () => buildSettlement({ attendance: monthAttendance, employees, month: settlementMonth }),
     [monthAttendance, employees, settlementMonth],
   );
 
@@ -169,24 +153,17 @@ export default function App() {
 
   useEffect(() => {
     const { fetchAll, fetchMonth } = fetchRef.current;
-
     if (tab === "sim") {
       fetchMonth(settlementMonth);
       setSelectedMonth(settlementMonth);
       return;
     }
-
     fetchAll(selectedMonth);
   }, [tab, selectedMonth, settlementMonth]);
 
   const handleRefresh = useCallback(() => {
     const { fetchAll, fetchMonth } = fetchRef.current;
-
-    if (tab === "sim") {
-      fetchMonth(settlementMonth);
-      return;
-    }
-
+    if (tab === "sim") { fetchMonth(settlementMonth); return; }
     fetchAll(selectedMonth);
   }, [tab, selectedMonth, settlementMonth]);
 
@@ -208,11 +185,15 @@ export default function App() {
         />
       );
     }
-
     if (tab === "shift") {
-      return <ShiftTab schedule={schedule} employees={employees} selectedMonth={selectedMonth} />;
+      return (
+        <ShiftTab
+          schedule={schedule}
+          employees={employees}
+          selectedMonth={selectedMonth}
+        />
+      );
     }
-
     return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
   };
 
@@ -225,29 +206,17 @@ export default function App() {
 
         {tab !== "sim" && tab !== "shift" && (
           <div className="month-toolbar">
-            <button
-              type="button"
-              className="ghost-sm"
-              onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
-            >
+            <button type="button" className="ghost-sm"
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}>
               ◀
             </button>
-
             <strong>{monthLabel(selectedMonth)}</strong>
-
-            <button
-              type="button"
-              className="ghost-sm"
-              onClick={() => setSelectedMonth(currentYM())}
-            >
+            <button type="button" className="ghost-sm"
+              onClick={() => setSelectedMonth(currentYM())}>
               이번 달
             </button>
-
-            <button
-              type="button"
-              className="ghost-sm"
-              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-            >
+            <button type="button" className="ghost-sm"
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}>
               ▶
             </button>
           </div>

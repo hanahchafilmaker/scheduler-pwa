@@ -1,4 +1,4 @@
-import { NAV_ITEMS } from "../constants/nav";
+﻿import { NAV_ITEMS } from "../constants";
 
 export function Sidebar({ tab, setTab, loading, onRefresh }) {
   return (

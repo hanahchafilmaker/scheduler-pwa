@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useApi } from "../shared/hooks/useApi";
 import { Sidebar, MobileTabs } from "../shared/components/Nav";
@@ -29,7 +29,7 @@ function monthLabel(ym) {
   return `${y}년 ${Number(m)}월`;
 }
 
-// ── 정산: approved=true 기록만 반영 ──────────────────────────────────────────
+// 정산: approved=true 기록만 반영
 function buildSettlement({ attendance = [], employees = [], month }) {
   const empMap = new Map(employees.map((e) => [safeStr(e.employee_id), e]));
   const rowsMap = new Map();
@@ -95,7 +95,7 @@ function buildSettlement({ attendance = [], employees = [], month }) {
   };
 }
 
-// ── 월간 toolbar를 숨길 탭 ────────────────────────────────────────────────────
+// 월간 toolbar를 숨길 탭
 const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift"]);
 
 export default function App() {
@@ -159,15 +159,11 @@ export default function App() {
 
   useEffect(() => {
     const { fetchAll, fetchMonth } = fetchRef.current;
-
     if (tab === "sim") {
       fetchMonth(settlementMonth);
       setSelectedMonth(settlementMonth);
       return;
     }
-
-    // today 탭은 useApi 초기화 시 fetchToday()가 이미 호출됨
-    // 나머지 탭은 fetchAll로 월 데이터 로드
     if (tab !== "today") {
       fetchAll(selectedMonth);
     }
@@ -197,7 +193,6 @@ export default function App() {
         />
       );
     }
-
     if (tab === "sim") {
       return (
         <SimTab
@@ -208,7 +203,6 @@ export default function App() {
         />
       );
     }
-
     if (tab === "shift") {
       return (
         <ShiftTab
@@ -218,8 +212,6 @@ export default function App() {
         />
       );
     }
-
-    // att (기본)
     return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
   };
 
@@ -232,26 +224,17 @@ export default function App() {
 
         {!TABS_WITHOUT_MONTH_BAR.has(tab) && (
           <div className="month-toolbar">
-            <button
-              type="button"
-              className="ghost-sm"
-              onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
-            >
+            <button type="button" className="ghost-sm"
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}>
               ◀
             </button>
             <strong>{monthLabel(selectedMonth)}</strong>
-            <button
-              type="button"
-              className="ghost-sm"
-              onClick={() => setSelectedMonth(currentYM())}
-            >
+            <button type="button" className="ghost-sm"
+              onClick={() => setSelectedMonth(currentYM())}>
               이번 달
             </button>
-            <button
-              type="button"
-              className="ghost-sm"
-              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
-            >
+            <button type="button" className="ghost-sm"
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}>
               ▶
             </button>
           </div>

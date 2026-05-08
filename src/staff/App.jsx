@@ -59,6 +59,21 @@ export default function StaffApp() {
         setLoading(true);
         setPinError("");
 
+        // localStorage 캐시 확인 (10분간 유효)
+        const cached = localStorage.getItem("staff_employees_cache");
+        if (cached) {
+          try {
+            const { data, ts } = JSON.parse(cached);
+            if (Date.now() - ts < 10 * 60 * 1000 && Array.isArray(data) && data.length > 0) {
+              if (mounted) {
+                setEmployees(data);
+                setLoading(false);
+              }
+              return;
+            }
+          } catch {}
+        }
+
         const data = await fetchStaffEmployees();
 
         if (!mounted) return;
@@ -67,9 +82,24 @@ export default function StaffApp() {
 
         if (!Array.isArray(data) || data.length === 0) {
           setPinError("직원 데이터가 비어 있습니다. 시트 employees를 확인해주세요.");
+        } else {
+          // 성공 시 캐시 저장
+          localStorage.setItem("staff_employees_cache", JSON.stringify({ data, ts: Date.now() }));
         }
       } catch (err) {
         console.error("직원 데이터 fetch 실패:", err);
+
+        // 실패 시 캐시라도 사용
+        const cached = localStorage.getItem("staff_employees_cache");
+        if (cached && mounted) {
+          try {
+            const { data } = JSON.parse(cached);
+            if (Array.isArray(data) && data.length > 0) {
+              setEmployees(data);
+              return;
+            }
+          } catch {}
+        }
 
         if (!mounted) return;
 
@@ -158,7 +188,7 @@ export default function StaffApp() {
     setWorkType(null);
 
     await loadToday(found.employee_id);
-    await loadMonth(found.employee_id);
+    // loadMonth는 로그인 시 부르지 않음 — 이달기록 탭 진입 시 lazy load
   };
 
   const handleLogout = useCallback(() => {
@@ -300,6 +330,13 @@ export default function StaffApp() {
     };
   }, [records]);
 
+  // 이달기록 탭 진입 시 1회만 로드 (이미 있으면 스킵)
+  const handleViewRecords = useCallback(() => {
+    if (records.length === 0 && employee) {
+      loadMonth(employee.employee_id);
+    }
+  }, [records.length, employee, loadMonth]);
+
   if (!employee) {
     return (
       <PinScreen
@@ -330,6 +367,7 @@ export default function StaffApp() {
       onCheckIn={handleCheckIn}
       onCheckOut={handleCheckOut}
       onLogout={handleLogout}
+      onViewRecords={handleViewRecords}
     />
   );
 }

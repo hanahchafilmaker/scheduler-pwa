@@ -12,11 +12,6 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-
 function currentYM() {
   const d = new Date();
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
@@ -108,18 +103,26 @@ export default function App() {
 
   const showToast = useCallback((msg, type = "ok") => {
     setToast({ msg, type });
-    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = window.setTimeout(() => setToast(null), 2400);
+
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+    }, 2400);
   }, []);
 
   useEffect(() => {
     return () => {
-      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
     };
   }, []);
 
   const api = useApi({
-    onError: useCallback((msg) => showToast(msg || "오류가 발생했습니다", "err"), [showToast]),
+    onError: useCallback((msg) => showToast(msg || "오류가 발생했습니다.", "err"), [showToast]),
   });
 
   const {
@@ -141,7 +144,10 @@ export default function App() {
   );
 
   const monthRange = useMemo(
-    () => ({ month: settlementMonth, label: monthLabel(settlementMonth) }),
+    () => ({
+      month: settlementMonth,
+      label: monthLabel(settlementMonth),
+    }),
     [settlementMonth],
   );
 
@@ -156,26 +162,31 @@ export default function App() {
   );
 
   const fetchRef = useRef({ fetchAll, fetchMonth });
+
   useEffect(() => {
     fetchRef.current = { fetchAll, fetchMonth };
-  });
+  }, [fetchAll, fetchMonth]);
 
   useEffect(() => {
     const { fetchAll, fetchMonth } = fetchRef.current;
+
     if (tab === "sim") {
       fetchMonth(settlementMonth);
       setSelectedMonth(settlementMonth);
       return;
     }
+
     fetchAll(selectedMonth);
   }, [tab, selectedMonth, settlementMonth]);
 
   const handleRefresh = useCallback(() => {
     const { fetchAll, fetchMonth } = fetchRef.current;
+
     if (tab === "sim") {
       fetchMonth(settlementMonth);
       return;
     }
+
     fetchAll(selectedMonth);
   }, [tab, selectedMonth, settlementMonth]);
 
@@ -197,10 +208,11 @@ export default function App() {
         />
       );
     }
-    // ── 추가: shift 탭 ──
+
     if (tab === "shift") {
       return <ShiftTab schedule={schedule} employees={employees} selectedMonth={selectedMonth} />;
     }
+
     return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
   };
 
@@ -211,7 +223,6 @@ export default function App() {
       <main className="main-content">
         <MobileTabs tab={tab} setTab={setTab} />
 
-        {/* shift 탭과 sim 탭은 month-toolbar 숨김 (자체 네비게이션 보유) */}
         {tab !== "sim" && tab !== "shift" && (
           <div className="month-toolbar">
             <button
@@ -221,7 +232,9 @@ export default function App() {
             >
               ◀
             </button>
+
             <strong>{monthLabel(selectedMonth)}</strong>
+
             <button
               type="button"
               className="ghost-sm"
@@ -229,6 +242,7 @@ export default function App() {
             >
               이번 달
             </button>
+
             <button
               type="button"
               className="ghost-sm"

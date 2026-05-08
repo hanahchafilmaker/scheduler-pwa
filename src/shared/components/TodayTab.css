@@ -4,18 +4,49 @@
    UTF-8
    ================================================================ */
 
+/* ── Topbar ───────────────────────────────────────────────────── */
+.today-topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.today-topbar-copy h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.today-topbar-copy p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.today-date-pill {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid #eceff3;
+}
+
 /* ── Summary Bar ────────────────────────────────────────────────── */
 .today-summary-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-
   margin-bottom: 20px;
   padding: 14px 16px;
-
   border: 1px solid #eceff3;
   border-radius: 18px;
-
   background: #fafbfc;
 }
 
@@ -23,7 +54,6 @@
   display: flex;
   align-items: center;
   gap: 6px;
-
   color: #374151;
   font-size: 13px;
 }
@@ -50,16 +80,11 @@
   gap: 16px;
   margin-top: 12px;
 }
-@media (max-width: 640px) {
-  .today-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* ── 섹션 ──────────────────────────────────────────────────────── */
 .today-section {
   background: #fff;
-  border-radius: 10px;
+  border-radius: 14px;
   border: 1px solid #e5e7eb;
   padding: 12px 14px;
 }
@@ -106,7 +131,7 @@
 .today-cards {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 /* ── 카드 ──────────────────────────────────────────────────────── */
@@ -114,17 +139,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
-  border-radius: 7px;
+  padding: 10px 12px;
+  border-radius: 10px;
   border: 1px solid #e5e7eb;
   background: #fafafa;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .today-card-absent {
   border-color: #fca5a5;
   background: #fff5f5;
+}
+
+.today-card-auto {
+  border-color: #c4b5fd;
+  background: #faf5ff;
 }
 
 .today-card-left {
@@ -157,6 +187,10 @@
   white-space: nowrap;
 }
 
+.today-elapsed {
+  color: #059669;
+}
+
 /* ── 뱃지 ──────────────────────────────────────────────────────── */
 .today-badges {
   display: flex;
@@ -178,21 +212,30 @@
   background: #fef3c7;
   color: #92400e;
 }
+
 .today-badge-extra {
   background: #f3f4f6;
   color: #374151;
 }
+
 .today-badge-pending {
   background: #fee2e2;
   color: #991b1b;
 }
+
 .today-badge-absent {
   background: #fee2e2;
   color: #991b1b;
 }
+
 .today-badge-late {
   background: #fed7aa;
   color: #9a3412;
+}
+
+.today-badge-auto {
+  background: #ede9fe;
+  color: #6d28d9;
 }
 
 /* ── Time Block ────────────────────────────────────────────────── */
@@ -200,7 +243,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-
   margin-top: 6px;
 }
 
@@ -220,7 +262,12 @@
   background: #fffafa;
 }
 
-/* ── 승인 버튼 (기존 App.css의 .approve-btn 에 없으면 여기 정의) ── */
+/* ── 승인/반려 버튼 ───────────────────────────────────────────── */
+.approve-actions {
+  display: flex;
+  gap: 4px;
+}
+
 .approve-btn {
   padding: 3px 10px;
   font-size: 12px;
@@ -232,17 +279,11 @@
   cursor: pointer;
   white-space: nowrap;
 }
+
 .approve-btn:hover {
   background: #1d4ed8;
 }
 
-/* ── 승인/반려 버튼 묶음 ────────────────────────────────────────── */
-.approve-actions {
-  display: flex;
-  gap: 4px;
-}
-
-/* ── 반려 버튼 ─────────────────────────────────────────────────── */
 .reject-btn {
   padding: 3px 10px;
   font-size: 12px;
@@ -254,11 +295,11 @@
   cursor: pointer;
   white-space: nowrap;
 }
+
 .reject-btn:hover {
   background: #dc2626;
 }
 
-/* ── 자동퇴근 실행 버튼 ─────────────────────────────────────────── */
 .auto-checkout-btn {
   padding: 3px 10px;
   font-size: 12px;
@@ -271,12 +312,29 @@
   white-space: nowrap;
   margin-top: 4px;
 }
+
 .auto-checkout-btn:hover {
   background: #7c3aed;
 }
 
 /* ── 모바일 ────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
+  .today-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .today-topbar {
+    align-items: stretch;
+  }
+
+  .today-topbar-copy h2 {
+    font-size: 18px;
+  }
+
+  .today-date-pill {
+    text-align: center;
+  }
+
   .today-summary-bar {
     flex-direction: column;
     gap: 8px;

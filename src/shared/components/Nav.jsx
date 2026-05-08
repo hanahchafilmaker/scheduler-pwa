@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useApi } from "../shared/hooks/useApi";
+import { useApi } from "../hooks/useApi";
 import { Sidebar, MobileTabs } from "../shared/components/Nav";
 import { AttTab } from "../shared/components/AttTab";
 import { ShiftTab } from "../shared/components/ShiftTab";
@@ -30,7 +30,7 @@ function addMonths(ym, offset) {
 
 function monthLabel(ym) {
   const [y, m] = ym.split("-");
-  return `${y}년 ${Number(m)}월`;
+  return `${y}??${Number(m)}??;
 }
 
 function buildSettlement({ attendance = [], employees = [], month }) {
@@ -119,7 +119,7 @@ export default function App() {
   }, []);
 
   const api = useApi({
-    onError: useCallback((msg) => showToast(msg || "오류가 발생했습니다", "err"), [showToast]),
+    onError: useCallback((msg) => showToast(msg || "?�류가 발생?�습?�다", "err"), [showToast]),
   });
 
   const {
@@ -197,7 +197,7 @@ export default function App() {
         />
       );
     }
-    // ── 추가: shift 탭 ──
+    // ?�?� 추�?: shift ???�?�
     if (tab === "shift") {
       return <ShiftTab schedule={schedule} employees={employees} selectedMonth={selectedMonth} />;
     }
@@ -211,7 +211,7 @@ export default function App() {
       <main className="main-content">
         <MobileTabs tab={tab} setTab={setTab} />
 
-        {/* shift 탭과 sim 탭은 month-toolbar 숨김 (자체 네비게이션 보유) */}
+        {/* shift ??�� sim ??? month-toolbar ?��? (?�체 ?�비게이??보유) */}
         {tab !== "sim" && tab !== "shift" && (
           <div className="month-toolbar">
             <button
@@ -219,7 +219,7 @@ export default function App() {
               className="ghost-sm"
               onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
             >
-              ◀
+              ?�
             </button>
             <strong>{monthLabel(selectedMonth)}</strong>
             <button
@@ -227,15 +227,13 @@ export default function App() {
               className="ghost-sm"
               onClick={() => setSelectedMonth(currentYM())}
             >
-              이번 달
-            </button>
+              ?�번 ??            </button>
             <button
               type="button"
               className="ghost-sm"
               onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
             >
-              ▶
-            </button>
+              ??            </button>
           </div>
         )}
 

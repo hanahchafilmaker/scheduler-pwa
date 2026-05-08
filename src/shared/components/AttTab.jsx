@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { PART_LABEL, SHIFT_TIME, STATUS_BG, STATUS_COLOR } from "../constants";
 import { normalizeDate, formatTime, calcWorkMinutes, toBool } from "../utils";
-import { SectionTitle } from "./UI";
+import { SectionTitle, PageHeader } from "./UI";
 
 function toMin(t) {
   const m = String(t || "").match(/(\d+):(\d+)/);
@@ -63,9 +63,7 @@ function getDiffText(a, status) {
   const realStart = toMin(a.check_in);
   let realEnd = toMin(a.check_out);
 
-  if (planStart === null || planEnd === null || realStart === null) {
-    return "-";
-  }
+  if (planStart === null || planEnd === null || realStart === null) return "-";
 
   if (!a.check_out || realEnd === null) {
     if (realStart > planStart + 1) return `+${realStart - planStart}분 지각`;
@@ -98,11 +96,102 @@ function needsManualApproval(a, status) {
   );
 }
 
+function MobileAttCard({ a, onApprove }) {
+  const min = calcWorkMinutes(a.check_in, a.check_out, a.break_min);
+  const status = getAutoStatus(a);
+  const diffText = getDiffText(a, status);
+  const approved = toBool(a.approved);
+  const needApproval = needsManualApproval(a, status);
+
+  return (
+    <div className="att-card">
+      <div className="att-card-top">
+        <div className="att-card-name-wrap">
+          <strong className="att-card-name">{a.name}</strong>
+          <span className="att-card-date">{normalizeDate(a.date)}</span>
+        </div>
+
+        <span
+          className="dash-badge"
+          style={{
+            background: STATUS_BG[status] || "#f9fafb",
+            color: STATUS_COLOR[status] || "#374151",
+          }}
+        >
+          {status}
+        </span>
+      </div>
+
+      <div className="att-card-meta">
+        <div className="att-meta-item">
+          <span>파트</span>
+          <strong>{PART_LABEL[a.part] || a.part || "-"}</strong>
+        </div>
+        <div className="att-meta-item">
+          <span>출근</span>
+          <strong>{formatTime(a.check_in)}</strong>
+        </div>
+        <div className="att-meta-item">
+          <span>퇴근</span>
+          <strong>{formatTime(a.check_out)}</strong>
+        </div>
+        <div className="att-meta-item">
+          <span>실근무</span>
+          <strong>{(min / 60).toFixed(1)}h</strong>
+        </div>
+      </div>
+
+      <div className="att-card-foot">
+        <div className="att-card-note">
+          <span>차이</span>
+          <strong>{diffText}</strong>
+        </div>
+
+        <div className="att-card-note">
+          <span>비고</span>
+          <strong>{a.memo || "-"}</strong>
+        </div>
+      </div>
+
+      <div className="att-card-actions">
+        {approved ? (
+          <span className="att-approved-text">승인완료</span>
+        ) : needApproval ? (
+          <button type="button" className="approve-btn" onClick={() => onApprove(a, true)}>
+            승인
+          </button>
+        ) : (
+          <span className="att-approved-text">-</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AttTab({ attendance = [], onApprove }) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false,
+  );
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   const displayList = useMemo(
     () =>
       [...attendance].sort((a, b) => normalizeDate(b.date).localeCompare(normalizeDate(a.date))),
     [attendance],
+  );
+
+  const pendingCount = useMemo(
+    () =>
+      displayList.filter((a) => {
+        const status = getAutoStatus(a);
+        return !toBool(a.approved) && needsManualApproval(a, status);
+      }).length,
+    [displayList],
   );
 
   return (
@@ -110,88 +199,103 @@ export function AttTab({ attendance = [], onApprove }) {
       <div className="card">
         <SectionTitle>출퇴근 기록</SectionTitle>
 
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>날짜</th>
-              <th>이름</th>
-              <th>파트</th>
-              <th>출근</th>
-              <th>퇴근</th>
-              <th>실근무</th>
-              <th>상태</th>
-              <th>차이</th>
-              <th>승인</th>
-              <th>비고</th>
-            </tr>
-          </thead>
+        <PageHeader
+          title="출퇴근 기록"
+          description="월간 근태 기록과 승인 상태를 확인합니다"
+          right={<div className="page-pill">승인대기 {pendingCount}건</div>}
+        />
 
-          <tbody>
-            {displayList.map((a) => {
-              const min = calcWorkMinutes(a.check_in, a.check_out, a.break_min);
-
-              const status = getAutoStatus(a);
-              const diffText = getDiffText(a, status);
-              const approved = toBool(a.approved);
-              const needApproval = needsManualApproval(a, status);
-
-              return (
-                <tr key={a.attendance_id || `${a.employee_id}-${a.date}-${a.check_in}`}>
-                  <td>{normalizeDate(a.date)}</td>
-
-                  <td>
-                    <strong>{a.name}</strong>
-                  </td>
-
-                  <td>{PART_LABEL[a.part] || a.part || "-"}</td>
-                  <td>{formatTime(a.check_in)}</td>
-                  <td>{formatTime(a.check_out)}</td>
-                  <td>{(min / 60).toFixed(1)}h</td>
-
-                  <td>
-                    <span
-                      className="dash-badge"
-                      style={{
-                        background: STATUS_BG[status] || "#f9fafb",
-                        color: STATUS_COLOR[status] || "#374151",
-                      }}
-                    >
-                      {status}
-                    </span>
-                  </td>
-
-                  <td>{diffText}</td>
-
-                  <td>
-                    {approved ? (
-                      <span>승인완료</span>
-                    ) : needApproval ? (
-                      <button
-                        type="button"
-                        className="approve-btn"
-                        onClick={() => onApprove(a, true)}
-                      >
-                        승인
-                      </button>
-                    ) : (
-                      <span>-</span>
-                    )}
-                  </td>
-
-                  <td>{a.memo || "-"}</td>
-                </tr>
-              );
-            })}
-
-            {attendance.length === 0 && (
-              <tr>
-                <td colSpan={10} className="empty">
-                  기록이 없습니다
-                </td>
-              </tr>
+        {isMobile ? (
+          <div className="att-card-list">
+            {displayList.length === 0 ? (
+              <div className="empty">기록이 없습니다</div>
+            ) : (
+              displayList.map((a) => (
+                <MobileAttCard
+                  key={a.attendance_id || `${a.employee_id}-${a.date}-${a.check_in}`}
+                  a={a}
+                  onApprove={onApprove}
+                />
+              ))
             )}
-          </tbody>
-        </table>
+          </div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>이름</th>
+                <th>파트</th>
+                <th>출근</th>
+                <th>퇴근</th>
+                <th>실근무</th>
+                <th>상태</th>
+                <th>차이</th>
+                <th>승인</th>
+                <th>비고</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {displayList.map((a) => {
+                const min = calcWorkMinutes(a.check_in, a.check_out, a.break_min);
+                const status = getAutoStatus(a);
+                const diffText = getDiffText(a, status);
+                const approved = toBool(a.approved);
+                const needApproval = needsManualApproval(a, status);
+
+                return (
+                  <tr key={a.attendance_id || `${a.employee_id}-${a.date}-${a.check_in}`}>
+                    <td>{normalizeDate(a.date)}</td>
+                    <td>
+                      <strong>{a.name}</strong>
+                    </td>
+                    <td>{PART_LABEL[a.part] || a.part || "-"}</td>
+                    <td>{formatTime(a.check_in)}</td>
+                    <td>{formatTime(a.check_out)}</td>
+                    <td>{(min / 60).toFixed(1)}h</td>
+                    <td>
+                      <span
+                        className="dash-badge"
+                        style={{
+                          background: STATUS_BG[status] || "#f9fafb",
+                          color: STATUS_COLOR[status] || "#374151",
+                        }}
+                      >
+                        {status}
+                      </span>
+                    </td>
+                    <td>{diffText}</td>
+                    <td>
+                      {approved ? (
+                        <span>승인완료</span>
+                      ) : needApproval ? (
+                        <button
+                          type="button"
+                          className="approve-btn"
+                          onClick={() => onApprove(a, true)}
+                        >
+                          승인
+                        </button>
+                      ) : (
+                        <span>-</span>
+                      )}
+                    </td>
+                    <td>{a.memo || "-"}</td>
+                  </tr>
+                );
+              })}
+
+              {attendance.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="empty">
+                    기록이 없습니다
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

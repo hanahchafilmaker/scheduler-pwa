@@ -1484,3 +1484,115 @@ code {
     grid-template-columns: repeat(3, 1fr) !important;
   }
 }
+/* ── AttTab mobile cards ───────────────────────────────────── */
+.att-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.att-card {
+  border: 1px solid #eceff3;
+  border-radius: 14px;
+  background: #fafafa;
+  padding: 12px;
+}
+
+.att-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.att-card-name-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.att-card-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.att-card-date {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.att-card-meta {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.att-meta-item {
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.att-meta-item span {
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.att-meta-item strong {
+  font-size: 13px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.att-card-foot {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.att-card-note {
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.att-card-note span {
+  font-size: 10px;
+  color: #9ca3af;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.att-card-note strong {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 700;
+}
+
+.att-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.att-approved-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+}

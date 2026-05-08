@@ -1040,6 +1040,31 @@ code {
   color: #111827;
 }
 
+/* ── Net pay banner ──────────────────────────────────────────────── */
+.payslip-net-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border-radius: 14px;
+  padding: 18px 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.payslip-net-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.payslip-net-amount {
+  font-size: 28px;
+  font-weight: 900;
+  color: #fff;
+}
+
 .payslip-info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1145,6 +1170,16 @@ code {
   font-weight: 800;
   color: #374151;
 }
+.payslip-deduct-item.total {
+  grid-column: 1 / -1;
+  background: #111827;
+}
+.payslip-deduct-item.total span {
+  color: #6b7280;
+}
+.payslip-deduct-item.total strong {
+  color: #f97316;
+}
 
 .payslip-row {
   display: grid;
@@ -1213,6 +1248,29 @@ code {
 }
 .payslip-print-btn:hover {
   background: #1f2937;
+}
+
+/* ── Print styles ────────────────────────────────────────────────── */
+@media print {
+  .modal-overlay {
+    background: transparent;
+  }
+  .payslip-modal {
+    box-shadow: none;
+    border-radius: 0;
+    padding: 40px;
+    max-width: 100%;
+    width: 210mm;
+    height: auto;
+  }
+  .close-btn,
+  .payslip-print-btn {
+    display: none;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
 }
 
 /* ── Loading ──────────────────────────────────────────────────────────────── */

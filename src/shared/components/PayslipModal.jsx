@@ -9,6 +9,8 @@ export function PayslipModal({ emp, monthRange, onClose }) {
   const basePay = Math.round(emp.hours * emp.wage);
   const weeklyHoliday = Math.round((emp.workDays / 5) * 8 * emp.wage);
   const totalPay = basePay + nightExtra + weeklyHoliday;
+  const deductTotal = 0;
+  const netPay = totalPay - deductTotal;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -22,6 +24,12 @@ export function PayslipModal({ emp, monthRange, onClose }) {
           <button className="close-btn" onClick={onClose}>
             ×
           </button>
+        </div>
+
+        {/* Net pay banner */}
+        <div className="payslip-net-banner">
+          <span className="payslip-net-label">실수령액</span>
+          <strong className="payslip-net-amount">{fmtKRW(netPay)}</strong>
         </div>
 
         {/* Meta info */}
@@ -59,12 +67,16 @@ export function PayslipModal({ emp, monthRange, onClose }) {
         {/* Deductions */}
         <div className="payslip-section-title">공제내역</div>
         <div className="payslip-deduct-grid">
-          {["소득세", "지방소득세", "국민연금", "건강보험", "고용보험", "공제합계"].map((label) => (
+          {["소득세", "지방소득세", "국민연금", "건강보험", "고용보험"].map((label) => (
             <div key={label} className="payslip-deduct-item">
               <span>{label}</span>
-              <strong>-</strong>
+              <strong>0원</strong>
             </div>
           ))}
+          <div className="payslip-deduct-item total">
+            <span>공제합계</span>
+            <strong>0원</strong>
+          </div>
         </div>
 
         {/* Work detail table */}
@@ -113,7 +125,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
         </div>
 
         <div className="payslip-foot">
-          위 금액을 {monthRange.label} 근무분 급여로 지급함을 확인합니다.
+          위 금액을 {monthRange.label} 근무분 급여로 {monthRange.payDateLabel} 지급함을 확인합니다.
         </div>
         <button className="payslip-print-btn" onClick={() => window.print()}>
           🖨️ 인쇄하기

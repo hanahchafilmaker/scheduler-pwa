@@ -213,23 +213,24 @@ export default function StaffApp() {
     }
   }, [todaySchedule, workType]);
 
-  const approved = toBool(todayAttendance?.approved);
+  const hasOpenAttendance = !!todayAttendance?.check_in && !todayAttendance?.check_out;
+
+  const isApproved =
+    todayAttendance?.approved === true ||
+    String(todayAttendance?.approved).toLowerCase() === "true";
 
   const isRejected =
-    !!todayAttendance?.check_in &&
-    !todayAttendance?.check_out &&
+    hasOpenAttendance &&
     (todayAttendance?.approved === false ||
       String(todayAttendance?.approved).toLowerCase() === "false");
 
-  const isPending =
-    !!todayAttendance?.check_in &&
-    !todayAttendance?.check_out &&
-    !approved &&
-    !isRejected;
+  const isPending = hasOpenAttendance && !isApproved && !isRejected;
 
-  const isWorking = !!todayAttendance?.check_in && !todayAttendance?.check_out && approved;
+  // 승인 여부와 관계없이 출근 기록이 열려있으면 근무중
+  // 단, 반려된 경우는 제외
+  const isWorking = hasOpenAttendance && !isRejected;
 
-  const isDone = !!todayAttendance?.check_in && !!todayAttendance?.check_out && approved;
+  const isDone = !!todayAttendance?.check_in && !!todayAttendance?.check_out && isApproved;
 
   const handleCheckIn = async () => {
     if (!employee) return;

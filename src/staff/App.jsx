@@ -59,7 +59,7 @@ export default function StaffApp() {
         setLoading(true);
         setPinError("");
 
-        // localStorage 캐시 확인 (10분간 유효)
+        // localStorage 캐시 확인 (10분 유효)
         const cached = localStorage.getItem("staff_employees_cache");
         if (cached) {
           try {
@@ -81,7 +81,7 @@ export default function StaffApp() {
         setEmployees(Array.isArray(data) ? data : []);
 
         if (!Array.isArray(data) || data.length === 0) {
-          setPinError("직원 데이터가 비어 있습니다. 시트 employees를 확인해주세요.");
+          setPinError("직원 데이터를 불러오지 못했습니다. 시트 employees를 확인해주세요.");
         } else {
           // 성공 시 캐시 저장
           localStorage.setItem("staff_employees_cache", JSON.stringify({ data, ts: Date.now() }));
@@ -144,8 +144,38 @@ export default function StaffApp() {
         const data = await fetchStaffMonth(empId, getMonthKey());
         setRecords(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("이번 달 기록 fetch 실패:", err);
-        showToast("이번 달 기록을 불러오지 못했습니다.");
+        console.error("이달 기록 fetch 실패:", err);
+        showToast("이달 기록을 불러오지 못했습니다.");
+      }
+    },
+    [showToast],
+  );
+
+  const loadTodayAndMonth = useCallback(
+    async (empId) => {
+      if (!empId) return;
+
+      const [todayResult, monthResult] = await Promise.allSettled([
+        fetchStaffToday(empId),
+        fetchStaffMonth(empId, getMonthKey()),
+      ]);
+
+      if (todayResult.status === "fulfilled") {
+        const data = todayResult.value;
+        setTodayData({
+          schedule: Array.isArray(data?.schedule) ? data.schedule : [],
+          attendance: Array.isArray(data?.attendance) ? data.attendance : [],
+        });
+      } else {
+        console.error("오늘 데이터 fetch 실패:", todayResult.reason);
+        showToast("오늘 데이터를 불러오지 못했습니다.");
+      }
+
+      if (monthResult.status === "fulfilled") {
+        setRecords(Array.isArray(monthResult.value) ? monthResult.value : []);
+      } else {
+        console.error("이달 기록 fetch 실패:", monthResult.reason);
+        showToast("이달 기록을 불러오지 못했습니다.");
       }
     },
     [showToast],
@@ -187,8 +217,7 @@ export default function StaffApp() {
     setInputPin("");
     setWorkType(null);
 
-    await loadToday(found.employee_id);
-    // loadMonth는 로그인 시 부르지 않음 — 이달기록 탭 진입 시 lazy load
+    await loadTodayAndMonth(found.employee_id);
   };
 
   const handleLogout = useCallback(() => {
@@ -203,8 +232,6 @@ export default function StaffApp() {
   const todayAttendance = useMemo(() => {
     if (!employee) return null;
 
-    // 오늘 날짜 + 해당 직원의 attendance 전체 목록
-    // 1일 1레코드가 아닌 "1회 출근 = 1 attendance row" 구조 대응
     const myTodayAttendances = todayData.attendance
       .filter(
         (a) =>
@@ -212,16 +239,13 @@ export default function StaffApp() {
           safeStr(a.employee_id) === safeStr(employee.employee_id),
       )
       .sort((a, b) => {
-        // check_in 내림차순 — 가장 최근 출근이 앞으로
         const ta = String(a.check_in || "00:00");
         const tb = String(b.check_in || "00:00");
         return tb.localeCompare(ta);
       });
 
-    // 우선순위 1: 현재 진행중인 attendance (check_in O, check_out X)
     const active = myTodayAttendances.find((a) => a.check_in && !a.check_out);
 
-    // 우선순위 2: 없으면 가장 최근 attendance
     return active || myTodayAttendances[0] || null;
   }, [todayData, employee, today]);
 
@@ -256,12 +280,11 @@ export default function StaffApp() {
 
   const isPending = hasOpenAttendance && !isApproved && !isRejected;
 
-  // 승인 여부와 관계없이 출근 기록이 열려있으면 근무중
-  // 단, 반려된 경우는 제외
   const isWorking = hasOpenAttendance && !isRejected;
 
   const isDone = !!todayAttendance?.check_in && !!todayAttendance?.check_out && isApproved;
 
+  // ✅ 출근: 낙관적 업데이트 적용
   const handleCheckIn = async () => {
     if (!employee) return;
 
@@ -270,19 +293,44 @@ export default function StaffApp() {
       return;
     }
 
-    setActionLoading(true);
+    const checkInTime = nowTime();
 
+    // 즉시 화면 업데이트
+    const tempAttendance = {
+      attendance_id: "TEMP_" + Date.now(),
+      employee_id: employee.employee_id,
+      date: today,
+      part: workType,
+      check_in: checkInTime,
+      check_out: null,
+      approved: false,
+    };
+    setTodayData((prev) => ({
+      ...prev,
+      attendance: [...prev.attendance, tempAttendance],
+    }));
+
+    setActionLoading(true);
     try {
       await checkInStaff({
         employee,
         workType,
         date: today,
-        checkIn: nowTime(),
+        checkIn: checkInTime,
       });
-
-      showToast("출근 요청 완료");
-      await loadToday(employee.employee_id);
+      showToast("출근 완료");
+      // 백그라운드에서 실제 데이터를 가능한 한 빠르게 갱신
+      if (records.length > 0) {
+        await Promise.all([loadToday(employee.employee_id), loadMonth(employee.employee_id)]);
+      } else {
+        await loadToday(employee.employee_id);
+      }
     } catch (err) {
+      // 실패하면 롤백
+      setTodayData((prev) => ({
+        ...prev,
+        attendance: prev.attendance.filter((a) => a.attendance_id !== tempAttendance.attendance_id),
+      }));
       console.error("출근 실패:", err);
       showToast(err?.message || "출근 처리 실패");
     } finally {
@@ -290,6 +338,7 @@ export default function StaffApp() {
     }
   };
 
+  // ✅ 퇴근: 낙관적 업데이트 적용
   const handleCheckOut = async () => {
     if (!employee) return;
 
@@ -298,17 +347,37 @@ export default function StaffApp() {
       return;
     }
 
-    setActionLoading(true);
+    const checkOutTime = nowTime();
 
+    // 즉시 화면 업데이트
+    setTodayData((prev) => ({
+      ...prev,
+      attendance: prev.attendance.map((a) =>
+        a.attendance_id === todayAttendance.attendance_id ? { ...a, check_out: checkOutTime } : a,
+      ),
+    }));
+
+    setActionLoading(true);
     try {
       await checkOutStaff({
         attendanceId: todayAttendance.attendance_id,
-        checkOut: nowTime(),
+        checkOut: checkOutTime,
       });
-
       showToast("퇴근 완료");
-      await loadToday(employee.employee_id);
+      // 백그라운드에서 실제 데이터를 가능한 한 빠르게 갱신
+      if (records.length > 0) {
+        await Promise.all([loadToday(employee.employee_id), loadMonth(employee.employee_id)]);
+      } else {
+        await loadToday(employee.employee_id);
+      }
     } catch (err) {
+      // 실패하면 롤백
+      setTodayData((prev) => ({
+        ...prev,
+        attendance: prev.attendance.map((a) =>
+          a.attendance_id === todayAttendance.attendance_id ? { ...a, check_out: null } : a,
+        ),
+      }));
       console.error("퇴근 실패:", err);
       showToast(err?.message || "퇴근 처리 실패");
     } finally {
@@ -326,11 +395,10 @@ export default function StaffApp() {
       ),
       late: approvedRecords.filter((r) => r.status === "지각").length,
       early: approvedRecords.filter((r) => r.status === "조퇴").length,
-      overtime: approvedRecords.filter((r) => r.status === "연장").length,
+      overtime: approvedRecords.filter((r) => r.status === "초과").length,
     };
   }, [records]);
 
-  // 이달기록 탭 진입 시 1회만 로드 (이미 있으면 스킵)
   const handleViewRecords = useCallback(() => {
     if (records.length === 0 && employee) {
       loadMonth(employee.employee_id);

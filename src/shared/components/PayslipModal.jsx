@@ -15,24 +15,22 @@ export function PayslipModal({ emp, monthRange, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div className="payslip-header">
           <div>
             <div className="payslip-brand">DUNKIN' DONUTS</div>
             <div className="payslip-title">임금명세서</div>
           </div>
+
           <button className="close-btn" onClick={onClose}>
             ×
           </button>
         </div>
 
-        {/* Net pay banner */}
         <div className="payslip-net-banner">
           <span className="payslip-net-label">실수령액</span>
           <strong className="payslip-net-amount">{fmtKRW(netPay)}</strong>
         </div>
 
-        {/* Meta info */}
         <div className="payslip-info-grid">
           {[
             ["사업장명", "던킨도너츠"],
@@ -47,7 +45,6 @@ export function PayslipModal({ emp, monthRange, onClose }) {
           ))}
         </div>
 
-        {/* Payment breakdown */}
         <div className="payslip-section-title">지급내역</div>
         <div className="payslip-pay-grid">
           <PayItem
@@ -64,7 +61,6 @@ export function PayslipModal({ emp, monthRange, onClose }) {
           <PayItem label="지급합계" amount={totalPay} highlight />
         </div>
 
-        {/* Deductions */}
         <div className="payslip-section-title">공제내역</div>
         <div className="payslip-deduct-grid">
           {["소득세", "지방소득세", "국민연금", "건강보험", "고용보험"].map((label) => (
@@ -79,7 +75,6 @@ export function PayslipModal({ emp, monthRange, onClose }) {
           </div>
         </div>
 
-        {/* Work detail table */}
         <div className="payslip-section-title">근무 상세</div>
         <div className="payslip-table">
           <div className="payslip-row header">
@@ -89,6 +84,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
             <span>근무시간</span>
             <span>금액</span>
           </div>
+
           {emp.days.map((d, i) => {
             const dayKr = DAY_KR[new Date(d.date).getDay()];
             return (
@@ -108,7 +104,6 @@ export function PayslipModal({ emp, monthRange, onClose }) {
           })}
         </div>
 
-        {/* Summary */}
         <div className="payslip-summary">
           <div className="ps-row">
             <span>지급합계</span>
@@ -127,6 +122,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
         <div className="payslip-foot">
           위 금액을 {monthRange.label} 근무분 급여로 {monthRange.payDateLabel} 지급함을 확인합니다.
         </div>
+
         <button className="payslip-print-btn" onClick={() => window.print()}>
           🖨️ 인쇄하기
         </button>

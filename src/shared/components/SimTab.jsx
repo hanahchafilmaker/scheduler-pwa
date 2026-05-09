@@ -61,9 +61,9 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
           </span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="sim-emp-header-right">
           <div className="sim-emp-total">{fmtKRW(e.amount)}</div>
-          <span style={{ color: "#9ca3af", fontSize: 13 }}>{expanded ? "▲" : "▼"}</span>
+          <span className="sim-toggle">{expanded ? "▲" : "▼"}</span>
         </div>
       </div>
 
@@ -88,30 +88,9 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
           <strong>{e.nightHours.toFixed(1)}h</strong>
         </div>
 
-        <div
-          className="sim-detail-item"
-          style={{
-            background: "#111827",
-            borderRadius: 10,
-            padding: 10,
-            display: "flex",
-            flexDirection: "column",
-            gap: 4,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "#6b7280",
-              textTransform: "uppercase",
-            }}
-          >
-            합계
-          </span>
-          <strong style={{ fontSize: 15, fontWeight: 900, color: "#f97316" }}>
-            {fmtKRW(e.amount)}
-          </strong>
+        <div className="sim-detail-item sim-detail-total">
+          <span>합계</span>
+          <strong>{fmtKRW(e.amount)}</strong>
         </div>
       </div>
 

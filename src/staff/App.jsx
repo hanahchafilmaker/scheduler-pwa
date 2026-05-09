@@ -302,9 +302,8 @@ export default function StaffApp() {
         date: today,
         checkIn: checkInTime,
       });
-      showToast("출근 완료");
-      // 백그라운드에서 오늘 + 이달 기록 병렬 갱신
-      await Promise.all([loadToday(employee.employee_id), loadMonth(employee.employee_id)]);
+      // 성공 시 바로 PIN 화면으로 이동
+      handleLogout();
     } catch (err) {
       // 실패하면 롤백
       setTodayData((prev) => ({
@@ -343,9 +342,8 @@ export default function StaffApp() {
         attendanceId: todayAttendance.attendance_id,
         checkOut: checkOutTime,
       });
-      showToast("퇴근 완료");
-      // 백그라운드에서 오늘 + 이달 기록 병렬 갱신
-      await Promise.all([loadToday(employee.employee_id), loadMonth(employee.employee_id)]);
+      // 성공 시 바로 PIN 화면으로 이동
+      handleLogout();
     } catch (err) {
       // 실패하면 롤백
       setTodayData((prev) => ({

@@ -26,11 +26,9 @@ export default function StaffHome({
       ? "승인 대기"
       : isWorking
         ? "근무중"
-        : isDone
-          ? "퇴근 완료"
-          : isRejected
-            ? "출근 거절"
-            : "출근 전";
+        : isRejected
+          ? "출근 거절"
+          : "출근 전";
 
   const workTypeDisabled = isPending || isWorking || isDone;
 
@@ -101,8 +99,6 @@ export default function StaffHome({
                     퇴근하기
                   </button>
                 )}
-
-                {isDone && <div className="done">오늘 근무 완료</div>}
 
                 {isRejected && (
                   <div className="notice" style={{ marginTop: 8 }}>

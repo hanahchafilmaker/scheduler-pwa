@@ -6,12 +6,13 @@ export default function StaffHome({
   toast,
   todaySchedule,
   todayAttendance,
+  todayLoading, // ✅ 추가: 오늘 데이터 로딩 중 여부
   workType,
   setWorkType,
   isPending,
   isWorking,
   isDone,
-  isRejected,   // ✅ FIX: 거절 상태 prop 추가
+  isRejected,
   actionLoading,
   records,
   stats,
@@ -19,18 +20,18 @@ export default function StaffHome({
   onCheckOut,
   onLogout,
 }) {
-  // ✅ FIX: 상태 라벨에 거절 케이스 추가
-  const statusLabel = isPending
-    ? "승인 대기"
-    : isWorking
-    ? "근무중"
-    : isDone
-    ? "퇴근 완료"
-    : isRejected
-    ? "출근 반려"
-    : "출근 전";
+  const statusLabel = todayLoading
+    ? "확인 중..."
+    : isPending
+      ? "승인 대기"
+      : isWorking
+        ? "근무중"
+        : isDone
+          ? "퇴근 완료"
+          : isRejected
+            ? "출근 거절"
+            : "출근 전";
 
-  // ✅ FIX: 근무 타입 버튼 비활성화 조건 명확화 (거절된 경우 재선택 가능)
   const workTypeDisabled = isPending || isWorking || isDone;
 
   return (
@@ -55,11 +56,11 @@ export default function StaffHome({
 
           {todaySchedule ? (
             <p className="schedule-text">
-              배정: {WORK_TYPE_LABEL[todaySchedule.part] || todaySchedule.part} /{" "}
+              예정: {WORK_TYPE_LABEL[todaySchedule.part] || todaySchedule.part} /{" "}
               {todaySchedule.planned_start}~{todaySchedule.planned_end}
             </p>
           ) : (
-            <p className="muted">오늘 배정된 근무가 없습니다</p>
+            <p className="muted">오늘 예정된 근무가 없습니다</p>
           )}
 
           <div className="work-grid">
@@ -78,38 +79,37 @@ export default function StaffHome({
           <div className="status-box">{statusLabel}</div>
 
           <div className="action-area">
-            {/* ✅ FIX: 출근 전이거나 반려된 경우 출근 버튼 표시 */}
-            {(!todayAttendance || isRejected) && (
-              <button
-                className="primary-btn"
-                onClick={onCheckIn}
-                disabled={actionLoading}
-              >
-                출근하기
-              </button>
-            )}
+            {/* ✅ 로딩 중일 때 스피너 표시 */}
+            {todayLoading ? (
+              <div className="notice">근무 상태 확인 중...</div>
+            ) : (
+              <>
+                {(!todayAttendance || isRejected) && (
+                  <button className="primary-btn" onClick={onCheckIn} disabled={actionLoading}>
+                    출근하기
+                  </button>
+                )}
 
-            {isPending && (
-              <div className="notice">관리자 승인 대기 중입니다.</div>
-            )}
+                {isPending && <div className="notice">관리자 승인 대기 중입니다.</div>}
 
-            {isWorking && (
-              <button
-                className="primary-btn dark"
-                onClick={onCheckOut}
-                disabled={actionLoading}
-              >
-                퇴근하기
-              </button>
-            )}
+                {isWorking && (
+                  <button
+                    className="primary-btn dark"
+                    onClick={onCheckOut}
+                    disabled={actionLoading}
+                  >
+                    퇴근하기
+                  </button>
+                )}
 
-            {isDone && <div className="done">오늘 근무 완료</div>}
+                {isDone && <div className="done">오늘 근무 완료</div>}
 
-            {/* ✅ FIX: 반려 시 안내 메시지 */}
-            {isRejected && (
-              <div className="notice" style={{ marginTop: 8 }}>
-                출근이 반려되었습니다. 다시 출근해주세요.
-              </div>
+                {isRejected && (
+                  <div className="notice" style={{ marginTop: 8 }}>
+                    출근이 거절되었습니다. 다시 출근해주세요.
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -117,10 +117,7 @@ export default function StaffHome({
             <div className="today-record">
               <span>출근 {formatTime(todayAttendance.check_in)}</span>
               <span>
-                퇴근{" "}
-                {todayAttendance.check_out
-                  ? formatTime(todayAttendance.check_out)
-                  : "-"}
+                퇴근 {todayAttendance.check_out ? formatTime(todayAttendance.check_out) : "-"}
               </span>
             </div>
           )}
@@ -143,12 +140,11 @@ export default function StaffHome({
               <strong>{stats.early}</strong>
             </div>
             <div>
-              <span>연장</span>
+              <span>초과</span>
               <strong>{stats.overtime}</strong>
             </div>
           </div>
 
-          {/* ✅ FIX: 기록 없을 때 빈 리스트 대신 안내 메시지 */}
           {records.length === 0 ? (
             <p className="muted" style={{ marginTop: 16 }}>
               이달 근무 기록이 없습니다
@@ -160,8 +156,7 @@ export default function StaffHome({
                   <span>{normalizeDate(r.date)}</span>
                   <span>{WORK_TYPE_LABEL[r.part] || r.part}</span>
                   <span>
-                    {formatTime(r.check_in)} ~{" "}
-                    {r.check_out ? formatTime(r.check_out) : "근무중"}
+                    {formatTime(r.check_in)} ~ {r.check_out ? formatTime(r.check_out) : "근무중"}
                   </span>
                 </li>
               ))}

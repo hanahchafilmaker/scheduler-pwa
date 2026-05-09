@@ -34,6 +34,7 @@ export default function StaffApp() {
 
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [todayLoading, setTodayLoading] = useState(false); // ✅ 추가
   const [toast, setToast] = useState("");
 
   const toastTimerRef = useRef(null);
@@ -121,6 +122,7 @@ export default function StaffApp() {
     async (empId) => {
       if (!empId) return;
 
+      setTodayLoading(true); // ✅ 로딩 시작
       try {
         const data = await fetchStaffToday(empId);
 
@@ -131,6 +133,8 @@ export default function StaffApp() {
       } catch (err) {
         console.error("오늘 데이터 fetch 실패:", err);
         showToast("오늘 데이터를 불러오지 못했습니다.");
+      } finally {
+        setTodayLoading(false); // ✅ 로딩 끝
       }
     },
     [showToast],
@@ -151,34 +155,13 @@ export default function StaffApp() {
     [showToast],
   );
 
+  // ✅ 로그인 시 오늘 데이터 + 이달 기록을 병렬로 fetch
   const loadTodayAndMonth = useCallback(
     async (empId) => {
       if (!empId) return;
-
-      const [todayResult, monthResult] = await Promise.allSettled([
-        fetchStaffToday(empId),
-        fetchStaffMonth(empId, getMonthKey()),
-      ]);
-
-      if (todayResult.status === "fulfilled") {
-        const data = todayResult.value;
-        setTodayData({
-          schedule: Array.isArray(data?.schedule) ? data.schedule : [],
-          attendance: Array.isArray(data?.attendance) ? data.attendance : [],
-        });
-      } else {
-        console.error("오늘 데이터 fetch 실패:", todayResult.reason);
-        showToast("오늘 데이터를 불러오지 못했습니다.");
-      }
-
-      if (monthResult.status === "fulfilled") {
-        setRecords(Array.isArray(monthResult.value) ? monthResult.value : []);
-      } else {
-        console.error("이달 기록 fetch 실패:", monthResult.reason);
-        showToast("이달 기록을 불러오지 못했습니다.");
-      }
+      await Promise.all([loadToday(empId), loadMonth(empId)]);
     },
-    [showToast],
+    [loadToday, loadMonth],
   );
 
   const handleLogin = async () => {
@@ -217,7 +200,8 @@ export default function StaffApp() {
     setInputPin("");
     setWorkType(null);
 
-    await loadTodayAndMonth(found.employee_id);
+    // ✅ 홈 화면 즉시 표시 후 오늘 데이터 + 이달 기록 병렬 로딩
+    loadTodayAndMonth(found.employee_id);
   };
 
   const handleLogout = useCallback(() => {
@@ -319,12 +303,8 @@ export default function StaffApp() {
         checkIn: checkInTime,
       });
       showToast("출근 완료");
-      // 백그라운드에서 실제 데이터를 가능한 한 빠르게 갱신
-      if (records.length > 0) {
-        await Promise.all([loadToday(employee.employee_id), loadMonth(employee.employee_id)]);
-      } else {
-        await loadToday(employee.employee_id);
-      }
+      // 백그라운드에서 오늘 + 이달 기록 병렬 갱신
+      await Promise.all([loadToday(employee.employee_id), loadMonth(employee.employee_id)]);
     } catch (err) {
       // 실패하면 롤백
       setTodayData((prev) => ({
@@ -364,12 +344,8 @@ export default function StaffApp() {
         checkOut: checkOutTime,
       });
       showToast("퇴근 완료");
-      // 백그라운드에서 실제 데이터를 가능한 한 빠르게 갱신
-      if (records.length > 0) {
-        await Promise.all([loadToday(employee.employee_id), loadMonth(employee.employee_id)]);
-      } else {
-        await loadToday(employee.employee_id);
-      }
+      // 백그라운드에서 오늘 + 이달 기록 병렬 갱신
+      await Promise.all([loadToday(employee.employee_id), loadMonth(employee.employee_id)]);
     } catch (err) {
       // 실패하면 롤백
       setTodayData((prev) => ({
@@ -399,6 +375,7 @@ export default function StaffApp() {
     };
   }, [records]);
 
+  // 로그인 시 이미 월별 기록을 선 fetch하므로 대부분 즉시 표시됨
   const handleViewRecords = useCallback(() => {
     if (records.length === 0 && employee) {
       loadMonth(employee.employee_id);
@@ -423,6 +400,7 @@ export default function StaffApp() {
       toast={toast}
       todaySchedule={todaySchedule}
       todayAttendance={todayAttendance}
+      todayLoading={todayLoading}
       workType={workType}
       setWorkType={setWorkType}
       isPending={isPending}

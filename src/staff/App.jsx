@@ -93,21 +93,35 @@ export default function StaffApp() {
     setToast("로그아웃되었습니다");
   };
 
+  const normalizePart = (part) =>
+    String(part || "")
+      .trim()
+      .toLowerCase();
+
+  const isSubstitutePart = (part) => {
+    const value = normalizePart(part);
+    return value === "substitute" || value === "대타";
+  };
+
   const handleCheckIn = async (payload) => {
     try {
       setPinError("");
 
+      const selectedPart = payload?.part || "";
+      const isSubstitute = isSubstitutePart(selectedPart);
+
       await checkIn({
         employee_id: currentEmployeeFull?.employee_id,
         name: currentEmployeeFull?.name,
-        part: payload?.part || "",
+        part: selectedPart,
+        is_substitute: isSubstitute,
       });
 
-      // 출근 요청이 정상 접수되면
-      // 승인 완료 / 승인 대기 여부와 관계없이 바로 로그아웃
+      // 일반 출근 / 승인대기 대타 출근 모두
+      // 접수만 정상 처리되면 바로 로그아웃
       handleLogout();
     } catch (err) {
-      setPinError(err.message || "출근 처리에 실패했습니다.");
+      setPinError(err?.message || "출근 처리에 실패했습니다.");
     }
   };
 
@@ -123,7 +137,7 @@ export default function StaffApp() {
 
       setToast("퇴근 처리되었습니다");
     } catch (err) {
-      setPinError(err.message || "퇴근 처리에 실패했습니다.");
+      setPinError(err?.message || "퇴근 처리에 실패했습니다.");
     }
   };
 

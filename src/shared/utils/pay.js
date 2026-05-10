@@ -157,11 +157,16 @@ export function calcPayrollExtraMinutes(plannedStart, plannedEnd, actualCheckIn,
  * - 기본급 = (기본 근무시간 / 60) × 시급
  * - 추가 수당 = (추가시간 / 60) × 시급
  * - 총 지급액 = 기본급 + 추가 수당
+ *
+ * attendance 원본(check_in / check_out)은 절대 수정하지 않음.
+ * payroll 계산은 파생값만 반환.
  */
 export function calcRowPayWithSeparation(row, hourlyWage) {
   if (!row || !isPaySettledRow(row)) {
     return {
       payrollBaseMin: 0,
+      payrollExtraEarlyMin: 0,
+      payrollExtraLateMin: 0,
       payrollExtraMin: 0,
       payrollBasePay: 0,
       payrollExtraPay: 0,
@@ -171,13 +176,14 @@ export function calcRowPayWithSeparation(row, hourlyWage) {
 
   const wage = Number(hourlyWage ?? row.hourly_wage ?? 0) || 0;
 
-  // 기본 근무시간: 파트 예정시간 기준
+  // 기본 근무시간: 파트 예정시간(planned_start ~ planned_end) 기준
   const payrollBaseMin = calcPayrollBaseMinutes(row.planned_start, row.planned_end);
 
-  // 추가시간: 조기출근 + 마감 추가시간
-  const extraEarlyMin = calcPayrollExtraEarlyMinutes(row.planned_start, row.check_in);
-  const extraLateMin = calcPayrollExtraLateMinutes(row.planned_end, row.check_out);
-  const payrollExtraMin = extraEarlyMin + extraLateMin;
+  // 추가시간: 조기출근(early) + 마감 후 추가(late)
+  // attendance 원본 check_in / check_out 을 읽기만 함 (수정 금지)
+  const payrollExtraEarlyMin = calcPayrollExtraEarlyMinutes(row.planned_start, row.check_in);
+  const payrollExtraLateMin = calcPayrollExtraLateMinutes(row.planned_end, row.check_out);
+  const payrollExtraMin = payrollExtraEarlyMin + payrollExtraLateMin;
 
   // 금액 계산
   const payrollBasePay = Math.round((payrollBaseMin / 60) * wage);
@@ -186,6 +192,8 @@ export function calcRowPayWithSeparation(row, hourlyWage) {
 
   return {
     payrollBaseMin,
+    payrollExtraEarlyMin,
+    payrollExtraLateMin,
     payrollExtraMin,
     payrollBasePay,
     payrollExtraPay,

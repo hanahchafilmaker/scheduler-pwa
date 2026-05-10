@@ -54,10 +54,17 @@ function buildSettlement({ attendance = [], employees = [], month }) {
   const empMap = new Map(employees.map((e) => [safeStr(e.employee_id), e]));
   const rowsMap = new Map();
 
+  // payroll 계산 기준: planned_start/end (파트 예정시간) + 실제 check_in/check_out
+  // paid_check_in/out 은 payroll 기준으로 사용하지 않음
   const doneRows = attendance.filter((a) => {
     const d = String(a.date || "");
     return (
-      d.startsWith(month) && a.paid_check_in && a.paid_check_out && a.approval_status !== "pending"
+      d.startsWith(month) &&
+      a.planned_start &&
+      a.planned_end &&
+      a.check_in &&
+      a.check_out &&
+      a.approval_status !== "pending"
     );
   });
 

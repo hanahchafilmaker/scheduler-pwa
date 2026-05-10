@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 
 const GAS_URL =
-  "https://script.google.com/macros/s/AKfycbw0OSAqde-nvrqNy5LGjvQ4X1REH5FxsUeL0goAl09-EVnQS_mwYfV5BKdeNZYv_HkMTw/exec";
+  "https://script.google.com/macros/s/AKfycbwNHGgNJ6gZSOrk4G976oJet0kyKOxuKbPIhctxsAx9yqHw49cmhgkaphFIb_peLdAqFw/exec";
 
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, options);

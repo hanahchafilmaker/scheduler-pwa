@@ -71,10 +71,8 @@ export function PayslipModal({ emp, monthRange, onClose }) {
 
           {emp.days.map((d, i) => {
             const dayKr = DAY_KR[new Date(d.date).getDay()];
-            // 일자별 기본급 배분
-            const dayBasePay = Math.round(
-              (d.payrollBaseMin / emp.days.reduce((s, day) => s + day.payrollBaseMin, 0)) * basePay,
-            );
+            // 일자별 기본급: 각 day의 payrollBasePay 직접 사용
+            const dayBasePay = Math.round(d.payrollBasePay || 0);
             const dayExtraPay = Math.round(d.payrollExtraPay || 0);
             return (
               <div key={i} className="payslip-row">

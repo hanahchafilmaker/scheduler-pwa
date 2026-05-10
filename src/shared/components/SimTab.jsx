@@ -18,13 +18,9 @@ function DayTable({ days, basePay, extraPay, totalPay }) {
 
       {days.map((d, i) => {
         const dayKr = DAY_KR[new Date(d.date).getDay()];
-        const dayBasePay =
-          Math.round(
-            (d.payrollBaseMin / 60) *
-              (basePay / days.reduce((s, day) => s + day.payrollBaseMin, 0)) *
-              100,
-          ) / 100 || 0;
-        const dayExtraPay = d.payrollExtraPay || 0;
+        // 일자별 기본급: 각 day의 payrollBasePay 직접 사용
+        const dayBasePay = Math.round(d.payrollBasePay || 0);
+        const dayExtraPay = Math.round(d.payrollExtraPay || 0);
         return (
           <div key={i} className="sim-days-row sim-days-row-5">
             <span>

@@ -52,7 +52,10 @@ function toMin(t) {
 function getTodaySchedule(scheduleList, attendanceRow) {
   if (!scheduleList.length) return null;
 
-  if (attendanceRow?.part) {
+  // 중요: 이미 퇴근했으면 (check_out이 있으면) attendance row의 part를 참고하지 않음
+  // → 다음 파트로 새로 출근하는 경우를 처리하기 위함
+  if (attendanceRow?.part && attendanceRow?.check_in && !attendanceRow?.check_out) {
+    // 현재 근무 중인 경우만 attendance row의 part를 참고
     const matched = scheduleList.find(
       (row) => String(row.part || "") === String(attendanceRow.part || ""),
     );

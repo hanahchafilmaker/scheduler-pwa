@@ -2,12 +2,12 @@
 // UTF-8 — 한글 깨짐 주의
 //
 // 정산 원칙:
-// 1) attendance 기준만 사용
-// 2) schedule 기반 예상 정산 사용 금지
-// 3) paid_check_in / paid_check_out 기준으로 계산
-// 4) approval_status === "pending" 인 건은 미확정으로 간주
-// 5) 비정상 역전 시간(end < start)은 자정 넘김으로 보지 않고 0분 처리
-//    → 잘못된 paid 시간 때문에 급여/야간수당이 폭증하는 문제 방지
+// 1) attendance 원본(check_in/check_out, planned_start/planned_end)은 수정하지 않음
+// 2) payroll 계산은 파생값으로만 처리
+// 3) 기본 근무시간 = planned_start ~ planned_end
+// 4) 추가 수당 = 조기출근 + 마감 후 추가시간
+// 5) approval_status === "pending" 인 건은 미확정으로 간주
+// 6) 비정상 역전 시간(end < start)은 자정 넘김으로 보지 않고 0분 처리
 
 function toParsedMin(t) {
   const m = String(t || "").match(/(\d+):(\d+)/);
@@ -37,6 +37,7 @@ export function diffMinutes(start, end) {
 }
 
 // 지급 기준 시간(paid_check_in / paid_check_out)으로 근무시간 계산
+// 구 로직 호환용
 export function calcWorkMinutes(paidCheckIn, paidCheckOut, breakMin = 0) {
   if (!paidCheckIn || !paidCheckOut) return 0;
 
@@ -52,8 +53,7 @@ export function calcActualWorkMinutes(checkIn, checkOut, breakMin = 0) {
   return Math.max(0, total - Math.max(0, Number(breakMin) || 0));
 }
 
-// 야간시간 계산: 22:00 ~ 익일 05:00
-// 현재 시스템은 역전 시간을 비정상으로 보고 0 처리
+// 구 로직 호환용 야간 계산
 export function calcNightMinutes(paidCheckIn, paidCheckOut, breakMin = 0) {
   if (!paidCheckIn || !paidCheckOut) return 0;
 
@@ -66,8 +66,6 @@ export function calcNightMinutes(paidCheckIn, paidCheckOut, breakMin = 0) {
   const total = end - start;
   if (total <= 0) return 0;
 
-  // 같은 날짜 내 22:00~24:00만 우선 계산
-  // 실제 야간(익일 00~05시)을 지원하려면 GAS 쪽에서 정상적인 날짜 포함 구조가 필요
   const nightStart = 22 * 60;
   const nightEnd = 24 * 60;
 
@@ -100,11 +98,9 @@ export function isPaySettledRow(row) {
 }
 
 /* ================= 신규: 기본 근무시간 기준 임금 계산 ================= */
-// 임금명세서용: 파트 예정시간 기준으로 기본 근무시간 계산
 
 /**
- * 기본 근무시간 (분): 파트 예정시간 기준
- * planned_start ~ planned_end 시간
+ * 기본 근무시간 (분): planned_start ~ planned_end
  */
 export function calcPayrollBaseMinutes(plannedStart, plannedEnd) {
   return diffMinutes(plannedStart, plannedEnd);
@@ -112,7 +108,6 @@ export function calcPayrollBaseMinutes(plannedStart, plannedEnd) {
 
 /**
  * 추가 조기출근 시간 (분)
- * actual check_in이 planned_start보다 빠른 경우만 계산
  */
 export function calcPayrollExtraEarlyMinutes(plannedStart, actualCheckIn) {
   if (!plannedStart || !actualCheckIn) return 0;
@@ -126,7 +121,6 @@ export function calcPayrollExtraEarlyMinutes(plannedStart, actualCheckIn) {
 
 /**
  * 추가 마감시간 (분)
- * actual check_out이 planned_end보다 늦은 경우만 계산
  */
 export function calcPayrollExtraLateMinutes(plannedEnd, actualCheckOut) {
   if (!plannedEnd || !actualCheckOut) return 0;
@@ -140,7 +134,6 @@ export function calcPayrollExtraLateMinutes(plannedEnd, actualCheckOut) {
 
 /**
  * 추가시간 총합 (분)
- * 조기출근 + 마감 추가시간
  */
 export function calcPayrollExtraMinutes(plannedStart, plannedEnd, actualCheckIn, actualCheckOut) {
   const earlyMin = calcPayrollExtraEarlyMinutes(plannedStart, actualCheckIn);
@@ -150,16 +143,6 @@ export function calcPayrollExtraMinutes(plannedStart, plannedEnd, actualCheckIn,
 
 /**
  * 개별 row 급여 계산 (파트 기본시간 기준)
- *
- * 계산 방식:
- * - 기본 근무시간 = planned_start ~ planned_end (파트 기본시간)
- * - 추가시간 = 조기출근 + 마감 추가시간
- * - 기본급 = (기본 근무시간 / 60) × 시급
- * - 추가 수당 = (추가시간 / 60) × 시급
- * - 총 지급액 = 기본급 + 추가 수당
- *
- * attendance 원본(check_in / check_out)은 절대 수정하지 않음.
- * payroll 계산은 파생값만 반환.
  */
 export function calcRowPayWithSeparation(row, hourlyWage) {
   if (!row || !isPaySettledRow(row)) {
@@ -170,25 +153,20 @@ export function calcRowPayWithSeparation(row, hourlyWage) {
       payrollExtraMin: 0,
       payrollBasePay: 0,
       payrollExtraPay: 0,
-      payrollTotal: 0,
+      payrollTotalPay: 0,
     };
   }
 
   const wage = Number(hourlyWage ?? row.hourly_wage ?? 0) || 0;
 
-  // 기본 근무시간: 파트 예정시간(planned_start ~ planned_end) 기준
   const payrollBaseMin = calcPayrollBaseMinutes(row.planned_start, row.planned_end);
-
-  // 추가시간: 조기출근(early) + 마감 후 추가(late)
-  // attendance 원본 check_in / check_out 을 읽기만 함 (수정 금지)
   const payrollExtraEarlyMin = calcPayrollExtraEarlyMinutes(row.planned_start, row.check_in);
   const payrollExtraLateMin = calcPayrollExtraLateMinutes(row.planned_end, row.check_out);
   const payrollExtraMin = payrollExtraEarlyMin + payrollExtraLateMin;
 
-  // 금액 계산
   const payrollBasePay = Math.round((payrollBaseMin / 60) * wage);
   const payrollExtraPay = Math.round((payrollExtraMin / 60) * wage);
-  const payrollTotal = payrollBasePay + payrollExtraPay;
+  const payrollTotalPay = payrollBasePay + payrollExtraPay;
 
   return {
     payrollBaseMin,
@@ -197,11 +175,11 @@ export function calcRowPayWithSeparation(row, hourlyWage) {
     payrollExtraMin,
     payrollBasePay,
     payrollExtraPay,
-    payrollTotal,
+    payrollTotalPay,
   };
 }
 
-// 개별 row 급여 계산
+// 구 로직 호환용
 export function calcRowPay(row, hourlyWage) {
   if (!row || !isPaySettledRow(row)) return 0;
 
@@ -212,7 +190,7 @@ export function calcRowPay(row, hourlyWage) {
   return Math.round((workMin / 60) * wage + (nightMin / 60) * wage * 0.5);
 }
 
-// 이전 코드 호환용
+// 구 로직 호환용
 export function calcPay(paidCheckIn, paidCheckOut, breakMin, hourlyWage) {
   const wage = Number(hourlyWage) || 0;
   const workMin = calcWorkMinutes(paidCheckIn, paidCheckOut, breakMin);
@@ -221,33 +199,51 @@ export function calcPay(paidCheckIn, paidCheckOut, breakMin, hourlyWage) {
   return Math.round((workMin / 60) * wage + (nightMin / 60) * wage * 0.5);
 }
 
-// 월별 합산
+// 월별 합산 — 새 payroll 기준
 export function calcMonthSummary(rows = [], employeeMap = {}) {
-  const settledRows = rows.filter(isPaySettledRow);
-
-  const totalWorkMin = settledRows.reduce(
-    (sum, row) => sum + calcWorkMinutes(row.paid_check_in, row.paid_check_out, row.break_min),
-    0,
+  const settledRows = rows.filter(
+    (row) =>
+      isPaySettledRow(row) &&
+      row?.planned_start &&
+      row?.planned_end &&
+      row?.check_in &&
+      row?.check_out,
   );
 
-  const totalNightMin = settledRows.reduce(
-    (sum, row) => sum + calcNightMinutes(row.paid_check_in, row.paid_check_out, row.break_min),
-    0,
-  );
+  const totalPayrollBaseMin = settledRows.reduce((sum, row) => {
+    return sum + calcPayrollBaseMinutes(row.planned_start, row.planned_end);
+  }, 0);
 
-  const totalPay = settledRows.reduce((sum, row) => {
+  const totalPayrollExtraMin = settledRows.reduce((sum, row) => {
+    return (
+      sum + calcPayrollExtraMinutes(row.planned_start, row.planned_end, row.check_in, row.check_out)
+    );
+  }, 0);
+
+  const totalPayrollBasePay = settledRows.reduce((sum, row) => {
     const wage =
       Number(employeeMap?.[String(row.employee_id)]?.hourly_wage ?? row.hourly_wage ?? 0) || 0;
 
-    return sum + calcRowPay(row, wage);
+    const payroll = calcRowPayWithSeparation(row, wage);
+    return sum + payroll.payrollBasePay;
+  }, 0);
+
+  const totalPayrollExtraPay = settledRows.reduce((sum, row) => {
+    const wage =
+      Number(employeeMap?.[String(row.employee_id)]?.hourly_wage ?? row.hourly_wage ?? 0) || 0;
+
+    const payroll = calcRowPayWithSeparation(row, wage);
+    return sum + payroll.payrollExtraPay;
   }, 0);
 
   return {
     totalRows: rows.length,
     settledRows: settledRows.length,
     pendingRows: rows.filter((row) => row.approval_status === "pending").length,
-    totalWorkMin,
-    totalNightMin,
-    totalPay,
+    totalPayrollBaseMin,
+    totalPayrollExtraMin,
+    totalPayrollBasePay,
+    totalPayrollExtraPay,
+    totalPayrollPay: totalPayrollBasePay + totalPayrollExtraPay,
   };
 }

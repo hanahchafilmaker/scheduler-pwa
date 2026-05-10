@@ -98,6 +98,8 @@ function buildSettlement({ attendance = [], employees = [], month }) {
       // payroll 계산값
       payrollBaseMin: payrollData.payrollBaseMin,
       payrollExtraMin: payrollData.payrollExtraMin,
+      payrollExtraEarlyMin: payrollData.payrollExtraEarlyMin, // 추가: 조기출근분
+      payrollExtraLateMin: payrollData.payrollExtraLateMin, // 추가: 마감 후 추가분
       payrollBasePay: payrollData.payrollBasePay,
       payrollExtraPay: payrollData.payrollExtraPay,
       payrollTotal: payrollData.payrollTotal,

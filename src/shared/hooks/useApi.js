@@ -1,7 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 
 const GAS_URL =
-  "https://script.google.com/macros/s/AKfycby1Mcb8NS4adpRxO_btO8e5vFhBy97fAozZOanxHGQdQD75FgFTAmblCGgZhvyn0bRk6A/exec";
+  "https://script.google.com/macros/s/AKfycbw0OSAqde-nvrqNy5LGjvQ4X1REH5FxsUeL0goAl09-EVnQS_mwYfV5BKdeNZYv_HkMTw/exec";
 
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, options);
@@ -40,6 +40,10 @@ async function postAction(payload) {
   });
 }
 
+function normalizeDateOnly(value) {
+  return String(value || "").slice(0, 10);
+}
+
 function normalizeEmployee(row) {
   return {
     employee_id: row?.employee_id || "",
@@ -56,7 +60,7 @@ function normalizeSchedule(row) {
     schedule_id: row?.schedule_id || "",
     name: row?.name || "",
     employee_id: row?.employee_id || "",
-    date: row?.date || "",
+    date: normalizeDateOnly(row?.date),
     part: row?.part || "",
     planned_start: row?.planned_start || "",
     planned_end: row?.planned_end || "",
@@ -68,7 +72,7 @@ function normalizeAttendance(row) {
     attendance_id: row?.attendance_id || "",
     schedule_id: row?.schedule_id || "",
     employee_id: row?.employee_id || "",
-    date: row?.date || "",
+    date: normalizeDateOnly(row?.date),
     name: row?.name || "",
     part: row?.part || "",
 
@@ -91,6 +95,7 @@ function normalizeAttendance(row) {
     early_arrival_paid_min: Number(row?.early_arrival_paid_min || 0),
     late_min: Number(row?.late_min || 0),
     late_deduct_min: Number(row?.late_deduct_min || 0),
+    early_leave_min: Number(row?.early_leave_min || 0),
     extra_work_min: Number(row?.extra_work_min || 0),
     extension_min: Number(row?.extension_min || 0),
     break_min: Number(row?.break_min || 0),
@@ -128,6 +133,10 @@ function getCurrentMonthStr() {
   return `${y}-${m}`;
 }
 
+function filterRowsByMonth(rows, month) {
+  return rows.filter((row) => String(row?.date || "").slice(0, 7) === month);
+}
+
 export function getApprovalReasonLabel(reason) {
   switch (reason) {
     case "late_check_in":
@@ -138,6 +147,8 @@ export function getApprovalReasonLabel(reason) {
       return "추가근무 승인 요청";
     case "next_part_late_extension":
       return "다음 파트 지각 연장 요청";
+    case "next_part_no_show_extension":
+      return "다음 파트 미출근 연장 요청";
     case "out_of_schedule":
       return "스케줄 외 출근";
     default:
@@ -170,7 +181,12 @@ export function diffMinutes(start, end) {
     return 0;
   }
 
-  return eh * 60 + em - (sh * 60 + sm);
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+
+  if (endMin < startMin) return 0;
+
+  return endMin - startMin;
 }
 
 export function getPaidWorkMinutes(row) {
@@ -222,10 +238,20 @@ export default function useApi(options = {}) {
     try {
       const data = await getAction("all", { month });
 
+      const normalizedSchedule = filterRowsByMonth(
+        (data?.schedule || []).map(normalizeSchedule),
+        month,
+      );
+
+      const normalizedAttendance = filterRowsByMonth(
+        (data?.attendance || []).map(normalizeAttendance),
+        month,
+      );
+
       setEmployees((data?.employees || []).map(normalizeEmployee));
       setTemplateSchedule((data?.template_schedule || []).map(normalizeTemplateRow));
-      setSchedule((data?.schedule || []).map(normalizeSchedule));
-      setMonthAttendance((data?.attendance || []).map(normalizeAttendance));
+      setSchedule(normalizedSchedule);
+      setMonthAttendance(normalizedAttendance);
     } catch (err) {
       setError(err.message || "데이터를 불러오지 못했습니다.");
       throw err;
@@ -286,7 +312,9 @@ export default function useApi(options = {}) {
         month,
       });
 
-      setMonthAttendance((data?.attendance || []).map(normalizeAttendance));
+      setMonthAttendance(
+        filterRowsByMonth((data?.attendance || []).map(normalizeAttendance), month),
+      );
     } catch (err) {
       setError(err.message || "직원 월 데이터를 불러오지 못했습니다.");
       throw err;
@@ -542,7 +570,12 @@ export default function useApi(options = {}) {
   );
 
   const extensionPending = useMemo(
-    () => mergedTodayAttendance.filter((row) => row.approval_reason === "next_part_late_extension"),
+    () =>
+      mergedTodayAttendance.filter(
+        (row) =>
+          row.approval_reason === "next_part_late_extension" ||
+          row.approval_reason === "next_part_no_show_extension",
+      ),
     [mergedTodayAttendance],
   );
 

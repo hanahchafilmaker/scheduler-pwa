@@ -5,18 +5,18 @@
 /* ================= 근무 타입 ================= */
 
 export const WORK_TYPE = {
-  OPEN:     "open",
-  MIDDLE:   "middle",
-  CLOSE:    "close",
-  EXTRA:    "extra",
+  OPEN: "open",
+  MIDDLE: "middle",
+  CLOSE: "close",
+  EXTRA: "extra",
   OVERTIME: "overtime",
 };
 
 export const WORK_TYPE_LABEL = {
-  open:     "오픈",
-  middle:   "미들",
-  close:    "마감",
-  extra:    "대타",
+  open: "오픈",
+  middle: "미들",
+  close: "마감",
+  extra: "대타",
   overtime: "시간외",
 };
 
@@ -25,11 +25,11 @@ export const WORK_TYPE_LABEL = {
 export const PARTS = ["open", "middle", "close"];
 
 export const PART_LABEL = {
-  open:   "오픈",
+  open: "오픈",
   middle: "미들",
-  close:  "마감",
-  extra:  "대타",
-  대타:   "대타",
+  close: "마감",
+  extra: "대타",
+  대타: "대타",
 };
 
 export const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
@@ -39,71 +39,71 @@ export const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
 // schedule.planned_start / planned_end 와 별개로 part 기반 기준값
 
 export const SHIFT_TIME = {
-  open:   { start: "07:00", end: "11:00", hours: 4 },
+  open: { start: "07:00", end: "11:30", hours: 4.5 },
   middle: { start: "11:30", end: "18:00", hours: 6.5 },
-  close:  { start: "18:00", end: "22:00", hours: 4 },
+  close: { start: "18:00", end: "22:00", hours: 4 },
 };
 
 /* ================= 상태 색상 ================= */
 
 export const STATUS_COLOR = {
-  예정:     "#374151",
-  근무중:   "#059669",
-  정상:     "#2563eb",
-  지각:     "#dc2626",
-  조퇴:     "#d97706",
-  연장:     "#7c3aed",
+  예정: "#374151",
+  근무중: "#059669",
+  정상: "#2563eb",
+  지각: "#dc2626",
+  조퇴: "#d97706",
+  연장: "#7c3aed",
   퇴근누락: "#dc2626",
-  대타:     "#7c3aed",
+  대타: "#7c3aed",
 };
 
 export const STATUS_BG = {
-  예정:     "#f9fafb",
-  근무중:   "#ecfdf5",
-  정상:     "#eff6ff",
-  지각:     "#fef2f2",
-  조퇴:     "#fffbeb",
-  연장:     "#f5f3ff",
+  예정: "#f9fafb",
+  근무중: "#ecfdf5",
+  정상: "#eff6ff",
+  지각: "#fef2f2",
+  조퇴: "#fffbeb",
+  연장: "#f5f3ff",
   퇴근누락: "#fef2f2",
-  대타:     "#f5f3ff",
+  대타: "#f5f3ff",
 };
 
 /* ================= 네비 ================= */
 
 export const NAV_ITEMS = [
-  { id: "today", label: "오늘 현황",   icon: "🏪" },
-  { id: "att",   label: "출퇴근 기록", icon: "⏱️" },
+  { id: "today", label: "오늘 현황", icon: "🏪" },
+  { id: "att", label: "출퇴근 기록", icon: "⏱️" },
   { id: "shift", label: "스케줄 조회", icon: "📅" },
-  { id: "sim",   label: "급여 정산",   icon: "💴" },
+  { id: "sim", label: "급여 정산", icon: "💴" },
 ];
 
 /* ================= 페이지 타이틀 ================= */
 
 export function getPageTitle(tab) {
   return {
-    today: { title: "오늘 현황",   sub: "오늘 매장 운영 상황 한눈에 보기" },
-    att:   { title: "출퇴근 기록", sub: "실제 근무 기록 확인 및 승인" },
+    today: { title: "오늘 현황", sub: "오늘 매장 운영 상황 한눈에 보기" },
+    att: { title: "출퇴근 기록", sub: "실제 근무 기록 확인 및 승인" },
     shift: { title: "스케줄 조회", sub: "Google Sheets 기준 원본 스케줄 확인" },
-    sim:   { title: "급여 정산",   sub: "실제 출퇴근 기준 인건비 계산" },
+    sim: { title: "급여 정산", sub: "실제 출퇴근 기준 인건비 계산" },
   }[tab];
 }
 
 /* ================= 직원 폼 기본값 ================= */
 
 export const EMPTY_EMP_FORM = {
-  name:        "",
-  phone:       "",
-  hourly_wage: "",   // employee 실제 필드
-  pin:         "",
-  active:      true,
+  name: "",
+  phone: "",
+  hourly_wage: "", // employee 실제 필드
+  pin: "",
+  active: true,
 };
 
 /* ================= 대타 상태 ================= */
 
 export const SUBSTITUTE_STATUS = {
   REQUESTED: "requested",
-  APPROVED:  "approved",
-  REJECTED:  "rejected",
+  APPROVED: "approved",
+  REJECTED: "rejected",
   FULFILLED: "fulfilled",
 };
 

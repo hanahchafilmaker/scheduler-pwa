@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getApprovalReasonLabel, getApprovalStatusLabel } from "../../shared/hooks/useApi";
 
 function safeArray(value) {
@@ -32,11 +32,21 @@ function getOpenAttendance(attendanceList) {
 
 function getLatestAttendance(attendanceList) {
   if (!attendanceList.length) return null;
+
   return [...attendanceList].sort((a, b) => {
     const aa = `${a.date || ""} ${a.check_in || ""}`;
     const bb = `${b.date || ""} ${b.check_in || ""}`;
     return bb.localeCompare(aa);
   })[0];
+}
+
+function toMin(t) {
+  const [h, m] = String(t || "")
+    .split(":")
+    .map(Number);
+
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
 }
 
 function getTodaySchedule(scheduleList, attendanceRow) {
@@ -49,11 +59,46 @@ function getTodaySchedule(scheduleList, attendanceRow) {
     if (matched) return matched;
   }
 
-  return [...scheduleList].sort((a, b) => {
-    const aa = (a.planned_start || "").replace(":", "");
-    const bb = (b.planned_start || "").replace(":", "");
-    return aa.localeCompare(bb);
-  })[0];
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  const withRange = scheduleList
+    .map((row) => ({
+      ...row,
+      _start: toMin(row.planned_start),
+      _end: toMin(row.planned_end),
+    }))
+    .filter((row) => row._start !== null && row._end !== null);
+
+  const currentMatch = withRange.find((row) => nowMin >= row._start && nowMin < row._end);
+  if (currentMatch) return currentMatch;
+
+  const upcoming = withRange
+    .filter((row) => row._start >= nowMin)
+    .sort((a, b) => a._start - b._start);
+
+  if (upcoming.length) return upcoming[0];
+
+  return withRange.sort((a, b) => a._start - b._start)[0] || null;
+}
+
+function getPartCandidates(scheduleList) {
+  if (!scheduleList.length) return [];
+
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  return scheduleList.filter((row) => {
+    const start = toMin(row.planned_start);
+    const end = toMin(row.planned_end);
+
+    if (start === null || end === null) return false;
+
+    const bufferedStart = start - 30;
+    const bufferedEnd = end + 30;
+
+    return nowMin >= bufferedStart && nowMin <= bufferedEnd;
+  });
 }
 
 function getStaffAttendanceMessage(row) {
@@ -119,6 +164,29 @@ export default function StaffHome(props) {
     [scheduleList, displayAttendance],
   );
 
+  const candidateSchedules = useMemo(() => getPartCandidates(scheduleList), [scheduleList]);
+
+  const [selectedPart, setSelectedPart] = useState("");
+
+  useEffect(() => {
+    if (candidateSchedules.length === 1) {
+      setSelectedPart(candidateSchedules[0].part || "");
+      return;
+    }
+
+    if (
+      candidateSchedules.length > 1 &&
+      !candidateSchedules.some((row) => String(row.part || "") === String(selectedPart || ""))
+    ) {
+      setSelectedPart("");
+      return;
+    }
+
+    if (candidateSchedules.length === 0) {
+      setSelectedPart("");
+    }
+  }, [candidateSchedules, selectedPart]);
+
   const canCheckIn = !openAttendance;
   const canCheckOut = !!openAttendance;
 
@@ -127,10 +195,19 @@ export default function StaffHome(props) {
   const handleCheckIn = async () => {
     if (!onCheckIn || !employee?.employee_id) return;
 
+    const autoPart = candidateSchedules.length === 1 ? candidateSchedules[0].part || "" : "";
+
+    const finalPart = selectedPart || autoPart;
+
+    if (candidateSchedules.length > 1 && !finalPart) {
+      alert("겹치는 시간대입니다. 출근할 파트를 선택해주세요.");
+      return;
+    }
+
     await onCheckIn({
       employee_id: employee.employee_id,
       name: employee.name,
-      part: mainSchedule?.part || "",
+      ...(finalPart ? { part: finalPart } : {}),
     });
   };
 
@@ -174,6 +251,31 @@ export default function StaffHome(props) {
             </strong>
           </div>
         </div>
+
+        {candidateSchedules.length > 1 ? (
+          <div className="staff-part-picker">
+            <div className="staff-part-picker-label">출근 파트 선택</div>
+            <div className="staff-part-picker-buttons">
+              {candidateSchedules.map((row) => {
+                const active = String(selectedPart || "") === String(row.part || "");
+
+                return (
+                  <button
+                    key={`${row.part}-${row.schedule_id || row.employee_id}`}
+                    type="button"
+                    className={`staff-part-btn ${active ? "active" : ""}`}
+                    onClick={() => setSelectedPart(row.part || "")}
+                  >
+                    {getPartLabel(row.part)} · {timeRange(row.planned_start, row.planned_end)}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="staff-part-picker-help">
+              겹치는 시간대라 출근 파트를 직접 선택해야 합니다.
+            </div>
+          </div>
+        ) : null}
 
         <div className="staff-actions">
           <button
@@ -267,6 +369,7 @@ export default function StaffHome(props) {
           <li>하루에 여러 번 출근할 수 있습니다. 퇴근 후 다시 출근도 가능합니다.</li>
           <li>근무 중일 때만 퇴근 버튼이 활성화됩니다.</li>
           <li>지각, 조기퇴근, 추가근무는 관리자 확인 후 최종 확정됩니다.</li>
+          <li>겹치는 시간대에는 출근 파트를 직접 선택해야 합니다.</li>
           <li>표시된 지급 기준 시간은 실제 근무시간과 다를 수 있습니다.</li>
         </ul>
       </InfoCard>

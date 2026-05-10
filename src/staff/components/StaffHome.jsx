@@ -21,6 +21,9 @@ function getPartLabel(part) {
       return "마감";
     case "extra":
       return "추가";
+    case "substitute":
+    case "대타":
+      return "대타";
     default:
       return part || "-";
   }
@@ -52,10 +55,7 @@ function toMin(t) {
 function getTodaySchedule(scheduleList, attendanceRow) {
   if (!scheduleList.length) return null;
 
-  // 중요: 이미 퇴근했으면 (check_out이 있으면) attendance row의 part를 참고하지 않음
-  // → 다음 파트로 새로 출근하는 경우를 처리하기 위함
   if (attendanceRow?.part && attendanceRow?.check_in && !attendanceRow?.check_out) {
-    // 현재 근무 중인 경우만 attendance row의 part를 참고
     const matched = scheduleList.find(
       (row) => String(row.part || "") === String(attendanceRow.part || ""),
     );
@@ -170,36 +170,52 @@ export default function StaffHome(props) {
   const candidateSchedules = useMemo(() => getPartCandidates(scheduleList), [scheduleList]);
 
   const [selectedPart, setSelectedPart] = useState("");
+  const [selectedMode, setSelectedMode] = useState("normal"); // normal | substitute
 
   useEffect(() => {
-    if (candidateSchedules.length === 1) {
+    if (openAttendance) return;
+
+    if (candidateSchedules.length === 1 && selectedMode === "normal") {
       setSelectedPart(candidateSchedules[0].part || "");
       return;
     }
 
     if (
       candidateSchedules.length > 1 &&
+      selectedMode === "normal" &&
       !candidateSchedules.some((row) => String(row.part || "") === String(selectedPart || ""))
     ) {
       setSelectedPart("");
       return;
     }
 
-    if (candidateSchedules.length === 0) {
+    if (candidateSchedules.length === 0 && selectedMode === "normal") {
       setSelectedPart("");
     }
-  }, [candidateSchedules, selectedPart]);
+  }, [candidateSchedules, selectedPart, selectedMode, openAttendance]);
 
   const canCheckIn = !openAttendance;
   const canCheckOut = !!openAttendance;
 
   const employeeName = employee?.name || displayAttendance?.name || mainSchedule?.name || "직원";
 
+  const showSchedulePicker = candidateSchedules.length > 1 && selectedMode === "normal";
+  const showSubstituteOption = !openAttendance;
+
   const handleCheckIn = async () => {
     if (!onCheckIn || !employee?.employee_id) return;
 
-    const autoPart = candidateSchedules.length === 1 ? candidateSchedules[0].part || "" : "";
+    if (selectedMode === "substitute") {
+      await onCheckIn({
+        employee_id: employee.employee_id,
+        name: employee.name,
+        part: "대타",
+        is_substitute: true,
+      });
+      return;
+    }
 
+    const autoPart = candidateSchedules.length === 1 ? candidateSchedules[0].part || "" : "";
     const finalPart = selectedPart || autoPart;
 
     if (candidateSchedules.length > 1 && !finalPart) {
@@ -211,6 +227,7 @@ export default function StaffHome(props) {
       employee_id: employee.employee_id,
       name: employee.name,
       ...(finalPart ? { part: finalPart } : {}),
+      is_substitute: false,
     });
   };
 
@@ -255,7 +272,32 @@ export default function StaffHome(props) {
           </div>
         </div>
 
-        {candidateSchedules.length > 1 ? (
+        {showSubstituteOption ? (
+          <div className="staff-part-picker">
+            <div className="staff-part-picker-label">출근 방식 선택</div>
+            <div className="staff-part-picker-buttons">
+              <button
+                type="button"
+                className={`staff-part-btn ${selectedMode === "normal" ? "active" : ""}`}
+                onClick={() => setSelectedMode("normal")}
+              >
+                일반 출근
+              </button>
+              <button
+                type="button"
+                className={`staff-part-btn ${selectedMode === "substitute" ? "active" : ""}`}
+                onClick={() => setSelectedMode("substitute")}
+              >
+                대타 출근
+              </button>
+            </div>
+            <div className="staff-part-picker-help">
+              스케줄과 다르게 근무하는 경우에는 대타 출근으로 요청하세요.
+            </div>
+          </div>
+        ) : null}
+
+        {showSchedulePicker ? (
           <div className="staff-part-picker">
             <div className="staff-part-picker-label">출근 파트 선택</div>
             <div className="staff-part-picker-buttons">
@@ -267,7 +309,10 @@ export default function StaffHome(props) {
                     key={`${row.part}-${row.schedule_id || row.employee_id}`}
                     type="button"
                     className={`staff-part-btn ${active ? "active" : ""}`}
-                    onClick={() => setSelectedPart(row.part || "")}
+                    onClick={() => {
+                      setSelectedMode("normal");
+                      setSelectedPart(row.part || "");
+                    }}
                   >
                     {getPartLabel(row.part)} · {timeRange(row.planned_start, row.planned_end)}
                   </button>
@@ -287,7 +332,7 @@ export default function StaffHome(props) {
             onClick={handleCheckIn}
             disabled={!canCheckIn || checking}
           >
-            출근
+            {selectedMode === "substitute" ? "대타 출근" : "출근"}
           </button>
 
           <button
@@ -373,6 +418,7 @@ export default function StaffHome(props) {
           <li>근무 중일 때만 퇴근 버튼이 활성화됩니다.</li>
           <li>지각, 조기퇴근, 추가근무는 관리자 확인 후 최종 확정됩니다.</li>
           <li>겹치는 시간대에는 출근 파트를 직접 선택해야 합니다.</li>
+          <li>대타 출근은 승인대기로 접수되며 관리자 확인 후 확정됩니다.</li>
           <li>표시된 지급 기준 시간은 실제 근무시간과 다를 수 있습니다.</li>
         </ul>
       </InfoCard>

@@ -8,10 +8,11 @@ const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
 function DayTable({ days, hours, nightHours, amount }) {
   return (
     <div className="sim-days-table">
-      <div className="sim-days-head">
+      <div className="sim-days-head sim-days-head-7">
         <span>날짜</span>
-        <span>출근</span>
-        <span>퇴근</span>
+        <span>실제 출근</span>
+        <span>실제 퇴근</span>
+        <span>지급 기준</span>
         <span>근무</span>
         <span>야간</span>
         <span>금액</span>
@@ -20,12 +21,15 @@ function DayTable({ days, hours, nightHours, amount }) {
       {days.map((d, i) => {
         const dayKr = DAY_KR[new Date(d.date).getDay()];
         return (
-          <div key={i} className="sim-days-row">
+          <div key={i} className="sim-days-row sim-days-row-7">
             <span>
               {d.date.slice(5)} ({dayKr})
             </span>
             <span>{formatTime(d.check_in)}</span>
             <span>{formatTime(d.check_out)}</span>
+            <span>
+              {formatTime(d.paid_check_in)} ~ {formatTime(d.paid_check_out)}
+            </span>
             <span>{(d.workMin / 60).toFixed(1)}h</span>
             <span>{d.nightMin > 0 ? `${(d.nightMin / 60).toFixed(1)}h` : "-"}</span>
             <span className="sim-days-pay">{fmtKRW(d.pay)}</span>
@@ -33,8 +37,9 @@ function DayTable({ days, hours, nightHours, amount }) {
         );
       })}
 
-      <div className="sim-days-total">
+      <div className="sim-days-total sim-days-row-7">
         <span>합계</span>
+        <span />
         <span />
         <span />
         <span>{hours.toFixed(1)}h</span>
@@ -75,7 +80,7 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
       <div className="sim-detail-grid">
         <div className="sim-detail-item">
           <span>기본급</span>
-          <strong>{fmtKRW(Math.round(e.hours * e.wage))}</strong>
+          <strong>{fmtKRW(Math.max(0, e.amount - nightExtra))}</strong>
         </div>
 
         <div className="sim-detail-item accent">
@@ -121,7 +126,7 @@ export function SimTab({ settlement, monthRange, settlementOffset, setSettlement
     <div className="page">
       <PageHeader
         title="정산"
-        description="승인 완료된 출퇴근 기록 기준으로 급여를 계산합니다"
+        description="확정된 지급 기준 시간으로 급여를 계산합니다"
         right={
           <div className="cal-month-nav">
             <button className="cal-nav-btn" onClick={() => setSettlementOffset((o) => o - 1)}>
@@ -152,7 +157,7 @@ export function SimTab({ settlement, monthRange, settlementOffset, setSettlement
 
       {settlement.rows.length === 0 ? (
         <div className="card">
-          <div className="empty">{monthRange.label} 완료된 출퇴근 기록이 없습니다</div>
+          <div className="empty">{monthRange.label} 확정된 출퇴근 기록이 없습니다</div>
         </div>
       ) : (
         <div className="sim-cards">

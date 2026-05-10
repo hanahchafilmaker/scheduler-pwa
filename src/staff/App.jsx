@@ -103,7 +103,9 @@ export default function StaffApp() {
         part: payload?.part || "",
       });
 
-      setToast("출근 처리되었습니다");
+      // 출근 요청이 정상 접수되면
+      // 승인 완료 / 승인 대기 여부와 관계없이 바로 로그아웃
+      handleLogout();
     } catch (err) {
       setPinError(err.message || "출근 처리에 실패했습니다.");
     }

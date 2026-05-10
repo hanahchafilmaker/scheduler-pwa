@@ -1,165 +1,266 @@
-import { WORK_TYPE_LABEL } from "@shared/constants";
-import { formatTime, formatMinutes, normalizeDate } from "@shared/utils";
+import React, { useMemo } from "react";
+import { getApprovalReasonLabel, getApprovalStatusLabel } from "../../shared/hooks/useApi";
 
-export default function StaffHome({
-  employee,
-  toast,
-  todaySchedule,
-  todayAttendance,
-  todayLoading, // ✅ 추가: 오늘 데이터 로딩 중 여부
-  workType,
-  setWorkType,
-  isPending,
-  isWorking,
-  isDone,
-  isRejected,
-  actionLoading,
-  records,
-  stats,
-  onCheckIn,
-  onCheckOut,
-  onLogout,
-}) {
-  const statusLabel = todayLoading
-    ? "확인 중..."
-    : isPending
-      ? "승인 대기"
-      : isWorking
-        ? "근무중"
-        : isRejected
-          ? "출근 거절"
-          : "출근 전";
+function safeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
 
-  const workTypeDisabled = isPending || isWorking || isDone;
+function timeRange(start, end) {
+  const s = start || "-";
+  const e = end || "-";
+  return `${s} ~ ${e}`;
+}
+
+function getPartLabel(part) {
+  switch (String(part || "").toLowerCase()) {
+    case "open":
+      return "오픈";
+    case "middle":
+      return "미들";
+    case "close":
+      return "마감";
+    case "extra":
+      return "추가";
+    default:
+      return part || "-";
+  }
+}
+
+function getTodaySchedule(scheduleList) {
+  if (!scheduleList.length) return null;
+  return [...scheduleList].sort((a, b) => {
+    const aa = (a.planned_start || "").replace(":", "");
+    const bb = (b.planned_start || "").replace(":", "");
+    return aa.localeCompare(bb);
+  })[0];
+}
+
+function getOpenAttendance(attendanceList) {
+  return attendanceList.find((row) => row.check_in && !row.check_out) || null;
+}
+
+function getLatestAttendance(attendanceList) {
+  if (!attendanceList.length) return null;
+  return [...attendanceList].sort((a, b) => {
+    const aa = `${a.date || ""} ${a.check_in || ""}`;
+    const bb = `${b.date || ""} ${b.check_in || ""}`;
+    return bb.localeCompare(aa);
+  })[0];
+}
+
+function getStaffAttendanceMessage(row) {
+  if (!row) return "오늘 근태 기록이 없습니다.";
+
+  if (row.approval_status === "pending") {
+    return `${getApprovalReasonLabel(row.approval_reason)} 상태입니다. 관리자 확인 후 확정됩니다.`;
+  }
+
+  if (row.approval_status === "rejected") {
+    return "관리자 확인 결과 조정된 기록이 있습니다.";
+  }
+
+  if (row.check_in && !row.check_out) {
+    return "현재 근무 중입니다.";
+  }
+
+  if (row.check_in && row.check_out) {
+    return "오늘 근무가 종료되었습니다.";
+  }
+
+  return "근태 상태를 확인해주세요.";
+}
+
+function StatusBadge({ status }) {
+  return (
+    <span className={`staff-state-badge status-${status || "default"}`}>
+      {getApprovalStatusLabel(status)}
+    </span>
+  );
+}
+
+function InfoCard({ title, children }) {
+  return (
+    <section className="staff-card">
+      <div className="staff-card-header">
+        <h3>{title}</h3>
+      </div>
+      <div className="staff-card-body">{children}</div>
+    </section>
+  );
+}
+
+export default function StaffHome(props) {
+  const {
+    employee = null,
+    todaySchedule = [],
+    todayAttendance = [],
+    onCheckIn,
+    onCheckOut,
+    checking = false,
+  } = props;
+
+  const scheduleList = safeArray(todaySchedule);
+  const attendanceList = safeArray(todayAttendance);
+
+  const mainSchedule = useMemo(() => getTodaySchedule(scheduleList), [scheduleList]);
+
+  const openAttendance = useMemo(() => getOpenAttendance(attendanceList), [attendanceList]);
+
+  const latestAttendance = useMemo(() => getLatestAttendance(attendanceList), [attendanceList]);
+
+  const displayAttendance = openAttendance || latestAttendance || null;
+
+  const canCheckIn = !openAttendance;
+  const canCheckOut = !!openAttendance;
+
+  const employeeName = employee?.name || displayAttendance?.name || mainSchedule?.name || "직원";
+
+  const handleCheckIn = async () => {
+    if (!onCheckIn || !employee?.employee_id) return;
+
+    await onCheckIn({
+      employee_id: employee.employee_id,
+      name: employee.name,
+      part: mainSchedule?.part || "",
+    });
+  };
+
+  const handleCheckOut = async () => {
+    if (!onCheckOut || !employee?.employee_id || !openAttendance) return;
+
+    await onCheckOut({
+      employee_id: employee.employee_id,
+      attendance_id: openAttendance.attendance_id,
+      date: openAttendance.date,
+    });
+  };
 
   return (
-    <div className="staff-root">
-      {toast && <div className="staff-toast">{toast}</div>}
+    <div className="staff-home">
+      <section className="staff-hero-card">
+        <div className="staff-hero-top">
+          <div>
+            <div className="staff-hero-label">오늘 근무 상태</div>
+            <h2 className="staff-hero-name">{employeeName}</h2>
+          </div>
 
-      <header className="staff-header">
-        <div>
-          <div className="staff-brand">SHIFT</div>
-          <h1>{employee.name}</h1>
-          <p>오늘 근무 상태: {statusLabel}</p>
+          <StatusBadge status={displayAttendance?.approval_status || "approved"} />
         </div>
 
-        <button className="logout-btn" onClick={onLogout}>
-          로그아웃
-        </button>
-      </header>
+        <p className="staff-hero-message">{getStaffAttendanceMessage(displayAttendance)}</p>
 
-      <main className="staff-page">
-        <section className="staff-card">
-          <h2>오늘 근무</h2>
+        <div className="staff-hero-meta">
+          <div className="staff-meta-item">
+            <span className="staff-meta-label">오늘 파트</span>
+            <strong>{getPartLabel(mainSchedule?.part || displayAttendance?.part || "-")}</strong>
+          </div>
 
-          {todaySchedule ? (
-            <p className="schedule-text">
-              예정: {WORK_TYPE_LABEL[todaySchedule.part] || todaySchedule.part} /{" "}
-              {todaySchedule.planned_start}~{todaySchedule.planned_end}
-            </p>
+          <div className="staff-meta-item">
+            <span className="staff-meta-label">예정시간</span>
+            <strong>
+              {timeRange(
+                mainSchedule?.planned_start || displayAttendance?.planned_start,
+                mainSchedule?.planned_end || displayAttendance?.planned_end,
+              )}
+            </strong>
+          </div>
+        </div>
+
+        <div className="staff-actions">
+          <button
+            type="button"
+            className="staff-action-btn primary"
+            onClick={handleCheckIn}
+            disabled={!canCheckIn || checking}
+          >
+            출근
+          </button>
+
+          <button
+            type="button"
+            className="staff-action-btn secondary"
+            onClick={handleCheckOut}
+            disabled={!canCheckOut || checking}
+          >
+            퇴근
+          </button>
+        </div>
+      </section>
+
+      <div className="staff-home-grid">
+        <InfoCard title="오늘 스케줄">
+          {mainSchedule ? (
+            <div className="staff-info-list">
+              <div className="staff-info-row">
+                <span>파트</span>
+                <strong>{getPartLabel(mainSchedule.part)}</strong>
+              </div>
+              <div className="staff-info-row">
+                <span>예정 시간</span>
+                <strong>{timeRange(mainSchedule.planned_start, mainSchedule.planned_end)}</strong>
+              </div>
+              <div className="staff-info-row">
+                <span>직원 ID</span>
+                <strong>{mainSchedule.employee_id || "-"}</strong>
+              </div>
+            </div>
           ) : (
-            <p className="muted">오늘 예정된 근무가 없습니다</p>
+            <div className="staff-empty">오늘 등록된 스케줄이 없습니다.</div>
           )}
+        </InfoCard>
 
-          <div className="work-grid">
-            {["open", "middle", "close", "extra"].map((type) => (
-              <button
-                key={type}
-                className={workType === type ? "active" : ""}
-                onClick={() => setWorkType(type)}
-                disabled={workTypeDisabled}
-              >
-                {WORK_TYPE_LABEL[type]}
-              </button>
-            ))}
-          </div>
+        <InfoCard title="오늘 근태 기록">
+          {displayAttendance ? (
+            <div className="staff-info-list">
+              <div className="staff-info-row">
+                <span>상태</span>
+                <strong>{getApprovalStatusLabel(displayAttendance.approval_status)}</strong>
+              </div>
 
-          <div className="status-box">{statusLabel}</div>
+              {displayAttendance.approval_reason ? (
+                <div className="staff-info-row">
+                  <span>사유</span>
+                  <strong>{getApprovalReasonLabel(displayAttendance.approval_reason)}</strong>
+                </div>
+              ) : null}
 
-          <div className="action-area">
-            {/* ✅ 로딩 중일 때 스피너 표시 */}
-            {todayLoading ? (
-              <div className="notice">근무 상태 확인 중...</div>
-            ) : (
-              <>
-                {(!todayAttendance || isRejected) && (
-                  <button className="primary-btn" onClick={onCheckIn} disabled={actionLoading}>
-                    출근하기
-                  </button>
-                )}
+              <div className="staff-info-row">
+                <span>실제 시간</span>
+                <strong>
+                  {timeRange(displayAttendance.check_in, displayAttendance.check_out)}
+                </strong>
+              </div>
 
-                {isPending && <div className="notice">관리자 승인 대기 중입니다.</div>}
+              <div className="staff-info-row">
+                <span>지급 기준</span>
+                <strong>
+                  {timeRange(displayAttendance.paid_check_in, displayAttendance.paid_check_out)}
+                </strong>
+              </div>
 
-                {isWorking && (
-                  <button
-                    className="primary-btn dark"
-                    onClick={onCheckOut}
-                    disabled={actionLoading}
-                  >
-                    퇴근하기
-                  </button>
-                )}
+              <div className="staff-info-row">
+                <span>휴게시간</span>
+                <strong>{Number(displayAttendance.break_min || 0)}분</strong>
+              </div>
 
-                {isRejected && (
-                  <div className="notice" style={{ marginTop: 8 }}>
-                    출근이 거절되었습니다. 다시 출근해주세요.
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {todayAttendance && (
-            <div className="today-record">
-              <span>출근 {formatTime(todayAttendance.check_in)}</span>
-              <span>
-                퇴근 {todayAttendance.check_out ? formatTime(todayAttendance.check_out) : "-"}
-              </span>
+              {displayAttendance.approval_note ? (
+                <div className="staff-note-box">{displayAttendance.approval_note}</div>
+              ) : null}
             </div>
-          )}
-        </section>
-
-        <section className="staff-card">
-          <h2>이달 기록</h2>
-
-          <div className="summary-grid">
-            <div>
-              <span>총 근무시간</span>
-              <strong>{formatMinutes(stats.totalMin)}</strong>
-            </div>
-            <div>
-              <span>지각</span>
-              <strong>{stats.late}</strong>
-            </div>
-            <div>
-              <span>조퇴</span>
-              <strong>{stats.early}</strong>
-            </div>
-            <div>
-              <span>초과</span>
-              <strong>{stats.overtime}</strong>
-            </div>
-          </div>
-
-          {records.length === 0 ? (
-            <p className="muted" style={{ marginTop: 16 }}>
-              이달 근무 기록이 없습니다
-            </p>
           ) : (
-            <ul className="record-list">
-              {records.map((r, i) => (
-                <li key={r.attendance_id || i}>
-                  <span>{normalizeDate(r.date)}</span>
-                  <span>{WORK_TYPE_LABEL[r.part] || r.part}</span>
-                  <span>
-                    {formatTime(r.check_in)} ~ {r.check_out ? formatTime(r.check_out) : "근무중"}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <div className="staff-empty">오늘 기록이 아직 없습니다.</div>
           )}
-        </section>
-      </main>
+        </InfoCard>
+      </div>
+
+      <InfoCard title="안내">
+        <ul className="staff-guide-list">
+          <li>출근은 한 번만 가능합니다.</li>
+          <li>근무 중일 때만 퇴근 버튼이 활성화됩니다.</li>
+          <li>지각, 조기퇴근, 추가근무는 관리자 확인 후 최종 확정됩니다.</li>
+          <li>표시된 지급 기준 시간은 실제 근무시간과 다를 수 있습니다.</li>
+        </ul>
+      </InfoCard>
     </div>
   );
 }

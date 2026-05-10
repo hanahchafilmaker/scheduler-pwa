@@ -1,13 +1,19 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useApi } from "../shared/hooks/useApi";
+import useApi from "../shared/hooks/useApi";
 import { Sidebar, MobileTabs } from "../shared/components/Nav";
-import { TodayTab } from "../shared/components/TodayTab";
-import { AttTab } from "../shared/components/AttTab";
+import TodayTab from "../shared/components/TodayTab";
+import AttTab from "../shared/components/AttTab";
 import { ShiftTab } from "../shared/components/ShiftTab";
 import { SimTab } from "../shared/components/SimTab";
 import { Toast } from "../shared/components/UI";
-import { normalizeDate, safeStr, calcWorkMinutes, calcNightMinutesSimple } from "../shared/utils";
+import {
+  calcMonthSummary,
+  calcNightMinutesSimple,
+  calcRowPay,
+  calcWorkMinutes,
+} from "../shared/utils/pay";
+import { safeStr } from "../shared/utils";
 import { SHIFT_TIME } from "../shared/constants";
 
 function pad2(n) {
@@ -45,18 +51,17 @@ function getWeekDates(offset = 0) {
   });
 }
 
-// 정산: approved=true 기록만 반영
+// 새 정산 기준:
+// - approval_status === "pending" 제외
+// - paid_check_in / paid_check_out 기준
 function buildSettlement({ attendance = [], employees = [], month }) {
   const empMap = new Map(employees.map((e) => [safeStr(e.employee_id), e]));
   const rowsMap = new Map();
 
   const doneRows = attendance.filter((a) => {
-    const d = normalizeDate(a.date);
+    const d = String(a.date || "");
     return (
-      d.startsWith(month) &&
-      a.check_in &&
-      a.check_out &&
-      (a.approved === true || String(a.approved).toLowerCase() === "true")
+      d.startsWith(month) && a.paid_check_in && a.paid_check_out && a.approval_status !== "pending"
     );
   });
 
@@ -64,11 +69,10 @@ function buildSettlement({ attendance = [], employees = [], month }) {
     const empId = safeStr(a.employee_id);
     const emp = empMap.get(empId) || {};
     const wage = Number(emp.hourly_wage || a.hourly_wage || 0);
-    const workMin = calcWorkMinutes(a.check_in, a.check_out, a.break_min);
-    const nightMin = calcNightMinutesSimple(a.check_in, a.check_out);
-    const basePay = Math.round((workMin / 60) * wage);
-    const nightPay = Math.round((nightMin / 60) * wage * 0.5);
-    const pay = basePay + nightPay;
+
+    const workMin = calcWorkMinutes(a.paid_check_in, a.paid_check_out, a.break_min);
+    const nightMin = calcNightMinutesSimple(a.paid_check_in, a.paid_check_out);
+    const pay = calcRowPay(a, wage);
 
     if (!rowsMap.has(empId)) {
       rowsMap.set(empId, {
@@ -89,29 +93,35 @@ function buildSettlement({ attendance = [], employees = [], month }) {
     row.amount += pay;
     row.workDays += 1;
     row.days.push({
-      date: normalizeDate(a.date),
+      date: a.date,
       check_in: a.check_in,
       check_out: a.check_out,
+      paid_check_in: a.paid_check_in,
+      paid_check_out: a.paid_check_out,
       workMin,
       nightMin,
       pay,
+      approval_status: a.approval_status,
+      approval_reason: a.approval_reason,
     });
   });
 
   const rows = [...rowsMap.values()].map((r) => ({
     ...r,
-    days: r.days.sort((a, b) => a.date.localeCompare(b.date)),
+    days: r.days.sort((a, b) => String(a.date).localeCompare(String(b.date))),
   }));
+
+  const summary = calcMonthSummary(doneRows, Object.fromEntries(empMap));
 
   return {
     rows,
     totalPay: rows.reduce((sum, r) => sum + r.amount, 0),
     totalHours: rows.reduce((sum, r) => sum + r.hours, 0),
     totalWorkDays: rows.reduce((sum, r) => sum + r.workDays, 0),
+    summary,
   };
 }
 
-// 월간 toolbar를 숨길 탭
 const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift"]);
 
 export default function App() {
@@ -135,28 +145,27 @@ export default function App() {
     };
   }, []);
 
-  const api = useApi({
-    onError: useCallback((msg) => showToast(msg || "오류가 발생했습니다.", "err"), [showToast]),
-  });
-
   const {
     loading,
+    error,
     employees = [],
     schedule = [],
-    attendance = [],
+    monthAttendance = [],
     todayAttendance = [],
-    monthAttendance: apiMonthAttendance,
-    fetchAll,
-    fetchMonth,
-    fetchToday,
+    todaySchedule = [],
+    refreshAll,
+    refreshAdminToday,
     approveAttendance,
-    updateAttendance,
     addSchedule,
     updateSchedule,
     deleteSchedule,
-  } = api;
+  } = useApi({
+    month: selectedMonth,
+  });
 
-  const monthAttendance = apiMonthAttendance || attendance || [];
+  useEffect(() => {
+    if (error) showToast(error, "err");
+  }, [error, showToast]);
 
   const settlementMonth = useMemo(
     () => addMonths(currentYM(), settlementOffset),
@@ -187,72 +196,75 @@ export default function App() {
     [monthAttendance, employees, settlementMonth],
   );
 
-  const fetchRef = useRef({ fetchAll, fetchMonth });
-
   useEffect(() => {
-    fetchRef.current = { fetchAll, fetchMonth };
-  }, [fetchAll, fetchMonth]);
-
-  useEffect(() => {
-    if (tab === "att") {
-      fetchRef.current.fetchAll(selectedMonth);
-    } else if (tab === "sim") {
-      fetchRef.current.fetchMonth(settlementMonth);
-      setSelectedMonth(settlementMonth);
-    } else if (tab === "today") {
-      fetchToday();
-    }
-  }, [tab, fetchToday, selectedMonth, settlementMonth]);
-
-  useEffect(() => {
-    if (tab === "att") {
-      fetchRef.current.fetchAll(selectedMonth);
-    }
-  }, [selectedMonth, tab]);
-
-  const handleApprove = useCallback(
-    (att, approved) => {
-      approveAttendance(att, approved, () => fetchAll(selectedMonth));
-    },
-    [selectedMonth, fetchAll, approveAttendance],
-  );
-
-  const handleAutoCheckout = useCallback(
-    (att) => {
-      const n = new Date();
-      const hh = String(n.getHours()).padStart(2, "0");
-      const mm = String(n.getMinutes()).padStart(2, "0");
-
-      updateAttendance({ ...att, check_out: `${hh}:${mm}` }, () => fetchToday());
-    },
-    [updateAttendance, fetchToday],
-  );
-
-  const handleRefresh = useCallback(() => {
     if (tab === "today") {
-      fetchToday();
+      refreshAdminToday().catch(() => {});
+      return;
+    }
+
+    if (tab === "att") {
+      refreshAll().catch(() => {});
       return;
     }
 
     if (tab === "sim") {
-      fetchMonth(settlementMonth);
-      return;
-    }
-
-    if (tab === "att") {
-      fetchAll(selectedMonth);
+      if (selectedMonth !== settlementMonth) {
+        setSelectedMonth(settlementMonth);
+      }
+      refreshAll().catch(() => {});
       return;
     }
 
     if (tab === "shift") {
-      fetchAll(selectedMonth);
+      refreshAll().catch(() => {});
     }
-  }, [tab, fetchToday, fetchMonth, fetchAll, settlementMonth, selectedMonth]);
+  }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth]);
+
+  useEffect(() => {
+    if (tab === "att") {
+      refreshAll().catch(() => {});
+    }
+  }, [selectedMonth, tab, refreshAll]);
+
+  const handleApprove = useCallback(
+    async (row) => {
+      await approveAttendance({
+        attendance_id: row.attendance_id,
+        approved: true,
+        approved_by: "manager",
+        approval_note: "",
+        date: row.date,
+      });
+      showToast("승인되었습니다");
+    },
+    [approveAttendance, showToast],
+  );
+
+  const handleReject = useCallback(
+    async (row) => {
+      await approveAttendance({
+        attendance_id: row.attendance_id,
+        approved: false,
+        approved_by: "manager",
+        approval_note: "",
+        date: row.date,
+      });
+      showToast("거절 처리되었습니다");
+    },
+    [approveAttendance, showToast],
+  );
+
+  const handleRefresh = useCallback(() => {
+    if (tab === "today") {
+      refreshAdminToday();
+      return;
+    }
+    refreshAll();
+  }, [tab, refreshAdminToday, refreshAll]);
 
   const handleSaveCell = useCallback(
     (cellEdit, employeeId) => {
       const emp = employees.find((e) => safeStr(e.employee_id) === safeStr(employeeId));
-
       const shift = SHIFT_TIME[cellEdit.part] || {};
 
       const payload = {
@@ -264,34 +276,46 @@ export default function App() {
         planned_end: shift.end || "",
       };
 
-      const refetch = () => fetchAll(selectedMonth);
+      const refetch = () => refreshAll();
 
       if (cellEdit.scheduleId) {
         if (!employeeId) {
-          deleteSchedule(cellEdit.scheduleId, cellEdit.date, refetch);
+          deleteSchedule({
+            schedule_id: cellEdit.scheduleId,
+            date: cellEdit.date,
+          })
+            .then(refetch)
+            .catch(() => {});
           return;
         }
 
-        updateSchedule(cellEdit.scheduleId, payload, refetch);
+        updateSchedule({
+          schedule_id: cellEdit.scheduleId,
+          ...payload,
+        })
+          .then(refetch)
+          .catch(() => {});
         return;
       }
 
       if (!employeeId) return;
 
-      addSchedule(payload, refetch);
+      addSchedule(payload)
+        .then(refetch)
+        .catch(() => {});
     },
-    [employees, selectedMonth, fetchAll, addSchedule, updateSchedule, deleteSchedule],
+    [employees, refreshAll, addSchedule, updateSchedule, deleteSchedule],
   );
 
   const renderTab = () => {
     if (tab === "today") {
       return (
         <TodayTab
+          todaySchedule={todaySchedule}
           todayAttendance={todayAttendance}
-          schedule={schedule}
           employees={employees}
           onApprove={handleApprove}
-          onAutoCheckout={handleAutoCheckout}
+          onReject={handleReject}
         />
       );
     }
@@ -315,11 +339,19 @@ export default function App() {
           setWeekOffset={setWeekOffset}
           schedule={schedule}
           employees={employees}
+          onSaveCell={handleSaveCell}
         />
       );
     }
 
-    return <AttTab attendance={monthAttendance} onApprove={handleApprove} />;
+    return (
+      <AttTab
+        monthAttendance={monthAttendance}
+        approveAttendance={approveAttendance}
+        selectedMonth={selectedMonth}
+        currentManagerName="manager"
+      />
+    );
   };
 
   return (

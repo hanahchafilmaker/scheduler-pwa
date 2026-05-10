@@ -1,302 +1,392 @@
-import { useMemo, useState, useEffect } from "react";
-import { PART_LABEL, SHIFT_TIME, STATUS_BG, STATUS_COLOR } from "../constants";
-import { normalizeDate, formatTime, calcWorkMinutes, toBool } from "../utils";
-import { SectionTitle, PageHeader } from "./UI";
+import React, { useMemo, useState } from "react";
+import {
+  diffMinutes,
+  getApprovalReasonLabel,
+  getApprovalStatusLabel,
+  getPaidWorkMinutes,
+} from "../hooks/useApi";
 
-function toMin(t) {
-  const m = String(t || "").match(/(\d+):(\d+)/);
-  if (!m) return null;
-  return Number(m[1]) * 60 + Number(m[2]);
+function safeArray(value) {
+  return Array.isArray(value) ? value : [];
 }
 
-function getPlannedTime(part) {
-  return SHIFT_TIME[part] || null;
+function timeRange(start, end) {
+  const s = start || "-";
+  const e = end || "-";
+  return `${s} ~ ${e}`;
 }
 
-function isToday(date) {
-  return normalizeDate(date) === normalizeDate(new Date());
-}
-
-function getAutoStatus(a) {
-  if (!a.check_in) return "미출근";
-
-  if (a.check_in && !a.check_out) {
-    if (!isToday(a.date)) return "퇴근누락";
-    return "근무중";
+function getPartLabel(part) {
+  switch (String(part || "").toLowerCase()) {
+    case "open":
+      return "오픈";
+    case "middle":
+      return "미들";
+    case "close":
+      return "마감";
+    case "extra":
+      return "추가";
+    default:
+      return part || "-";
   }
-
-  if (toBool(a.is_substitute) || !a.schedule_id || a.part === "extra") {
-    return "대타";
-  }
-
-  const shift = getPlannedTime(a.part);
-  if (!shift) return a.status || "정상";
-
-  const planStart = toMin(shift.start);
-  let planEnd = toMin(shift.end);
-  const realStart = toMin(a.check_in);
-  let realEnd = toMin(a.check_out);
-
-  if (planStart === null || planEnd === null || realStart === null || realEnd === null) {
-    return a.status || "정상";
-  }
-
-  if (planEnd < planStart) planEnd += 24 * 60;
-  if (realEnd < realStart) realEnd += 24 * 60;
-
-  if (realStart > planStart + 1) return "지각";
-  if (realEnd < planEnd - 1 && realEnd > planStart) return "조퇴";
-  if (realEnd > planEnd + 1) return "연장";
-
-  return "정상";
 }
 
-function getDiffText(a, status) {
-  if (status === "퇴근누락") return "퇴근 미입력";
-  if (status === "대타") return "스케줄 외 출근";
-
-  const shift = getPlannedTime(a.part);
-  if (!shift || !a.check_in) return "-";
-
-  const planStart = toMin(shift.start);
-  let planEnd = toMin(shift.end);
-  const realStart = toMin(a.check_in);
-  let realEnd = toMin(a.check_out);
-
-  if (planStart === null || planEnd === null || realStart === null) return "-";
-
-  if (!a.check_out || realEnd === null) {
-    if (realStart > planStart + 1) return `+${realStart - planStart}분 지각`;
-    return "-";
-  }
-
-  if (planEnd < planStart) planEnd += 24 * 60;
-  if (realEnd < realStart) realEnd += 24 * 60;
-
-  if (status === "지각") return `+${realStart - planStart}분 지각`;
-  if (status === "조퇴") return `${planEnd - realEnd}분 조퇴`;
-  if (status === "연장") return `+${realEnd - planEnd}분 연장`;
-
-  return "-";
+function formatMinutes(mins) {
+  const n = Number(mins || 0);
+  if (!n) return "0분";
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  if (h) return `${h}시간`;
+  return `${m}분`;
 }
 
-function needsManualApproval(a, status) {
-  if (toBool(a.approved)) return false;
+function matchesSearch(row, keyword) {
+  if (!keyword.trim()) return true;
+  const q = keyword.trim().toLowerCase();
 
+  return [
+    row.name,
+    row.employee_id,
+    row.part,
+    row.date,
+    row.approval_status,
+    row.approval_reason,
+    row.memo,
+  ]
+    .filter(Boolean)
+    .some((v) => String(v).toLowerCase().includes(q));
+}
+
+function StatusBadge({ status }) {
   return (
-    status === "대타" ||
-    status === "지각" ||
-    status === "조퇴" ||
-    status === "연장" ||
-    status === "퇴근누락" ||
-    toBool(a.needs_approval) ||
-    toBool(a.is_substitute) ||
-    !a.schedule_id ||
-    a.part === "extra"
+    <span className={`att-badge status-${status || "default"}`}>
+      {getApprovalStatusLabel(status)}
+    </span>
   );
 }
 
-function MobileAttCard({ a, onApprove }) {
-  const min = calcWorkMinutes(a.check_in, a.check_out, a.break_min);
-  const status = getAutoStatus(a);
-  const diffText = getDiffText(a, status);
-  const approved = toBool(a.approved);
-  const needApproval = needsManualApproval(a, status);
+function ReasonBadge({ reason }) {
+  return (
+    <span className={`att-badge reason-${reason || "default"}`}>
+      {getApprovalReasonLabel(reason)}
+    </span>
+  );
+}
+
+function SummaryCard({ title, value, sub }) {
+  return (
+    <div className="att-summary-card">
+      <div className="att-summary-title">{title}</div>
+      <div className="att-summary-value">{value}</div>
+      {sub ? <div className="att-summary-sub">{sub}</div> : null}
+    </div>
+  );
+}
+
+function ApprovalModal({ row, onClose, onApprove, onReject }) {
+  const [note, setNote] = useState("");
+
+  if (!row) return null;
 
   return (
-    <div className="att-card">
-      <div className="att-card-top">
-        <div className="att-card-name-wrap">
-          <strong className="att-card-name">{a.name}</strong>
-          <span className="att-card-date">{normalizeDate(a.date)}</span>
+    <div className="att-modal-overlay">
+      <div className="att-modal">
+        <div className="att-modal-header">
+          <h3>근태 승인 처리</h3>
+          <button type="button" className="att-icon-btn" onClick={onClose}>
+            닫기
+          </button>
         </div>
 
-        <span
-          className="dash-badge"
-          style={{
-            background: STATUS_BG[status] || "#f9fafb",
-            color: STATUS_COLOR[status] || "#374151",
-          }}
-        >
-          {status}
-        </span>
-      </div>
+        <div className="att-modal-body">
+          <div className="att-detail-grid">
+            <div>
+              <strong>직원</strong>
+              <div>{row.name || "-"}</div>
+            </div>
+            <div>
+              <strong>날짜</strong>
+              <div>{row.date || "-"}</div>
+            </div>
+            <div>
+              <strong>파트</strong>
+              <div>{getPartLabel(row.part)}</div>
+            </div>
+            <div>
+              <strong>사유</strong>
+              <div>{getApprovalReasonLabel(row.approval_reason)}</div>
+            </div>
+            <div>
+              <strong>예정시간</strong>
+              <div>{timeRange(row.planned_start, row.planned_end)}</div>
+            </div>
+            <div>
+              <strong>실제시간</strong>
+              <div>{timeRange(row.check_in, row.check_out)}</div>
+            </div>
+            <div>
+              <strong>지급시간</strong>
+              <div>{timeRange(row.paid_check_in, row.paid_check_out)}</div>
+            </div>
+            <div>
+              <strong>추가/연장</strong>
+              <div>
+                추가 {Number(row.extra_work_min || 0)}분 / 연장 {Number(row.extension_min || 0)}분
+              </div>
+            </div>
+          </div>
 
-      <div className="att-card-meta">
-        <div className="att-meta-item">
-          <span>파트</span>
-          <strong>{PART_LABEL[a.part] || a.part || "-"}</strong>
-        </div>
-        <div className="att-meta-item">
-          <span>출근</span>
-          <strong>{formatTime(a.check_in)}</strong>
-        </div>
-        <div className="att-meta-item">
-          <span>퇴근</span>
-          <strong>{formatTime(a.check_out)}</strong>
-        </div>
-        <div className="att-meta-item">
-          <span>실근무</span>
-          <strong>{(min / 60).toFixed(1)}h</strong>
-        </div>
-      </div>
+          {row.approval_note ? (
+            <div className="att-note-box">
+              <strong>기존 메모</strong>
+              <div>{row.approval_note}</div>
+            </div>
+          ) : null}
 
-      <div className="att-card-foot">
-        <div className="att-card-note">
-          <span>차이</span>
-          <strong>{diffText}</strong>
+          <label className="att-label">
+            승인 메모
+            <textarea
+              className="att-textarea"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="승인/거절 사유 메모"
+            />
+          </label>
         </div>
 
-        <div className="att-card-note">
-          <span>비고</span>
-          <strong>{a.memo || "-"}</strong>
-        </div>
-      </div>
-
-      <div className="att-card-actions">
-        {approved ? (
-          <span className="att-approved-text">승인완료</span>
-        ) : needApproval ? (
-          <button type="button" className="approve-btn" onClick={() => onApprove(a, true)}>
+        <div className="att-modal-actions">
+          <button type="button" className="att-btn secondary" onClick={() => onReject(row, note)}>
+            거절
+          </button>
+          <button type="button" className="att-btn primary" onClick={() => onApprove(row, note)}>
             승인
           </button>
-        ) : (
-          <span className="att-approved-text">-</span>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
-export function AttTab({ attendance = [], onApprove }) {
-  const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth <= 768 : false,
-  );
+export default function AttTab(props) {
+  const {
+    monthAttendance = [],
+    approveAttendance,
+    selectedMonth = "",
+    currentManagerName = "manager",
+  } = props;
 
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [reasonFilter, setReasonFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [selectedRow, setSelectedRow] = useState(null);
 
-  const displayList = useMemo(
-    () =>
-      [...attendance].sort((a, b) => normalizeDate(b.date).localeCompare(normalizeDate(a.date))),
-    [attendance],
-  );
+  const attendanceList = safeArray(monthAttendance);
 
-  const pendingCount = useMemo(
-    () =>
-      displayList.filter((a) => {
-        const status = getAutoStatus(a);
-        return !toBool(a.approved) && needsManualApproval(a, status);
-      }).length,
-    [displayList],
-  );
+  const filteredRows = useMemo(() => {
+    return attendanceList.filter((row) => {
+      const matchStatus = statusFilter === "all" ? true : row.approval_status === statusFilter;
+
+      const matchReason = reasonFilter === "all" ? true : row.approval_reason === reasonFilter;
+
+      const matchKeyword = matchesSearch(row, search);
+
+      return matchStatus && matchReason && matchKeyword;
+    });
+  }, [attendanceList, reasonFilter, search, statusFilter]);
+
+  const summary = useMemo(() => {
+    const pending = attendanceList.filter((r) => r.approval_status === "pending");
+    const approved = attendanceList.filter((r) => r.approval_status === "approved");
+    const rejected = attendanceList.filter((r) => r.approval_status === "rejected");
+
+    const totalPaidMinutes = attendanceList
+      .filter((r) => r.approval_status !== "pending")
+      .reduce((acc, row) => acc + getPaidWorkMinutes(row), 0);
+
+    const totalActualMinutes = attendanceList.reduce(
+      (acc, row) =>
+        acc + Math.max(0, diffMinutes(row.check_in, row.check_out) - Number(row.break_min || 0)),
+      0,
+    );
+
+    return {
+      total: attendanceList.length,
+      pending: pending.length,
+      approved: approved.length,
+      rejected: rejected.length,
+      totalPaidMinutes,
+      totalActualMinutes,
+    };
+  }, [attendanceList]);
+
+  const handleApprove = async (row, note) => {
+    if (!approveAttendance) return;
+
+    await approveAttendance({
+      attendance_id: row.attendance_id,
+      approved: true,
+      approved_by: currentManagerName,
+      approval_note: note || "",
+      date: row.date,
+    });
+
+    setSelectedRow(null);
+  };
+
+  const handleReject = async (row, note) => {
+    if (!approveAttendance) return;
+
+    await approveAttendance({
+      attendance_id: row.attendance_id,
+      approved: false,
+      approved_by: currentManagerName,
+      approval_note: note || "",
+      date: row.date,
+    });
+
+    setSelectedRow(null);
+  };
 
   return (
-    <div className="page">
-      <div className="card">
-        <SectionTitle>출퇴근 기록</SectionTitle>
+    <div className="att-tab">
+      <div className="att-topbar">
+        <div>
+          <h2 className="att-title">출퇴근 / 정산</h2>
+          <p className="att-subtitle">
+            {selectedMonth || "-"} · 실제시간과 지급시간을 분리해서 확인
+          </p>
+        </div>
+      </div>
 
-        <PageHeader
-          title="출퇴근 기록"
-          description="월간 근태 기록과 승인 상태를 확인합니다"
-          right={<div className="page-pill">승인대기 {pendingCount}건</div>}
+      <div className="att-summary-grid">
+        <SummaryCard title="전체 기록" value={summary.total} sub="월 전체 attendance" />
+        <SummaryCard title="승인대기" value={summary.pending} sub="관리자 확인 필요" />
+        <SummaryCard
+          title="지급 근무시간"
+          value={formatMinutes(summary.totalPaidMinutes)}
+          sub="pending 제외"
         />
+        <SummaryCard
+          title="실제 근무시간"
+          value={formatMinutes(summary.totalActualMinutes)}
+          sub="check 기준"
+        />
+      </div>
 
-        {isMobile ? (
-          <div className="att-card-list">
-            {displayList.length === 0 ? (
-              <div className="empty">기록이 없습니다</div>
-            ) : (
-              displayList.map((a) => (
-                <MobileAttCard
-                  key={a.attendance_id || `${a.employee_id}-${a.date}-${a.check_in}`}
-                  a={a}
-                  onApprove={onApprove}
-                />
-              ))
-            )}
-          </div>
-        ) : (
-          <table className="data-table">
+      <section className="att-panel">
+        <div className="att-filter-row">
+          <input
+            className="att-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="이름, 날짜, 사유 검색"
+          />
+
+          <select
+            className="att-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">전체 상태</option>
+            <option value="approved">승인</option>
+            <option value="pending">승인대기</option>
+            <option value="rejected">거절</option>
+            <option value="auto_closed">자동종료</option>
+          </select>
+
+          <select
+            className="att-select"
+            value={reasonFilter}
+            onChange={(e) => setReasonFilter(e.target.value)}
+          >
+            <option value="all">전체 사유</option>
+            <option value="late_check_in">지각</option>
+            <option value="early_leave">조기퇴근</option>
+            <option value="late_checkout">추가근무</option>
+            <option value="next_part_late_extension">다음 파트 지각 연장</option>
+            <option value="out_of_schedule">스케줄 외 출근</option>
+          </select>
+        </div>
+
+        <div className="att-table-wrap">
+          <table className="att-table">
             <thead>
               <tr>
-                <th>날짜</th>
                 <th>이름</th>
+                <th>날짜</th>
                 <th>파트</th>
-                <th>출근</th>
-                <th>퇴근</th>
-                <th>실근무</th>
+                <th>예정시간</th>
+                <th>실제시간</th>
+                <th>지급시간</th>
                 <th>상태</th>
-                <th>차이</th>
-                <th>승인</th>
-                <th>비고</th>
+                <th>사유</th>
+                <th>휴게</th>
+                <th>실지급</th>
+                <th>메모</th>
+                <th>처리</th>
               </tr>
             </thead>
-
             <tbody>
-              {displayList.map((a) => {
-                const min = calcWorkMinutes(a.check_in, a.check_out, a.break_min);
-                const status = getAutoStatus(a);
-                const diffText = getDiffText(a, status);
-                const approved = toBool(a.approved);
-                const needApproval = needsManualApproval(a, status);
-
-                return (
-                  <tr key={a.attendance_id || `${a.employee_id}-${a.date}-${a.check_in}`}>
-                    <td>{normalizeDate(a.date)}</td>
-                    <td>
-                      <strong>{a.name}</strong>
-                    </td>
-                    <td>{PART_LABEL[a.part] || a.part || "-"}</td>
-                    <td>{formatTime(a.check_in)}</td>
-                    <td>{formatTime(a.check_out)}</td>
-                    <td>{(min / 60).toFixed(1)}h</td>
-                    <td>
-                      <span
-                        className="dash-badge"
-                        style={{
-                          background: STATUS_BG[status] || "#f9fafb",
-                          color: STATUS_COLOR[status] || "#374151",
-                        }}
-                      >
-                        {status}
-                      </span>
-                    </td>
-                    <td>{diffText}</td>
-                    <td>
-                      {approved ? (
-                        <span>승인완료</span>
-                      ) : needApproval ? (
-                        <button
-                          type="button"
-                          className="approve-btn"
-                          onClick={() => onApprove(a, true)}
-                        >
-                          승인
-                        </button>
-                      ) : (
-                        <span>-</span>
-                      )}
-                    </td>
-                    <td>{a.memo || "-"}</td>
-                  </tr>
-                );
-              })}
-
-              {attendance.length === 0 && (
+              {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="empty">
-                    기록이 없습니다
+                  <td colSpan={12} className="att-empty-cell">
+                    조건에 맞는 근태 기록이 없습니다.
                   </td>
                 </tr>
+              ) : (
+                filteredRows.map((row) => {
+                  const canApprove = row.approval_status === "pending";
+
+                  return (
+                    <tr key={row.attendance_id}>
+                      <td>{row.name || "-"}</td>
+                      <td>{row.date || "-"}</td>
+                      <td>{getPartLabel(row.part)}</td>
+                      <td>{timeRange(row.planned_start, row.planned_end)}</td>
+                      <td>{timeRange(row.check_in, row.check_out)}</td>
+                      <td>{timeRange(row.paid_check_in, row.paid_check_out)}</td>
+                      <td>
+                        <StatusBadge status={row.approval_status} />
+                      </td>
+                      <td>
+                        {row.approval_reason ? (
+                          <ReasonBadge reason={row.approval_reason} />
+                        ) : (
+                          <span className="att-muted">-</span>
+                        )}
+                      </td>
+                      <td>{Number(row.break_min || 0)}분</td>
+                      <td>{formatMinutes(getPaidWorkMinutes(row))}</td>
+                      <td className="att-note-cell">{row.memo || row.approval_note || "-"}</td>
+                      <td>
+                        {canApprove ? (
+                          <button
+                            type="button"
+                            className="att-btn primary small"
+                            onClick={() => setSelectedRow(row)}
+                          >
+                            처리
+                          </button>
+                        ) : (
+                          <span className="att-muted">완료</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      </section>
+
+      <ApprovalModal
+        row={selectedRow}
+        onClose={() => setSelectedRow(null)}
+        onApprove={handleApprove}
+        onReject={handleReject}
+      />
     </div>
   );
 }

@@ -6,9 +6,8 @@ export function PayslipModal({ emp, monthRange, onClose }) {
   if (!emp) return null;
 
   const nightExtra = Math.round(emp.nightHours * emp.wage * 0.5);
-  const basePay = Math.round(emp.hours * emp.wage);
-  const weeklyHoliday = Math.round((emp.workDays / 5) * 8 * emp.wage);
-  const totalPay = basePay + nightExtra + weeklyHoliday;
+  const totalPay = Math.round(emp.amount || 0);
+  const basePay = Math.max(0, totalPay - nightExtra);
   const deductTotal = 0;
   const netPay = totalPay - deductTotal;
 
@@ -17,7 +16,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
       <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
         <div className="payslip-header">
           <div>
-            <div className="payslip-brand">DUNKIN' DONUTS</div>
+            <div className="payslip-brand">SHIFT</div>
             <div className="payslip-title">임금명세서</div>
           </div>
 
@@ -33,7 +32,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
 
         <div className="payslip-info-grid">
           {[
-            ["사업장명", "던킨도너츠"],
+            ["사업장명", "SHIFT"],
             ["임금산정기간", `${monthRange.label} 근무분`],
             ["성명", emp.name],
             ["지급일", monthRange.payDateLabel],
@@ -48,7 +47,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
         <div className="payslip-section-title">지급내역</div>
         <div className="payslip-pay-grid">
           <PayItem
-            label="기본급 (월급)"
+            label="기본급"
             amount={basePay}
             note={`${emp.hours.toFixed(1)}h × ${fmtKRW(emp.wage)}`}
           />
@@ -57,18 +56,11 @@ export function PayslipModal({ emp, monthRange, onClose }) {
             amount={nightExtra}
             note={`야간 ${emp.nightHours.toFixed(1)}h × 50%`}
           />
-          <PayItem label="주휴수당" amount={weeklyHoliday} note={`${emp.workDays}일 출근 기준`} />
           <PayItem label="지급합계" amount={totalPay} highlight />
         </div>
 
         <div className="payslip-section-title">공제내역</div>
         <div className="payslip-deduct-grid">
-          {["소득세", "지방소득세", "국민연금", "건강보험", "고용보험"].map((label) => (
-            <div key={label} className="payslip-deduct-item">
-              <span>{label}</span>
-              <strong>0원</strong>
-            </div>
-          ))}
           <div className="payslip-deduct-item total">
             <span>공제합계</span>
             <strong>0원</strong>
@@ -79,8 +71,9 @@ export function PayslipModal({ emp, monthRange, onClose }) {
         <div className="payslip-table">
           <div className="payslip-row header">
             <span>날짜</span>
-            <span>출근</span>
-            <span>퇴근</span>
+            <span>실제 출근</span>
+            <span>실제 퇴근</span>
+            <span>지급 기준</span>
             <span>근무시간</span>
             <span>금액</span>
           </div>
@@ -94,6 +87,9 @@ export function PayslipModal({ emp, monthRange, onClose }) {
                 </span>
                 <span>{formatTime(d.check_in)}</span>
                 <span>{formatTime(d.check_out)}</span>
+                <span>
+                  {formatTime(d.paid_check_in)} ~ {formatTime(d.paid_check_out)}
+                </span>
                 <span>
                   {(d.workMin / 60).toFixed(1)}h
                   {d.nightMin > 0 ? ` (야간 ${(d.nightMin / 60).toFixed(1)}h)` : ""}
@@ -115,7 +111,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
           </div>
           <div className="ps-row total">
             <span>실수령액</span>
-            <span>{fmtKRW(totalPay)}</span>
+            <span>{fmtKRW(netPay)}</span>
           </div>
         </div>
 

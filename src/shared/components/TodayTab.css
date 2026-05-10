@@ -1,357 +1,265 @@
 /* ================================================================
-   TodayTab — 오늘 운영 현황
-   src/shared/components/TodayTab.css
-   UTF-8
+   TodayTab.css
+   새 TodayTab.jsx 전용
    ================================================================ */
 
-/* ── Topbar ───────────────────────────────────────────────────── */
-.today-topbar {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.today-topbar-copy h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 900;
-  color: #111827;
-}
-
-.today-topbar-copy p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: #9ca3af;
-  font-weight: 600;
-}
-
-.today-date-pill {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: #f9fafb;
-  color: #374151;
-  font-size: 13px;
-  font-weight: 700;
-  border: 1px solid #eceff3;
-}
-
-/* ── Summary Bar ────────────────────────────────────────────────── */
-.today-summary-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 20px;
-  padding: 14px 16px;
-  border: 1px solid #eceff3;
-  border-radius: 18px;
-  background: #fafbfc;
-}
-
-.summary-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #374151;
-  font-size: 13px;
-}
-
-.summary-item strong {
-  font-size: 15px;
-  color: #111827;
-}
-
-.summary-label {
-  color: #6b7280;
-}
-
-.summary-item.subtle {
-  margin-left: auto;
-  color: #9ca3af;
-  gap: 14px;
-}
-
-/* ── 그리드: 2열 (모바일 1열) ──────────────────────────────────── */
-.today-grid {
+.today-tab {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
-  margin-top: 12px;
 }
 
-/* ── 섹션 ──────────────────────────────────────────────────────── */
-.today-section {
-  background: #fff;
-  border-radius: 14px;
+.today-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.today-card {
+  background: #ffffff;
   border: 1px solid #e5e7eb;
-  padding: 12px 14px;
+  border-radius: 18px;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
-.today-section-header {
+.today-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-left: 4px solid #9ca3af;
-  padding-left: 8px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.today-section-title {
-  font-size: 14px;
-  font-weight: 700;
+.today-card-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
   color: #111827;
 }
 
-.today-section-count {
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 11px;
-  background: #9ca3af;
-  color: #fff;
+.today-card-count {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #374151;
   font-size: 12px;
-  font-weight: 700;
-  display: flex;
+  font-weight: 800;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-/* ── 빈 메시지 ─────────────────────────────────────────────────── */
+.today-card-body {
+  display: grid;
+  gap: 10px;
+}
+
 .today-empty {
   color: #9ca3af;
   font-size: 13px;
   text-align: center;
   padding: 8px 0;
-  margin: 0;
 }
 
-/* ── 카드 목록 ─────────────────────────────────────────────────── */
-.today-cards {
+.today-row {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* ── 카드 ──────────────────────────────────────────────────────── */
-.today-card {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  background: #fafafa;
-  gap: 10px;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
 }
 
-.today-card-absent {
-  border-color: #fca5a5;
-  background: #fff5f5;
+.today-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
 }
 
-.today-card-auto {
-  border-color: #c4b5fd;
-  background: #faf5ff;
-}
-
-.today-card-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+.today-row-main {
   min-width: 0;
+  flex: 1;
 }
 
-.today-card-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.today-name {
+.today-row-title {
   font-size: 14px;
   font-weight: 700;
   color: #111827;
-  white-space: nowrap;
+  line-height: 1.4;
+  word-break: keep-all;
 }
 
-.today-time {
+.today-row-subtitle {
+  margin-top: 4px;
   font-size: 12px;
   color: #6b7280;
-  white-space: nowrap;
+  line-height: 1.4;
 }
 
-.today-elapsed {
-  color: #059669;
+.today-row-extra {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #374151;
+  line-height: 1.5;
 }
 
-/* ── 뱃지 ──────────────────────────────────────────────────────── */
-.today-badges {
+.today-row-right {
+  flex-shrink: 0;
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.today-note {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
+  word-break: keep-all;
 }
 
 .today-badge {
   display: inline-flex;
   align-items: center;
-  padding: 1px 7px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
-}
-
-.today-badge-sub {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.today-badge-extra {
   background: #f3f4f6;
   color: #374151;
 }
 
-.today-badge-pending {
+.today-badge.status-approved,
+.today-badge.approved {
+  background: #e8f7ee;
+  color: #15803d;
+}
+
+.today-badge.status-pending {
+  background: #fff4d6;
+  color: #a16207;
+}
+
+.today-badge.status-rejected {
   background: #fee2e2;
-  color: #991b1b;
+  color: #b91c1c;
 }
 
-.today-badge-absent {
+.today-badge.status-auto_closed {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.today-badge.reason-late_check_in {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.today-badge.reason-early_leave {
   background: #fee2e2;
-  color: #991b1b;
+  color: #b91c1c;
 }
 
-.today-badge-late {
-  background: #fed7aa;
-  color: #9a3412;
-}
-
-.today-badge-auto {
+.today-badge.reason-late_checkout {
   background: #ede9fe;
   color: #6d28d9;
 }
 
-/* ── Time Block ────────────────────────────────────────────────── */
-.time-block {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 6px;
+.today-badge.reason-next_part_late_extension {
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
-.planned-time {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.actual-time {
-  font-size: 13px;
+.today-badge.reason-out_of_schedule {
+  background: #f3f4f6;
   color: #374151;
 }
 
-/* ── No-show Warning ────────────────────────────────────────────── */
-.today-card.warning {
-  border-color: #fecaca;
-  background: #fffafa;
+.today-badge.neutral {
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
-/* ── 승인/반려 버튼 ───────────────────────────────────────────── */
-.approve-actions {
+.today-approval-item {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.today-approval-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.today-actions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.approve-btn {
-  padding: 3px 10px;
+.today-btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 12px;
   font-size: 12px;
-  font-weight: 600;
-  background: #2563eb;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
+  font-weight: 700;
   cursor: pointer;
-  white-space: nowrap;
+  font-family: inherit;
 }
 
-.approve-btn:hover {
-  background: #1d4ed8;
+.today-btn.approve {
+  background: #111827;
+  color: #ffffff;
 }
 
-.reject-btn {
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  background: #ef4444;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  white-space: nowrap;
+.today-btn.approve:hover {
+  background: #1f2937;
 }
 
-.reject-btn:hover {
-  background: #dc2626;
+.today-btn.reject {
+  background: #f3f4f6;
+  color: #111827;
 }
 
-.auto-checkout-btn {
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  background: #8b5cf6;
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  white-space: nowrap;
-  margin-top: 4px;
+.today-btn.reject:hover {
+  background: #e5e7eb;
 }
 
-.auto-checkout-btn:hover {
-  background: #7c3aed;
-}
-
-/* ── 모바일 ────────────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .today-grid {
+@media (max-width: 960px) {
+  .today-overview {
     grid-template-columns: 1fr;
   }
+}
 
-  .today-topbar {
-    align-items: stretch;
-  }
-
-  .today-topbar-copy h2 {
-    font-size: 18px;
-  }
-
-  .today-date-pill {
-    text-align: center;
-  }
-
-  .today-summary-bar {
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px 12px;
-  }
-
-  .summary-item.subtle {
-    margin-left: 0;
-  }
-
+@media (max-width: 640px) {
   .today-card {
-    flex-direction: column;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .today-card-header {
     align-items: flex-start;
   }
 
-  .today-card-right {
-    width: 100%;
+  .today-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .today-row-right {
     justify-content: flex-start;
+  }
+
+  .today-actions {
+    width: 100%;
+  }
+
+  .today-btn {
+    flex: 1;
   }
 }

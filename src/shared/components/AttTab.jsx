@@ -5,6 +5,7 @@ import {
   getApprovalStatusLabel,
   getPaidWorkMinutes,
 } from "../hooks/useApi";
+import "./AttTab.css";
 
 function safeArray(value) {
   return Array.isArray(value) ? value : [];

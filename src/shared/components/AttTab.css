@@ -1,0 +1,274 @@
+.att-tab {
+  display: grid;
+  gap: 16px;
+}
+
+.att-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.att-title {
+  margin: 0;
+  font-size: 20px;
+  color: #111827;
+}
+
+.att-subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.att-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.att-summary-card {
+  background: #fff;
+  border: 1px solid #ececec;
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.att-summary-title {
+  font-size: 12px;
+  color: #666;
+}
+
+.att-summary-value {
+  margin-top: 6px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.att-summary-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #888;
+}
+
+.att-panel {
+  background: #fff;
+  border: 1px solid #ececec;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.att-filter-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.att-input,
+.att-select,
+.att-textarea {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.att-input {
+  min-width: 220px;
+  flex: 1;
+}
+
+.att-select {
+  min-width: 180px;
+}
+
+.att-textarea {
+  min-height: 100px;
+  resize: vertical;
+  width: 100%;
+}
+
+.att-table-wrap {
+  overflow: auto;
+}
+
+.att-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1200px;
+  background: #fff;
+}
+
+.att-table th,
+.att-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 12px 10px;
+  border-bottom: 1px solid #f1f3f5;
+  font-size: 13px;
+  color: #111827;
+}
+
+.att-table th {
+  font-size: 12px;
+  color: #666;
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.att-empty-cell {
+  text-align: center;
+  color: #888;
+  padding: 28px 12px !important;
+}
+
+.att-note-cell {
+  max-width: 320px;
+  white-space: normal;
+  word-break: keep-all;
+  line-height: 1.5;
+}
+
+.att-muted {
+  color: #888;
+  font-size: 12px;
+}
+
+.att-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f3f3f3;
+  color: #374151;
+}
+
+.att-badge.status-approved {
+  background: #e8f7ee;
+  color: #15803d;
+}
+
+.att-badge.status-pending {
+  background: #fff4d6;
+  color: #a16207;
+}
+
+.att-badge.status-rejected {
+  background: #ffe5e5;
+  color: #b91c1c;
+}
+
+.att-badge.status-auto_closed {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.att-btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.att-btn.small {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.att-btn.primary {
+  background: #111827;
+  color: #fff;
+}
+
+.att-btn.secondary {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.att-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.att-modal {
+  width: min(720px, 100%);
+  background: #fff;
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+}
+
+.att-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.att-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.att-icon-btn {
+  border: 0;
+  background: #f3f4f6;
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.att-modal-body {
+  display: grid;
+  gap: 14px;
+}
+
+.att-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.att-note-box {
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.att-label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  color: #111827;
+}
+
+.att-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+@media (max-width: 960px) {
+  .att-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .att-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}

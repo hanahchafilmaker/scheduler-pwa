@@ -2,8 +2,8 @@
 // UTF-8 — 한글 깨짐 주의
 
 export function getDateString(d) {
-  const y   = d.getFullYear();
-  const m   = String(d.getMonth() + 1).padStart(2, "0");
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
@@ -19,8 +19,8 @@ export function normalizeDate(v) {
 }
 
 export function getWeekDates(offset = 0) {
-  const now    = new Date();
-  const day    = now.getDay();
+  const now = new Date();
+  const day = now.getDay();
   const monday = new Date(now);
   monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
 
@@ -33,12 +33,12 @@ export function getWeekDates(offset = 0) {
 
 export function getMonthRange(base = new Date()) {
   const start = new Date(base.getFullYear(), base.getMonth(), 1);
-  const end   = new Date(base.getFullYear(), base.getMonth() + 1, 0);
-  const ym    = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}`;
+  const end = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+  const ym = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}`;
 
   return {
     start: getDateString(start),
-    end:   getDateString(end),
+    end: getDateString(end),
     label: `${base.getFullYear()}년 ${base.getMonth() + 1}월`,
     ym,
   };
@@ -57,18 +57,19 @@ function toMin(t) {
 export function getStatus(scheduled, att) {
   if (!att?.check_in) return "예정";
 
-  const planStart = toMin(scheduled.planned_start);   // schedule 필드
-  let   planEnd   = toMin(scheduled.planned_end);     // schedule 필드
-  if (planEnd < planStart) planEnd += 24 * 60;
+  const planStart = toMin(scheduled.planned_start);
+  const planEnd = toMin(scheduled.planned_end);
+
+  if (planEnd < planStart) return "확인필요";
 
   const realStart = toMin(att.check_in);
-  let   realEnd   = att.check_out ? toMin(att.check_out) : null;
-  if (realEnd !== null && realEnd < realStart) realEnd += 24 * 60;
+  const realEnd = att.check_out ? toMin(att.check_out) : null;
+
+  if (realEnd !== null && realEnd < realStart) return "확인필요";
 
   if (!att.check_out) {
     const n = new Date();
-    let nowAdj = n.getHours() * 60 + n.getMinutes();
-    if (nowAdj < planStart - 60) nowAdj += 24 * 60;
+    const nowAdj = n.getHours() * 60 + n.getMinutes();
     return nowAdj > planEnd + 30 ? "미퇴근" : "근무중";
   }
 

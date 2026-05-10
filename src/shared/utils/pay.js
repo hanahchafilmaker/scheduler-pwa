@@ -6,20 +6,33 @@
 // 2) schedule 기반 예상 정산 사용 금지
 // 3) paid_check_in / paid_check_out 기준으로 계산
 // 4) approval_status === "pending" 인 건은 미확정으로 간주
+// 5) 비정상 역전 시간(end < start)은 자정 넘김으로 보지 않고 0분 처리
+//    → 잘못된 paid 시간 때문에 급여/야간수당이 폭증하는 문제 방지
 
-export function toMin(t) {
+function toParsedMin(t) {
   const m = String(t || "").match(/(\d+):(\d+)/);
-  if (!m) return 0;
+  if (!m) return null;
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
+export function toMin(t) {
+  const parsed = toParsedMin(t);
+  return parsed === null ? 0 : parsed;
+}
+
+/**
+ * 동일 날짜 기준 시간 차이.
+ * end < start 인 경우 비정상 데이터로 보고 0 반환.
+ */
 export function diffMinutes(start, end) {
   if (!start || !end) return 0;
 
-  const s = toMin(start);
-  let e = toMin(end);
+  const s = toParsedMin(start);
+  const e = toParsedMin(end);
 
-  if (e < s) e += 24 * 60;
+  if (s === null || e === null) return 0;
+  if (e < s) return 0;
+
   return Math.max(0, e - s);
 }
 
@@ -40,19 +53,23 @@ export function calcActualWorkMinutes(checkIn, checkOut, breakMin = 0) {
 }
 
 // 야간시간 계산: 22:00 ~ 익일 05:00
+// 현재 시스템은 역전 시간을 비정상으로 보고 0 처리
 export function calcNightMinutes(paidCheckIn, paidCheckOut, breakMin = 0) {
   if (!paidCheckIn || !paidCheckOut) return 0;
 
-  const start = toMin(paidCheckIn);
-  let end = toMin(paidCheckOut);
+  const start = toParsedMin(paidCheckIn);
+  const end = toParsedMin(paidCheckOut);
 
-  if (end < start) end += 24 * 60;
+  if (start === null || end === null) return 0;
+  if (end < start) return 0;
 
   const total = end - start;
   if (total <= 0) return 0;
 
+  // 같은 날짜 내 22:00~24:00만 우선 계산
+  // 실제 야간(익일 00~05시)을 지원하려면 GAS 쪽에서 정상적인 날짜 포함 구조가 필요
   const nightStart = 22 * 60;
-  const nightEnd = 29 * 60; // 익일 05:00
+  const nightEnd = 24 * 60;
 
   const overlap = Math.max(0, Math.min(end, nightEnd) - Math.max(start, nightStart));
   if (overlap <= 0) return 0;
@@ -64,13 +81,14 @@ export function calcNightMinutes(paidCheckIn, paidCheckOut, breakMin = 0) {
 export function calcNightMinutesSimple(paidCheckIn, paidCheckOut) {
   if (!paidCheckIn || !paidCheckOut) return 0;
 
-  const start = toMin(paidCheckIn);
-  let end = toMin(paidCheckOut);
+  const start = toParsedMin(paidCheckIn);
+  const end = toParsedMin(paidCheckOut);
 
-  if (end < start) end += 24 * 60;
+  if (start === null || end === null) return 0;
+  if (end < start) return 0;
 
   const nightStart = 22 * 60;
-  const nightEnd = 29 * 60;
+  const nightEnd = 24 * 60;
 
   return Math.max(0, Math.min(end, nightEnd) - Math.max(start, nightStart));
 }

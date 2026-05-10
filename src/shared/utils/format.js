@@ -28,20 +28,25 @@ export function formatMinutes(min) {
 
 export function diffMinutes(start, end) {
   if (!start || !end) return 0;
+
   const toMin = (t) => {
     const m = String(t || "").match(/(\d+):(\d+)/);
-    if (!m) return 0;
+    if (!m) return null;
     return Number(m[1]) * 60 + Number(m[2]);
   };
+
   const s = toMin(start);
-  let   e = toMin(end);
-  if (e < s) e += 24 * 60;
+  const e = toMin(end);
+
+  if (s === null || e === null) return 0;
+  if (e < s) return 0;
+
   return Math.max(0, e - s);
 }
 
 // GAS 는 boolean 을 "true"/"false" 문자열로 내려주기도 함 → 통일
 export function toBool(v) {
-  if (v === true)  return true;
+  if (v === true) return true;
   if (v === false) return false;
   if (v === null || v === undefined || v === "") return false;
   return String(v).toLowerCase() === "true";

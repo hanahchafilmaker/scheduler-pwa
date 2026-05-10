@@ -131,9 +131,11 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
               <div>{timeRange(row.paid_check_in, row.paid_check_out)}</div>
             </div>
             <div>
-              <strong>추가/연장</strong>
+              <strong>차감/연장</strong>
               <div>
-                추가 {Number(row.extra_work_min || 0)}분 / 연장 {Number(row.extension_min || 0)}분
+                지각차감 {Number(row.late_deduct_min || 0)}분 / 조퇴차감{" "}
+                {Number(row.early_leave_min || 0)}분 / 추가 {Number(row.extra_work_min || 0)}분 /
+                연장 {Number(row.extension_min || 0)}분
               </div>
             </div>
           </div>
@@ -187,11 +189,8 @@ export default function AttTab(props) {
   const filteredRows = useMemo(() => {
     return attendanceList.filter((row) => {
       const matchStatus = statusFilter === "all" ? true : row.approval_status === statusFilter;
-
       const matchReason = reasonFilter === "all" ? true : row.approval_reason === reasonFilter;
-
       const matchKeyword = matchesSearch(row, search);
-
       return matchStatus && matchReason && matchKeyword;
     });
   }, [attendanceList, reasonFilter, search, statusFilter]);
@@ -306,6 +305,7 @@ export default function AttTab(props) {
             <option value="early_leave">조기퇴근</option>
             <option value="late_checkout">추가근무</option>
             <option value="next_part_late_extension">다음 파트 지각 연장</option>
+            <option value="next_part_no_show_extension">다음 파트 미출근 연장</option>
             <option value="out_of_schedule">스케줄 외 출근</option>
           </select>
         </div>

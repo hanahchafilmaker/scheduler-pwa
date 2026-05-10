@@ -184,6 +184,11 @@
   color: #4b5563;
 }
 
+.today-badge.reason-next_part_no_show_extension {
+  background: #dcfce7;
+  color: #166534;
+}
+
 .today-approval-item {
   display: grid;
   gap: 10px;

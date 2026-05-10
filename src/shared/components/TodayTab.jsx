@@ -72,6 +72,27 @@ function PersonRow({ title, subtitle, right, extra }) {
   );
 }
 
+function findMatchingAttendance(scheduleRow, attendanceList) {
+  return (
+    attendanceList.find((att) => {
+      if (
+        scheduleRow.schedule_id &&
+        att.schedule_id &&
+        String(att.schedule_id) === String(scheduleRow.schedule_id)
+      ) {
+        return !!att.check_in;
+      }
+
+      return (
+        String(att.employee_id || "") === String(scheduleRow.employee_id || "") &&
+        String(att.date || "") === String(scheduleRow.date || "") &&
+        String(att.part || "") === String(scheduleRow.part || "") &&
+        !!att.check_in
+      );
+    }) || null
+  );
+}
+
 export default function TodayTab(props) {
   const { todaySchedule = [], todayAttendance = [], employees = [], onApprove, onReject } = props;
 
@@ -95,24 +116,37 @@ export default function TodayTab(props) {
   }, [attendanceList]);
 
   const extensionPending = useMemo(() => {
-    return pendingList.filter((row) => row.approval_reason === "next_part_late_extension");
+    return pendingList.filter(
+      (row) =>
+        row.approval_reason === "next_part_late_extension" ||
+        row.approval_reason === "next_part_no_show_extension",
+    );
   }, [pendingList]);
 
   const normalPending = useMemo(() => {
-    return pendingList.filter((row) => row.approval_reason !== "next_part_late_extension");
+    return pendingList.filter(
+      (row) =>
+        row.approval_reason !== "next_part_late_extension" &&
+        row.approval_reason !== "next_part_no_show_extension",
+    );
   }, [pendingList]);
 
-  const todayScheduleIdSet = useMemo(() => {
-    return new Set(attendanceList.map((row) => row.schedule_id).filter(Boolean));
-  }, [attendanceList]);
+  const matchedScheduleIds = useMemo(() => {
+    const ids = new Set();
+
+    scheduleList.forEach((scheduleRow) => {
+      const matched = findMatchingAttendance(scheduleRow, attendanceList);
+      if (matched?.schedule_id) {
+        ids.add(String(scheduleRow.schedule_id));
+      }
+    });
+
+    return ids;
+  }, [scheduleList, attendanceList]);
 
   const absentList = useMemo(() => {
-    return scheduleList.filter((row) => !todayScheduleIdSet.has(row.schedule_id));
-  }, [scheduleList, todayScheduleIdSet]);
-
-  const checkedInEmployeeIdSet = useMemo(() => {
-    return new Set(attendanceList.map((row) => row.employee_id).filter(Boolean));
-  }, [attendanceList]);
+    return scheduleList.filter((row) => !matchedScheduleIds.has(String(row.schedule_id)));
+  }, [scheduleList, matchedScheduleIds]);
 
   const lateNoShowList = useMemo(() => {
     return absentList.map((row) => {
@@ -193,7 +227,7 @@ export default function TodayTab(props) {
       </div>
 
       <div className="today-overview">
-        <StatCard title="다음 파트 지각 연장 요청" count={extensionPending.length}>
+        <StatCard title="연장 요청" count={extensionPending.length}>
           {extensionPending.length === 0 ? (
             <EmptyState text="자동 연장 요청이 없습니다." />
           ) : (
@@ -263,17 +297,25 @@ export default function TodayTab(props) {
           <h3>오늘 스케줄 요약</h3>
           <span className="today-card-count">{scheduleList.length}</span>
         </div>
+
         <div className="today-card-body">
           {scheduleList.length === 0 ? (
             <EmptyState text="오늘 등록된 스케줄이 없습니다." />
           ) : (
             scheduleList.map((row) => {
-              const checkedIn = checkedInEmployeeIdSet.has(String(row.employee_id));
+              const matchedAttendance = findMatchingAttendance(row, attendanceList);
+              const checkedIn = !!matchedAttendance;
+
               return (
                 <PersonRow
                   key={row.schedule_id}
                   title={`${row.name || "-"} · ${getPartLabel(row.part)}`}
                   subtitle={timeRange(row.planned_start, row.planned_end)}
+                  extra={
+                    checkedIn
+                      ? `실제 ${timeRange(matchedAttendance.check_in, matchedAttendance.check_out)}`
+                      : null
+                  }
                   right={
                     <span className={`today-badge ${checkedIn ? "approved" : "neutral"}`}>
                       {checkedIn ? "출근기록 있음" : "대기"}

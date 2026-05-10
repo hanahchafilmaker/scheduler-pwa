@@ -26,15 +26,6 @@ function getPartLabel(part) {
   }
 }
 
-function getTodaySchedule(scheduleList) {
-  if (!scheduleList.length) return null;
-  return [...scheduleList].sort((a, b) => {
-    const aa = (a.planned_start || "").replace(":", "");
-    const bb = (b.planned_start || "").replace(":", "");
-    return aa.localeCompare(bb);
-  })[0];
-}
-
 function getOpenAttendance(attendanceList) {
   return attendanceList.find((row) => row.check_in && !row.check_out) || null;
 }
@@ -45,6 +36,23 @@ function getLatestAttendance(attendanceList) {
     const aa = `${a.date || ""} ${a.check_in || ""}`;
     const bb = `${b.date || ""} ${b.check_in || ""}`;
     return bb.localeCompare(aa);
+  })[0];
+}
+
+function getTodaySchedule(scheduleList, attendanceRow) {
+  if (!scheduleList.length) return null;
+
+  if (attendanceRow?.part) {
+    const matched = scheduleList.find(
+      (row) => String(row.part || "") === String(attendanceRow.part || ""),
+    );
+    if (matched) return matched;
+  }
+
+  return [...scheduleList].sort((a, b) => {
+    const aa = (a.planned_start || "").replace(":", "");
+    const bb = (b.planned_start || "").replace(":", "");
+    return aa.localeCompare(bb);
   })[0];
 }
 
@@ -102,13 +110,14 @@ export default function StaffHome(props) {
   const scheduleList = safeArray(todaySchedule);
   const attendanceList = safeArray(todayAttendance);
 
-  const mainSchedule = useMemo(() => getTodaySchedule(scheduleList), [scheduleList]);
-
   const openAttendance = useMemo(() => getOpenAttendance(attendanceList), [attendanceList]);
-
   const latestAttendance = useMemo(() => getLatestAttendance(attendanceList), [attendanceList]);
-
   const displayAttendance = openAttendance || latestAttendance || null;
+
+  const mainSchedule = useMemo(
+    () => getTodaySchedule(scheduleList, displayAttendance),
+    [scheduleList, displayAttendance],
+  );
 
   const canCheckIn = !openAttendance;
   const canCheckOut = !!openAttendance;
@@ -255,7 +264,7 @@ export default function StaffHome(props) {
 
       <InfoCard title="안내">
         <ul className="staff-guide-list">
-          <li>출근은 한 번만 가능합니다.</li>
+          <li>하루에 여러 번 출근할 수 있습니다. 퇴근 후 다시 출근도 가능합니다.</li>
           <li>근무 중일 때만 퇴근 버튼이 활성화됩니다.</li>
           <li>지각, 조기퇴근, 추가근무는 관리자 확인 후 최종 확정됩니다.</li>
           <li>표시된 지급 기준 시간은 실제 근무시간과 다를 수 있습니다.</li>

@@ -5,9 +5,9 @@ const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
 export function PayslipModal({ emp, monthRange, onClose }) {
   if (!emp) return null;
 
-  const nightExtra = Math.round(emp.nightHours * emp.wage * 0.5);
-  const totalPay = Math.round(emp.amount || 0);
-  const basePay = Math.max(0, totalPay - nightExtra);
+  const basePay = Math.round(emp.payrollBasePay || 0);
+  const extraPay = Math.round(emp.payrollExtraPay || 0);
+  const totalPay = basePay + extraPay;
   const deductTotal = 0;
   const netPay = totalPay - deductTotal;
 
@@ -46,16 +46,8 @@ export function PayslipModal({ emp, monthRange, onClose }) {
 
         <div className="payslip-section-title">지급내역</div>
         <div className="payslip-pay-grid">
-          <PayItem
-            label="기본급"
-            amount={basePay}
-            note={`${emp.hours.toFixed(1)}h × ${fmtKRW(emp.wage)}`}
-          />
-          <PayItem
-            label="야간근로수당"
-            amount={nightExtra}
-            note={`야간 ${emp.nightHours.toFixed(1)}h × 50%`}
-          />
+          <PayItem label="기본급" amount={basePay} />
+          <PayItem label="추가 수당" amount={extraPay} />
           <PayItem label="지급합계" amount={totalPay} highlight />
         </div>
 
@@ -73,13 +65,17 @@ export function PayslipModal({ emp, monthRange, onClose }) {
             <span>날짜</span>
             <span>실제 출근</span>
             <span>실제 퇴근</span>
-            <span>지급 기준</span>
-            <span>근무시간</span>
-            <span>금액</span>
+            <span>기본급</span>
+            <span>추가 수당</span>
           </div>
 
           {emp.days.map((d, i) => {
             const dayKr = DAY_KR[new Date(d.date).getDay()];
+            // 일자별 기본급 배분
+            const dayBasePay = Math.round(
+              (d.payrollBaseMin / emp.days.reduce((s, day) => s + day.payrollBaseMin, 0)) * basePay,
+            );
+            const dayExtraPay = Math.round(d.payrollExtraPay || 0);
             return (
               <div key={i} className="payslip-row">
                 <span>
@@ -87,14 +83,8 @@ export function PayslipModal({ emp, monthRange, onClose }) {
                 </span>
                 <span>{formatTime(d.check_in)}</span>
                 <span>{formatTime(d.check_out)}</span>
-                <span>
-                  {formatTime(d.paid_check_in)} ~ {formatTime(d.paid_check_out)}
-                </span>
-                <span>
-                  {(d.workMin / 60).toFixed(1)}h
-                  {d.nightMin > 0 ? ` (야간 ${(d.nightMin / 60).toFixed(1)}h)` : ""}
-                </span>
-                <span>{fmtKRW(d.pay)}</span>
+                <span>{fmtKRW(dayBasePay)}</span>
+                <span>{fmtKRW(dayExtraPay)}</span>
               </div>
             );
           })}
@@ -102,8 +92,12 @@ export function PayslipModal({ emp, monthRange, onClose }) {
 
         <div className="payslip-summary">
           <div className="ps-row">
-            <span>지급합계</span>
-            <span>{fmtKRW(totalPay)}</span>
+            <span>기본급</span>
+            <span>{fmtKRW(basePay)}</span>
+          </div>
+          <div className="ps-row">
+            <span>추가 수당</span>
+            <span>{fmtKRW(extraPay)}</span>
           </div>
           <div className="ps-row">
             <span>공제합계</span>

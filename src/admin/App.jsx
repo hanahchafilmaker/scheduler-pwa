@@ -7,12 +7,7 @@ import AttTab from "../shared/components/AttTab";
 import { ShiftTab } from "../shared/components/ShiftTab";
 import { SimTab } from "../shared/components/SimTab";
 import { Toast } from "../shared/components/UI";
-import {
-  calcMonthSummary,
-  calcNightMinutesSimple,
-  calcRowPay,
-  calcWorkMinutes,
-} from "../shared/utils/pay";
+import { calcMonthSummary, calcRowPayWithSeparation } from "../shared/utils/pay";
 import { safeStr } from "../shared/utils";
 import { SHIFT_TIME } from "../shared/constants";
 
@@ -52,8 +47,9 @@ function getWeekDates(offset = 0) {
 }
 
 // 새 정산 기준:
+// - attendance 원본 유지: check_in/check_out 그대로 보존
+// - payroll 계산 분리: 파트 예정시간 기준 + 추가 수당
 // - approval_status === "pending" 제외
-// - paid_check_in / paid_check_out 기준
 function buildSettlement({ attendance = [], employees = [], month }) {
   const empMap = new Map(employees.map((e) => [safeStr(e.employee_id), e]));
   const rowsMap = new Map();
@@ -70,37 +66,41 @@ function buildSettlement({ attendance = [], employees = [], month }) {
     const emp = empMap.get(empId) || {};
     const wage = Number(emp.hourly_wage || a.hourly_wage || 0);
 
-    const workMin = calcWorkMinutes(a.paid_check_in, a.paid_check_out, a.break_min);
-    const nightMin = calcNightMinutesSimple(a.paid_check_in, a.paid_check_out);
-    const pay = calcRowPay(a, wage);
+    // payroll 계산: 파트 기본시간 + 추가 수당 분리
+    const payrollData = calcRowPayWithSeparation(a, wage);
 
     if (!rowsMap.has(empId)) {
       rowsMap.set(empId, {
         employee_id: empId,
         name: a.name || emp.name || "-",
         wage,
-        hours: 0,
-        nightHours: 0,
-        amount: 0,
+        // payroll 기반 집계 필드
+        payrollBaseHours: 0,
+        payrollBasePay: 0,
+        payrollExtraPay: 0,
         workDays: 0,
         days: [],
       });
     }
 
     const row = rowsMap.get(empId);
-    row.hours += workMin / 60;
-    row.nightHours += nightMin / 60;
-    row.amount += pay;
+    row.payrollBaseHours += payrollData.payrollBaseMin / 60;
+    row.payrollBasePay += payrollData.payrollBasePay;
+    row.payrollExtraPay += payrollData.payrollExtraPay;
     row.workDays += 1;
     row.days.push({
       date: a.date,
+      // 원본 attendance 필드: 절대 수정 금지
       check_in: a.check_in,
       check_out: a.check_out,
-      paid_check_in: a.paid_check_in,
-      paid_check_out: a.paid_check_out,
-      workMin,
-      nightMin,
-      pay,
+      planned_start: a.planned_start,
+      planned_end: a.planned_end,
+      // payroll 계산값
+      payrollBaseMin: payrollData.payrollBaseMin,
+      payrollExtraMin: payrollData.payrollExtraMin,
+      payrollBasePay: payrollData.payrollBasePay,
+      payrollExtraPay: payrollData.payrollExtraPay,
+      payrollTotal: payrollData.payrollTotal,
       approval_status: a.approval_status,
       approval_reason: a.approval_reason,
     });
@@ -115,8 +115,11 @@ function buildSettlement({ attendance = [], employees = [], month }) {
 
   return {
     rows,
-    totalPay: rows.reduce((sum, r) => sum + r.amount, 0),
-    totalHours: rows.reduce((sum, r) => sum + r.hours, 0),
+    // payroll 기반 집계
+    totalPayrollBaseHours: rows.reduce((sum, r) => sum + r.payrollBaseHours, 0),
+    totalPayrollBasePay: rows.reduce((sum, r) => sum + r.payrollBasePay, 0),
+    totalPayrollExtraPay: rows.reduce((sum, r) => sum + r.payrollExtraPay, 0),
+    totalPayrollPay: rows.reduce((sum, r) => sum + (r.payrollBasePay + r.payrollExtraPay), 0),
     totalWorkDays: rows.reduce((sum, r) => sum + r.workDays, 0),
     summary,
   };

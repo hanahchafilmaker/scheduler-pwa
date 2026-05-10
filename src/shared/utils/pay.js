@@ -99,6 +99,100 @@ export function isPaySettledRow(row) {
   return row.approval_status !== "pending";
 }
 
+/* ================= 신규: 기본 근무시간 기준 임금 계산 ================= */
+// 임금명세서용: 파트 예정시간 기준으로 기본 근무시간 계산
+
+/**
+ * 기본 근무시간 (분): 파트 예정시간 기준
+ * planned_start ~ planned_end 시간
+ */
+export function calcPayrollBaseMinutes(plannedStart, plannedEnd) {
+  return diffMinutes(plannedStart, plannedEnd);
+}
+
+/**
+ * 추가 조기출근 시간 (분)
+ * actual check_in이 planned_start보다 빠른 경우만 계산
+ */
+export function calcPayrollExtraEarlyMinutes(plannedStart, actualCheckIn) {
+  if (!plannedStart || !actualCheckIn) return 0;
+
+  const planned = toParsedMin(plannedStart);
+  const actual = toParsedMin(actualCheckIn);
+
+  if (planned === null || actual === null) return 0;
+  return Math.max(0, planned - actual);
+}
+
+/**
+ * 추가 마감시간 (분)
+ * actual check_out이 planned_end보다 늦은 경우만 계산
+ */
+export function calcPayrollExtraLateMinutes(plannedEnd, actualCheckOut) {
+  if (!plannedEnd || !actualCheckOut) return 0;
+
+  const planned = toParsedMin(plannedEnd);
+  const actual = toParsedMin(actualCheckOut);
+
+  if (planned === null || actual === null) return 0;
+  return Math.max(0, actual - planned);
+}
+
+/**
+ * 추가시간 총합 (분)
+ * 조기출근 + 마감 추가시간
+ */
+export function calcPayrollExtraMinutes(plannedStart, plannedEnd, actualCheckIn, actualCheckOut) {
+  const earlyMin = calcPayrollExtraEarlyMinutes(plannedStart, actualCheckIn);
+  const lateMin = calcPayrollExtraLateMinutes(plannedEnd, actualCheckOut);
+  return earlyMin + lateMin;
+}
+
+/**
+ * 개별 row 급여 계산 (파트 기본시간 기준)
+ *
+ * 계산 방식:
+ * - 기본 근무시간 = planned_start ~ planned_end (파트 기본시간)
+ * - 추가시간 = 조기출근 + 마감 추가시간
+ * - 기본급 = (기본 근무시간 / 60) × 시급
+ * - 추가 수당 = (추가시간 / 60) × 시급
+ * - 총 지급액 = 기본급 + 추가 수당
+ */
+export function calcRowPayWithSeparation(row, hourlyWage) {
+  if (!row || !isPaySettledRow(row)) {
+    return {
+      payrollBaseMin: 0,
+      payrollExtraMin: 0,
+      payrollBasePay: 0,
+      payrollExtraPay: 0,
+      payrollTotal: 0,
+    };
+  }
+
+  const wage = Number(hourlyWage ?? row.hourly_wage ?? 0) || 0;
+
+  // 기본 근무시간: 파트 예정시간 기준
+  const payrollBaseMin = calcPayrollBaseMinutes(row.planned_start, row.planned_end);
+
+  // 추가시간: 조기출근 + 마감 추가시간
+  const extraEarlyMin = calcPayrollExtraEarlyMinutes(row.planned_start, row.check_in);
+  const extraLateMin = calcPayrollExtraLateMinutes(row.planned_end, row.check_out);
+  const payrollExtraMin = extraEarlyMin + extraLateMin;
+
+  // 금액 계산
+  const payrollBasePay = Math.round((payrollBaseMin / 60) * wage);
+  const payrollExtraPay = Math.round((payrollExtraMin / 60) * wage);
+  const payrollTotal = payrollBasePay + payrollExtraPay;
+
+  return {
+    payrollBaseMin,
+    payrollExtraMin,
+    payrollBasePay,
+    payrollExtraPay,
+    payrollTotal,
+  };
+}
+
 // 개별 row 급여 계산
 export function calcRowPay(row, hourlyWage) {
   if (!row || !isPaySettledRow(row)) return 0;

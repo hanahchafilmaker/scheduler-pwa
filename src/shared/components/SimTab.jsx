@@ -5,54 +5,55 @@ import { PageHeader } from "./UI";
 
 const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
 
-function DayTable({ days, hours, nightHours, amount }) {
+function DayTable({ days, basePay, extraPay, totalPay }) {
   return (
     <div className="sim-days-table">
-      <div className="sim-days-head sim-days-head-7">
+      <div className="sim-days-head sim-days-head-5">
         <span>날짜</span>
         <span>실제 출근</span>
         <span>실제 퇴근</span>
-        <span>지급 기준</span>
-        <span>근무</span>
-        <span>야간</span>
-        <span>금액</span>
+        <span>기본급</span>
+        <span>추가 수당</span>
       </div>
 
       {days.map((d, i) => {
         const dayKr = DAY_KR[new Date(d.date).getDay()];
+        const dayBasePay =
+          Math.round(
+            (d.payrollBaseMin / 60) *
+              (basePay / days.reduce((s, day) => s + day.payrollBaseMin, 0)) *
+              100,
+          ) / 100 || 0;
+        const dayExtraPay = d.payrollExtraPay || 0;
         return (
-          <div key={i} className="sim-days-row sim-days-row-7">
+          <div key={i} className="sim-days-row sim-days-row-5">
             <span>
               {d.date.slice(5)} ({dayKr})
             </span>
             <span>{formatTime(d.check_in)}</span>
             <span>{formatTime(d.check_out)}</span>
-            <span>
-              {formatTime(d.paid_check_in)} ~ {formatTime(d.paid_check_out)}
-            </span>
-            <span>{(d.workMin / 60).toFixed(1)}h</span>
-            <span>{d.nightMin > 0 ? `${(d.nightMin / 60).toFixed(1)}h` : "-"}</span>
-            <span className="sim-days-pay">{fmtKRW(d.pay)}</span>
+            <span className="sim-days-pay">{fmtKRW(dayBasePay)}</span>
+            <span className="sim-days-pay">{fmtKRW(dayExtraPay)}</span>
           </div>
         );
       })}
 
-      <div className="sim-days-total sim-days-row-7">
+      <div className="sim-days-total sim-days-row-5">
         <span>합계</span>
         <span />
         <span />
-        <span />
-        <span>{hours.toFixed(1)}h</span>
-        <span>{nightHours.toFixed(1)}h</span>
-        <span className="sim-days-pay">{fmtKRW(amount)}</span>
+        <span className="sim-days-pay">{fmtKRW(basePay)}</span>
+        <span className="sim-days-pay">{fmtKRW(extraPay)}</span>
       </div>
     </div>
   );
 }
 
 function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
-  const nightExtra = Math.round(e.nightHours * e.wage * 0.5);
-  const pct = totalPay > 0 ? Math.round((e.amount / totalPay) * 100) : 0;
+  const basePay = Math.round(e.payrollBasePay || 0);
+  const extraPay = Math.round(e.payrollExtraPay || 0);
+  const totalEmpPay = basePay + extraPay;
+  const pct = totalPay > 0 ? Math.round((totalEmpPay / totalPay) * 100) : 0;
 
   return (
     <div className="sim-emp-card">
@@ -62,12 +63,12 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
         <div className="sim-emp-info">
           <strong>{e.name}</strong>
           <span>
-            {fmtKRW(e.wage)}/h · {e.workDays}일 출근 · {e.hours.toFixed(1)}h
+            {fmtKRW(e.wage)}/h · {e.workDays}일 출근
           </span>
         </div>
 
         <div className="sim-emp-header-right">
-          <div className="sim-emp-total">{fmtKRW(e.amount)}</div>
+          <div className="sim-emp-total">{fmtKRW(totalEmpPay)}</div>
           <span className="sim-toggle">{expanded ? "▲" : "▼"}</span>
         </div>
       </div>
@@ -80,22 +81,17 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
       <div className="sim-detail-grid">
         <div className="sim-detail-item">
           <span>기본급</span>
-          <strong>{fmtKRW(Math.max(0, e.amount - nightExtra))}</strong>
+          <strong>{fmtKRW(basePay)}</strong>
         </div>
 
         <div className="sim-detail-item accent">
-          <span>야간 추가</span>
-          <strong>+{fmtKRW(nightExtra)}</strong>
-        </div>
-
-        <div className="sim-detail-item">
-          <span>야간 시간</span>
-          <strong>{e.nightHours.toFixed(1)}h</strong>
+          <span>추가 수당</span>
+          <strong>+{fmtKRW(extraPay)}</strong>
         </div>
 
         <div className="sim-detail-item sim-detail-total">
           <span>합계</span>
-          <strong>{fmtKRW(e.amount)}</strong>
+          <strong>{fmtKRW(totalEmpPay)}</strong>
         </div>
       </div>
 
@@ -110,7 +106,7 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
       </button>
 
       {expanded && (
-        <DayTable days={e.days} hours={e.hours} nightHours={e.nightHours} amount={e.amount} />
+        <DayTable days={e.days} basePay={basePay} extraPay={extraPay} totalPay={totalEmpPay} />
       )}
     </div>
   );
@@ -126,7 +122,7 @@ export function SimTab({ settlement, monthRange, settlementOffset, setSettlement
     <div className="page">
       <PageHeader
         title="정산"
-        description="확정된 지급 기준 시간으로 급여를 계산합니다"
+        description="파트 기본시간 기준으로 급여를 계산합니다 (추가 수당은 별도)"
         right={
           <div className="cal-month-nav">
             <button className="cal-nav-btn" onClick={() => setSettlementOffset((o) => o - 1)}>
@@ -147,10 +143,9 @@ export function SimTab({ settlement, monthRange, settlementOffset, setSettlement
         </div>
 
         <div className="sim-total-right">
-          <div className="sim-total-amount">{fmtKRW(settlement.totalPay)}</div>
+          <div className="sim-total-amount">{fmtKRW(settlement.totalPayrollPay)}</div>
           <div className="sim-total-meta">
-            {settlement.rows.length}명 · {settlement.totalHours.toFixed(1)}h ·{" "}
-            {settlement.totalWorkDays}일
+            {settlement.rows.length}명 · {settlement.totalWorkDays}일
           </div>
         </div>
       </div>
@@ -162,12 +157,15 @@ export function SimTab({ settlement, monthRange, settlementOffset, setSettlement
       ) : (
         <div className="sim-cards">
           {[...settlement.rows]
-            .sort((a, b) => b.amount - a.amount)
+            .sort(
+              (a, b) =>
+                b.payrollBasePay + b.payrollExtraPay - (a.payrollBasePay + a.payrollExtraPay),
+            )
             .map((e) => (
               <EmpCard
                 key={e.employee_id}
                 e={e}
-                totalPay={settlement.totalPay}
+                totalPay={settlement.totalPayrollPay}
                 expanded={expandedEmp === e.employee_id}
                 onToggle={() => toggleExpand(e.employee_id)}
                 onPayslip={() => setPayslipEmp(e)}

@@ -42,18 +42,16 @@ function normalizeSchedule(row) {
   };
 }
 
-// approved(boolean|null) → approval_status 문자열 변환
 function approvedToStatus(approved) {
   if (approved === true) return "approved";
   if (approved === false) return "rejected";
-  return "pending"; // null
+  return "pending";
 }
 
-// approval_status 문자열 → approved(boolean|null)
 function statusToApproved(status) {
   if (status === "approved") return true;
   if (status === "rejected") return false;
-  return null; // "pending"
+  return null;
 }
 
 function normalizeAttendance(row) {
@@ -74,21 +72,19 @@ function normalizeAttendance(row) {
     paid_check_in: row?.paid_check_in || row?.check_in || "",
     paid_check_out: row?.paid_check_out || row?.check_out || "",
 
-    // GAS 호환 approval 필드
     approval_status: approvedToStatus(row?.approved),
-    approval_reason: "", // 스키마에 없음 - 빈값 유지
+    approval_reason: "",
     approval_note: row?.approval_note || "",
     requested_at: row?.requested_at || "",
     approved_at: row?.approved_at || "",
     approved_by: row?.approved_by || "",
 
-    // 계산 필드
-    early_arrival_paid_min: 0, // 스키마에 없음
+    early_arrival_paid_min: 0,
     late_min: Number(row?.late_min || 0),
     late_deduct_min: Number(row?.late_deduct_min || 0),
     early_leave_min: Number(row?.early_leave_min || 0),
     extra_work_min: Number(row?.extra_work_min || 0),
-    extension_min: 0, // 스키마에 없음
+    extension_min: 0,
     break_min: Number(row?.break_min || 0),
 
     is_substitute: !!row?.is_substitute,
@@ -128,11 +124,10 @@ function getCurrentMonthStr() {
   return `${y}-${m}`;
 }
 
-// "2026-05" → "2026-05-01", "2026-06-01" (범위 조회용)
 function monthRange(month) {
   const [y, m] = month.split("-").map(Number);
   const start = `${y}-${String(m).padStart(2, "0")}-01`;
-  const nextMonth = new Date(y, m, 1); // m은 0-based라 m이 그대로 다음 달
+  const nextMonth = new Date(y, m, 1);
   const end = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`;
   return { start, end };
 }
@@ -142,7 +137,7 @@ function filterRowsByMonth(rows, month) {
 }
 
 // ----------------------------------------------------------------
-// 에러 핸들러
+// 에러 / 공통 헬퍼
 // ----------------------------------------------------------------
 
 function assertNoError(error, label) {
@@ -158,14 +153,13 @@ function nowDateTimeString() {
 }
 
 // ----------------------------------------------------------------
-// 출퇴근 계산 (Edge Function 대신 클라이언트에서 처리)
+// 출퇴근 계산
 // ----------------------------------------------------------------
 
 const RULES = {
   EARLY_ARRIVAL_MAX_PAY_MIN: 10,
   LATE_GRACE_MIN: 5,
   EARLY_LEAVE_ALLOW_MIN: 5,
-  LATE_CHECKOUT_REQUEST_MIN: 10,
   MAX_EXTENSION_MIN: 60,
 };
 
@@ -197,7 +191,6 @@ function evaluateCheckIn(actualCheckIn, plannedStart) {
   if (planMin === null || actualMin === null) return result;
 
   if (actualMin < planMin) {
-    // 조기 출근
     const earlyMin = Math.min(RULES.EARLY_ARRIVAL_MAX_PAY_MIN, planMin - actualMin);
     result.paidCheckIn = minToTime(planMin - earlyMin);
     return result;
@@ -211,10 +204,9 @@ function evaluateCheckIn(actualCheckIn, plannedStart) {
     return result;
   }
 
-  // 지각
   result.late_deduct_min = lateMin;
   result.paidCheckIn = actualCheckIn;
-  result.approved = null; // pending
+  result.approved = null;
   result.approval_note = `지각 ${lateMin}분 / ${lateMin}분 차감 / 관리자 승인 필요`;
   result.requested_at = nowDateTimeString();
   return result;
@@ -237,7 +229,6 @@ function evaluateCheckOut(plannedEnd, actualCheckOut) {
   if (planMin === null || outMin === null) return result;
 
   if (outMin < planMin - RULES.EARLY_LEAVE_ALLOW_MIN) {
-    // 조기 퇴근
     result.early_leave_min = planMin - outMin;
     result.paidCheckOut = actualCheckOut;
     result.approved = null;
@@ -251,7 +242,6 @@ function evaluateCheckOut(plannedEnd, actualCheckOut) {
     return result;
   }
 
-  // 초과근무
   const extraMin = Math.min(outMin - planMin, RULES.MAX_EXTENSION_MIN);
   result.extra_work_min = extraMin;
   result.paidCheckOut = minToTime(planMin + extraMin);
@@ -270,9 +260,7 @@ async function fetchAll(month) {
 
   const [empRes, tmplRes, schRes, attRes] = await Promise.all([
     supabase.from("employees").select("*").order("name"),
-
     supabase.from("template_schedule").select("*").order("id"),
-
     supabase
       .from("schedules")
       .select("*")
@@ -280,7 +268,6 @@ async function fetchAll(month) {
       .lt("work_date", end)
       .order("work_date")
       .order("planned_start"),
-
     supabase
       .from("attendance")
       .select("*")
@@ -308,9 +295,7 @@ async function fetchAdminToday() {
 
   const [empRes, schRes, attRes] = await Promise.all([
     supabase.from("employees").select("*").order("name"),
-
     supabase.from("schedules").select("*").eq("work_date", dateStr).order("planned_start"),
-
     supabase.from("attendance").select("*").eq("work_date", dateStr).order("check_in"),
   ]);
 
@@ -335,7 +320,6 @@ async function fetchStaffToday(employeeId) {
       .eq("work_date", dateStr)
       .eq("employee_id", employeeId)
       .order("planned_start"),
-
     supabase
       .from("attendance")
       .select("*")
@@ -378,7 +362,7 @@ async function fetchPendingAttendance(month) {
     .select("*")
     .gte("work_date", start)
     .lt("work_date", end)
-    .is("approved", null) // null = pending
+    .is("approved", null)
     .order("work_date")
     .order("check_in");
 
@@ -399,7 +383,6 @@ async function doCheckIn(body) {
   const checkInTime = body.check_in || new Date().toTimeString().slice(0, 5);
   const isSubstitute = !!body.is_substitute;
 
-  // 이미 출근 중인지 확인
   const { data: open, error: openError } = await supabase
     .from("attendance")
     .select("id")
@@ -409,17 +392,11 @@ async function doCheckIn(body) {
     .maybeSingle();
 
   assertNoError(openError, "check_in open attendance");
-  if (open) throw new Error("이미 출근 상태입니다. 먼저 퇴근 처리하세요.");
-  console.log("CHECK_IN payload", row);
 
-  const { data, error } = await supabase.from("attendance").insert([row]).select();
+  if (open) {
+    throw new Error("이미 출근 상태입니다. 먼저 퇴근 처리하세요.");
+  }
 
-  console.log("CHECK_IN result data", data);
-  console.log("CHECK_IN result error", error);
-
-  assertNoError(error, "check_in insert");
-
-  // 스케줄 매칭
   const { data: schedules, error: schedulesError } = await supabase
     .from("schedules")
     .select("*")
@@ -434,7 +411,6 @@ async function doCheckIn(body) {
 
   const plannedStart = matched?.planned_start || "";
   const plannedEnd = matched?.planned_end || "";
-
   const isOutOfSchedule = !matched && !isSubstitute;
   const checkInEval = evaluateCheckIn(checkInTime, plannedStart);
 
@@ -470,10 +446,15 @@ async function doCheckIn(body) {
     memo: body.memo || "",
   };
 
-  const { error } = await supabase.from("attendance").insert(row);
-  assertNoError(error, "check_in insert");
+  const { data: inserted, error: insertError } = await supabase
+    .from("attendance")
+    .insert([row])
+    .select()
+    .single();
 
-  return { ok: true, row: normalizeAttendance(row) };
+  assertNoError(insertError, "check_in insert");
+
+  return { ok: true, row: normalizeAttendance(inserted || row) };
 }
 
 async function doCheckOut(body) {
@@ -481,7 +462,6 @@ async function doCheckOut(body) {
   const employeeId = String(body.employee_id || "").trim();
   const checkOutTime = body.check_out || new Date().toTimeString().slice(0, 5);
 
-  // 열린 출근 기록 조회
   let query = supabase
     .from("attendance")
     .select("*")
@@ -500,33 +480,34 @@ async function doCheckOut(body) {
   const row = rows?.[rows.length - 1];
   if (!row) throw new Error("출근 기록 없음");
 
-  const eval_ = evaluateCheckOut(row.planned_end, checkOutTime);
+  const evalResult = evaluateCheckOut(row.planned_end, checkOutTime);
 
-  // 승인 상태 결정
-  // - 이미 pending(null): 출근 시 지각/스케줄 외 등으로 승인 요청이 걸려 있으므로 유지
-  // - 그 외(approved/rejected): 퇴근 계산 결과로 덮어씀
-  let newApproved;
-  if (row.approved === null) {
-    newApproved = null; // pending 유지
-  } else {
-    newApproved = eval_.approved; // 퇴근 계산 결과 적용
+  let newApproved = row.approved;
+  if (row.approved !== null) {
+    newApproved = evalResult.approved;
   }
 
   const updates = {
     check_out: checkOutTime,
-    paid_check_out: eval_.paidCheckOut || null,
-    extra_work_min: eval_.extra_work_min,
-    early_leave_min: eval_.early_leave_min,
+    paid_check_out: evalResult.paidCheckOut || null,
+    extra_work_min: evalResult.extra_work_min,
+    early_leave_min: evalResult.early_leave_min,
     auto_checkout: !!body.auto_checkout,
     approved: newApproved,
-    approval_note: [row.approval_note, eval_.approval_note].filter(Boolean).join(" / "),
-    requested_at: row.requested_at || eval_.requested_at || null,
+    approval_note: [row.approval_note, evalResult.approval_note].filter(Boolean).join(" / "),
+    requested_at: row.requested_at || evalResult.requested_at || null,
   };
 
-  const { error } = await supabase.from("attendance").update(updates).eq("id", row.id);
-  assertNoError(error, "check_out update");
+  const { data, error: updateError } = await supabase
+    .from("attendance")
+    .update(updates)
+    .eq("id", row.id)
+    .select()
+    .single();
 
-  return { ok: true, row: normalizeAttendance({ ...row, ...updates }) };
+  assertNoError(updateError, "check_out update");
+
+  return { ok: true, row: normalizeAttendance(data || { ...row, ...updates }) };
 }
 
 async function doApproveAttendance(body) {
@@ -545,6 +526,7 @@ async function doApproveAttendance(body) {
     .eq("id", attendance_id)
     .select()
     .single();
+
   assertNoError(error, "approve_attendance");
 
   return { ok: true, row: normalizeAttendance(data) };
@@ -553,7 +535,6 @@ async function doApproveAttendance(body) {
 async function doUpdateAttendance(body) {
   const { attendance_id, ...fields } = body;
 
-  // DB 필드명으로 변환
   const updates = {};
   const mutableFields = [
     "planned_start",
@@ -580,7 +561,6 @@ async function doUpdateAttendance(body) {
     if (fields[key] !== undefined) updates[key] = fields[key];
   });
 
-  // approval_status → approved 변환
   if (fields.approval_status !== undefined) {
     updates.approved = statusToApproved(fields.approval_status);
   }
@@ -591,6 +571,7 @@ async function doUpdateAttendance(body) {
     .eq("id", attendance_id)
     .select()
     .single();
+
   assertNoError(error, "update_attendance");
 
   return { ok: true, row: normalizeAttendance(data) };
@@ -617,6 +598,7 @@ async function doAddSchedule(body) {
     .upsert(payload, { onConflict: "employee_id,work_date,part" })
     .select()
     .single();
+
   assertNoError(error, "add_schedule");
 
   return { ok: true, row: normalizeSchedule(data) };
@@ -638,6 +620,7 @@ async function doUpdateSchedule(body) {
     .eq("id", body.schedule_id)
     .select()
     .single();
+
   assertNoError(error, "update_schedule");
 
   return { ok: true, row: normalizeSchedule(data) };
@@ -646,7 +629,6 @@ async function doUpdateSchedule(body) {
 async function doDeleteSchedule(body) {
   const { error } = await supabase.from("schedules").delete().eq("id", body.schedule_id);
   assertNoError(error, "delete_schedule");
-
   return { ok: true };
 }
 
@@ -665,7 +647,7 @@ async function doAddEmployee(body) {
     active: body.active !== false,
   };
 
-  const { data, error } = await supabase.from("employees").insert(row).select().single();
+  const { data, error } = await supabase.from("employees").insert([row]).select().single();
   assertNoError(error, "add_employee");
 
   return { ok: true, row: normalizeEmployee(data) };
@@ -686,6 +668,7 @@ async function doUpdateEmployee(body) {
     .eq("id", body.employee_id)
     .select()
     .single();
+
   assertNoError(error, "update_employee");
 
   return { ok: true, row: normalizeEmployee(data) };
@@ -694,7 +677,6 @@ async function doUpdateEmployee(body) {
 async function doDeleteEmployee(body) {
   const { error } = await supabase.from("employees").delete().eq("id", body.employee_id);
   assertNoError(error, "delete_employee");
-
   return { ok: true };
 }
 
@@ -703,7 +685,6 @@ async function doDeleteEmployee(body) {
 // ----------------------------------------------------------------
 
 async function doSaveTemplate(rows) {
-  // 전체 교체
   await supabase.from("template_schedule").delete().neq("id", 0);
 
   if (!rows.length) return { ok: true, count: 0 };
@@ -730,9 +711,12 @@ async function doApplyTemplate(startDateStr) {
   const { data: templateRows, error: tmplError } = await supabase
     .from("template_schedule")
     .select("*");
+
   assertNoError(tmplError, "template_schedule fetch");
 
-  if (!templateRows?.length) throw new Error("template_schedule이 비어 있습니다.");
+  if (!templateRows?.length) {
+    throw new Error("template_schedule이 비어 있습니다.");
+  }
 
   const DAY_OFFSET = { 월: 0, 화: 1, 수: 2, 목: 3, 금: 4, 토: 5, 일: 6 };
 
@@ -740,9 +724,11 @@ async function doApplyTemplate(startDateStr) {
     .map((t) => {
       const offset = DAY_OFFSET[t.day];
       if (offset === undefined) return null;
+
       const d = new Date(monday);
       d.setDate(monday.getDate() + offset);
       const dateStr = d.toISOString().slice(0, 10);
+
       return {
         id: generateId("SCH"),
         employee_id: t.employee_id,
@@ -759,32 +745,18 @@ async function doApplyTemplate(startDateStr) {
   const { error } = await supabase
     .from("schedules")
     .upsert(toInsert, { onConflict: "employee_id,work_date,part" });
+
   assertNoError(error, "apply_template upsert");
 
   return { ok: true, count: toInsert.length };
 }
 
 // ----------------------------------------------------------------
-// 공개 유틸 (useApi.js 외부에서 import 가능)
+// 공개 유틸
 // ----------------------------------------------------------------
 
-export function getApprovalReasonLabel(reason) {
-  switch (reason) {
-    case "late_check_in":
-      return "지각 승인 요청";
-    case "early_leave":
-      return "조기 퇴근 요청";
-    case "late_checkout":
-      return "추가근무 승인 요청";
-    case "next_part_late_extension":
-      return "다음 파트 지각 연장 요청";
-    case "next_part_no_show_extension":
-      return "다음 파트 미출근 연장 요청";
-    case "out_of_schedule":
-      return "스케줄 외 출근";
-    default:
-      return "확인 필요";
-  }
+export function getApprovalReasonLabel() {
+  return "확인 필요";
 }
 
 export function getApprovalStatusLabel(status) {
@@ -825,12 +797,15 @@ export function getActualWorkMinutes(row) {
 export function isPendingAttendance(row) {
   return row?.approval_status === "pending";
 }
+
 export function isApprovedAttendance(row) {
   return row?.approval_status === "approved";
 }
+
 export function isRejectedAttendance(row) {
   return row?.approval_status === "rejected";
 }
+
 export function isWorkingNow(row) {
   return !!row?.check_in && !row?.check_out;
 }
@@ -852,8 +827,6 @@ export default function useApi(options = {}) {
   const [monthAttendance, setMonthAttendance] = useState([]);
   const [todayAttendance, setTodayAttendance] = useState([]);
   const [todaySchedule, setTodaySchedule] = useState([]);
-
-  // ── refresh ──────────────────────────────────────────────────
 
   const refreshAll = useCallback(async () => {
     setLoading(true);
@@ -932,8 +905,6 @@ export default function useApi(options = {}) {
       setLoading(false);
     }
   }, [month]);
-
-  // ── actions ──────────────────────────────────────────────────
 
   const checkIn = useCallback(
     async (payload) => {
@@ -1055,7 +1026,6 @@ export default function useApi(options = {}) {
     [refreshAll, refreshAdminToday],
   );
 
-  // runPolicySweep / clearCache → Supabase 이전 후 불필요하나 인터페이스 유지
   const runPolicySweep = useCallback(async () => {
     await refreshAll();
     await refreshAdminToday().catch(() => {});
@@ -1066,14 +1036,10 @@ export default function useApi(options = {}) {
     return { ok: true };
   }, []);
 
-  // ── auto load ────────────────────────────────────────────────
-
   useEffect(() => {
     if (!autoLoad) return;
     refreshAll();
   }, [autoLoad, refreshAll]);
-
-  // ── derived state ────────────────────────────────────────────
 
   const todayStr = getTodayStr();
 
@@ -1105,8 +1071,6 @@ export default function useApi(options = {}) {
     [mergedTodayAttendance],
   );
 
-  // approval_reason이 스키마에 없으므로 항상 빈 배열
-  // 추후 approval_note 파싱 또는 스키마 컬럼 추가로 복원 가능
   const extensionPending = useMemo(() => [], []);
   const lateCheckoutPending = useMemo(() => [], []);
 
@@ -1119,8 +1083,6 @@ export default function useApi(options = {}) {
     () => mergedTodaySchedule.filter((row) => !todayScheduleIdSet.has(row.schedule_id)),
     [mergedTodaySchedule, todayScheduleIdSet],
   );
-
-  // ── return ───────────────────────────────────────────────────
 
   return {
     loading,

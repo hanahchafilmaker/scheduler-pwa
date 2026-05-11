@@ -5,39 +5,58 @@ import { PageHeader } from "./UI";
 
 const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
 
-function DayTable({ days, basePay, extraPay, totalPay }) {
+function formatMinutesToHourLabel(min) {
+  const minutes = Number(min || 0);
+  if (minutes <= 0) return "0시간";
+
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+
+  if (m === 0) return `${h}시간`;
+  return `${h}시간 ${m}분`;
+}
+
+function DayTable({ days, basePay, extraPay }) {
   return (
     <div className="sim-days-table">
-      <div className="sim-days-head sim-days-head-5">
+      <div className="sim-days-head sim-days-head-6">
         <span>날짜</span>
         <span>실제 출근</span>
         <span>실제 퇴근</span>
+        <span>기본 근무시간</span>
         <span>기본급</span>
         <span>추가 수당</span>
       </div>
 
       {days.map((d, i) => {
         const dayKr = DAY_KR[new Date(d.date).getDay()];
-        // 일자별 기본급: 각 day의 payrollBasePay 직접 사용
+        const dayBasePlanned = formatMinutesToHourLabel(d.payrollBasePlannedMin || 0);
         const dayBasePay = Math.round(d.payrollBasePay || 0);
         const dayExtraPay = Math.round(d.payrollExtraPay || 0);
+
         return (
-          <div key={i} className="sim-days-row sim-days-row-5">
+          <div key={i} className="sim-days-row sim-days-row-6">
             <span>
               {d.date.slice(5)} ({dayKr})
             </span>
             <span>{formatTime(d.check_in)}</span>
             <span>{formatTime(d.check_out)}</span>
+            <span>{dayBasePlanned}</span>
             <span className="sim-days-pay">{fmtKRW(dayBasePay)}</span>
             <span className="sim-days-pay">{fmtKRW(dayExtraPay)}</span>
           </div>
         );
       })}
 
-      <div className="sim-days-total sim-days-row-5">
+      <div className="sim-days-total sim-days-row-6">
         <span>합계</span>
         <span />
         <span />
+        <span>
+          {formatMinutesToHourLabel(
+            days.reduce((sum, d) => sum + Number(d.payrollBasePlannedMin || 0), 0),
+          )}
+        </span>
         <span className="sim-days-pay">{fmtKRW(basePay)}</span>
         <span className="sim-days-pay">{fmtKRW(extraPay)}</span>
       </div>
@@ -76,6 +95,11 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
 
       <div className="sim-detail-grid">
         <div className="sim-detail-item">
+          <span>기본 근무시간</span>
+          <strong>{formatMinutesToHourLabel((e.payrollBasePlannedHours || 0) * 60)}</strong>
+        </div>
+
+        <div className="sim-detail-item">
           <span>기본급</span>
           <strong>{fmtKRW(basePay)}</strong>
         </div>
@@ -101,9 +125,7 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
         📄 임금명세서 출력
       </button>
 
-      {expanded && (
-        <DayTable days={e.days} basePay={basePay} extraPay={extraPay} totalPay={totalEmpPay} />
-      )}
+      {expanded && <DayTable days={e.days} basePay={basePay} extraPay={extraPay} />}
     </div>
   );
 }
@@ -118,7 +140,7 @@ export function SimTab({ settlement, monthRange, settlementOffset, setSettlement
     <div className="page">
       <PageHeader
         title="정산"
-        description="파트 기본시간 기준으로 급여를 계산합니다 (추가 수당은 별도)"
+        description="스케줄 기본시간 기준으로 기본급을 계산하고, 추가 근무는 추가 수당으로 분리합니다"
         right={
           <div className="cal-month-nav">
             <button className="cal-nav-btn" onClick={() => setSettlementOffset((o) => o - 1)}>

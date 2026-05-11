@@ -493,3 +493,47 @@
     text-align: left;
   }
 }
+.staff-part-picker {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #0f1117;
+  border: 1px solid #2a2d3a;
+}
+
+.staff-part-picker-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: #d1d5db;
+  margin-bottom: 10px;
+}
+
+.staff-part-picker-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.staff-part-btn {
+  width: 100%;
+  border: 1px solid #374151;
+  background: #111827;
+  color: #d1d5db;
+  border-radius: 14px;
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.staff-part-btn.active {
+  border-color: #f97316;
+  background: rgba(249, 115, 22, 0.14);
+  color: #fff;
+}
+
+.staff-part-picker-help {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #9ca3af;
+}

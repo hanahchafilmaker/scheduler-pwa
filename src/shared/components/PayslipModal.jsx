@@ -134,6 +134,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
             던킨 송도 랜드마크시티점은 위 금액을 {monthRange.label} 근무분 급여로{" "}
             {monthRange.payDateLabel} 지급함을 확인합니다.
           </div>
+
           <div style={{ marginTop: 8 }}>이번 달도 근무해주셔서 감사합니다.</div>
         </div>
 

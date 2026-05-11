@@ -16,8 +16,10 @@ function getPartLabel(part) {
   switch (String(part || "").toLowerCase()) {
     case "open":
       return "오픈";
-    case "middle":
-      return "미들";
+    case "middle_a":
+      return "미들A";
+    case "middle_b":
+      return "미들B";
     case "close":
       return "마감";
     case "extra":

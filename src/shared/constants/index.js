@@ -6,7 +6,8 @@
 
 export const WORK_TYPE = {
   OPEN: "open",
-  MIDDLE: "middle",
+  MIDDLE_A: "middle_A",
+  MIDDLE_B: "middle_B",
   CLOSE: "close",
   EXTRA: "extra",
   OVERTIME: "overtime",
@@ -14,7 +15,8 @@ export const WORK_TYPE = {
 
 export const WORK_TYPE_LABEL = {
   open: "오픈",
-  middle: "미들",
+  middle_A: "미들A",
+  middle_B: "미들B",
   close: "마감",
   extra: "대타",
   overtime: "시간외",
@@ -22,11 +24,12 @@ export const WORK_TYPE_LABEL = {
 
 /* ================= 파트 ================= */
 
-export const PARTS = ["open", "middle", "close"];
+export const PARTS = ["open", "middle_A", "middle_B", "close"];
 
 export const PART_LABEL = {
   open: "오픈",
-  middle: "미들",
+  middle_A: "미들A",
+  middle_B: "미들B",
   close: "마감",
   extra: "대타",
   대타: "대타",
@@ -35,12 +38,11 @@ export const PART_LABEL = {
 export const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
 
 /* ================= 시프트 기준 시간 ================= */
-// AttTab 의 getAutoStatus 에서 사용
-// schedule.planned_start / planned_end 와 별개로 part 기반 기준값
 
 export const SHIFT_TIME = {
   open: { start: "07:00", end: "11:30", hours: 4.5 },
-  middle: { start: "11:30", end: "18:00", hours: 6.5 },
+  middle_A: { start: "11:30", end: "15:30", hours: 4 },
+  middle_B: { start: "15:30", end: "18:00", hours: 2.5 },
   close: { start: "18:00", end: "22:00", hours: 4 },
 };
 
@@ -93,7 +95,7 @@ export function getPageTitle(tab) {
 export const EMPTY_EMP_FORM = {
   name: "",
   phone: "",
-  hourly_wage: "", // employee 실제 필드
+  hourly_wage: "",
   pin: "",
   active: true,
 };
@@ -109,14 +111,8 @@ export const SUBSTITUTE_STATUS = {
 
 /* ================= 자동퇴근 유예 시간 (분) ================= */
 
-// TodayTab 자동퇴근 예정 판단:
-//   now > schedule.planned_end(분) + AUTO_CHECKOUT_GRACE_MIN
 export const AUTO_CHECKOUT_GRACE_MIN = 30;
 
 /* ================= 미출근 판단 유예 시간 ================= */
 
-// TodayTab 미출근 판단:
-//   now > schedule.planned_start(분) → 미출근
-//   now <= schedule.planned_start(분) → 출근 예정
-// (유예 없이 planned_start 그대로 기준 — 필요시 여기 상수로 조정)
 export const ABSENT_GRACE_MIN = 0;

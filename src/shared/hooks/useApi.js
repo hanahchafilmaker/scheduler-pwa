@@ -400,7 +400,7 @@ async function doCheckIn(body) {
   const isSubstitute = !!body.is_substitute;
 
   // 이미 출근 중인지 확인
-  const { data: open } = await supabase
+  const { data: open, error: openError } = await supabase
     .from("attendance")
     .select("id")
     .eq("employee_id", employeeId)
@@ -408,14 +408,25 @@ async function doCheckIn(body) {
     .is("check_out", null)
     .maybeSingle();
 
+  assertNoError(openError, "check_in open attendance");
   if (open) throw new Error("이미 출근 상태입니다. 먼저 퇴근 처리하세요.");
+  console.log("CHECK_IN payload", row);
+
+  const { data, error } = await supabase.from("attendance").insert([row]).select();
+
+  console.log("CHECK_IN result data", data);
+  console.log("CHECK_IN result error", error);
+
+  assertNoError(error, "check_in insert");
 
   // 스케줄 매칭
-  const { data: schedules } = await supabase
+  const { data: schedules, error: schedulesError } = await supabase
     .from("schedules")
     .select("*")
     .eq("work_date", dateStr)
     .eq("employee_id", employeeId);
+
+  assertNoError(schedulesError, "check_in schedules");
 
   const matched = selectedPart
     ? (schedules || []).find((s) => s.part === selectedPart) || null
@@ -491,13 +502,15 @@ async function doCheckOut(body) {
 
   const eval_ = evaluateCheckOut(row.planned_end, checkOutTime);
 
-  // 기존 승인 상태 유지 (이미 pending이면 덮어쓰지 않음)
-  const newApproved =
-    row.approved === null
-      ? eval_.approved === true
-        ? null
-        : eval_.approved // 이미 pending
-      : eval_.approved;
+  // 승인 상태 결정
+  // - 이미 pending(null): 출근 시 지각/스케줄 외 등으로 승인 요청이 걸려 있으므로 유지
+  // - 그 외(approved/rejected): 퇴근 계산 결과로 덮어씀
+  let newApproved;
+  if (row.approved === null) {
+    newApproved = null; // pending 유지
+  } else {
+    newApproved = eval_.approved; // 퇴근 계산 결과 적용
+  }
 
   const updates = {
     check_out: checkOutTime,
@@ -517,7 +530,7 @@ async function doCheckOut(body) {
 }
 
 async function doApproveAttendance(body) {
-  const { attendance_id, approved, approved_by = "manager", approval_note = "" } = body;
+  const { attendance_id, approved, approved_by = null, approval_note = "" } = body;
 
   const updates = {
     approved: approved === true,
@@ -1092,20 +1105,10 @@ export default function useApi(options = {}) {
     [mergedTodayAttendance],
   );
 
-  const extensionPending = useMemo(
-    () =>
-      mergedTodayAttendance.filter(
-        (row) =>
-          row.approval_reason === "next_part_late_extension" ||
-          row.approval_reason === "next_part_no_show_extension",
-      ),
-    [mergedTodayAttendance],
-  );
-
-  const lateCheckoutPending = useMemo(
-    () => mergedTodayAttendance.filter((row) => row.approval_reason === "late_checkout"),
-    [mergedTodayAttendance],
-  );
+  // approval_reason이 스키마에 없으므로 항상 빈 배열
+  // 추후 approval_note 파싱 또는 스키마 컬럼 추가로 복원 가능
+  const extensionPending = useMemo(() => [], []);
+  const lateCheckoutPending = useMemo(() => [], []);
 
   const todayScheduleIdSet = useMemo(
     () => new Set(mergedTodayAttendance.map((row) => row.schedule_id).filter(Boolean)),

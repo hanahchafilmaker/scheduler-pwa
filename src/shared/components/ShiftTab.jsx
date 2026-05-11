@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PARTS, SHIFT_TIME } from "../constants";
 import { normalizeDate } from "../utils";
 import "./ShiftTab.css";
@@ -54,7 +54,7 @@ function ShiftHeader({ weekDates, weekOffset, setWeekOffset }) {
 }
 
 /* ── 데스크탑 테이블 ── */
-function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule }) {
+function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule, todayDate }) {
   return (
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
@@ -67,8 +67,14 @@ function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule }) {
                 <th className="part-col">파트</th>
                 {weekDates.map((d) => {
                   const meta = formatDayLabel(d);
+                  const isToday = d === todayDate;
+
                   return (
-                    <th key={d} className="date-col" style={{ color: meta.color }}>
+                    <th
+                      key={d}
+                      className={`date-col ${isToday ? "today" : ""}`}
+                      style={{ color: meta.color }}
+                    >
                       {meta.day}
                       <div className="date-sm">{meta.shortDate}</div>
                     </th>
@@ -86,9 +92,13 @@ function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule }) {
 
                   {weekDates.map((date) => {
                     const entry = getEntry(schedule, date, part);
+                    const isToday = date === todayDate;
 
                     return (
-                      <td key={`${date}_${part}`} className="shift-cell readonly">
+                      <td
+                        key={`${date}_${part}`}
+                        className={`shift-cell readonly ${isToday ? "today" : ""}`}
+                      >
                         {entry ? (
                           <div className="shift-cell-filled">
                             <span className="cell-name">{part}</span>
@@ -111,7 +121,7 @@ function DesktopShiftTable({ weekDates, weekOffset, setWeekOffset, schedule }) {
 }
 
 /* ── 모바일 카드 ── */
-function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule }) {
+function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule, todayDate }) {
   return (
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
@@ -120,13 +130,15 @@ function MobileShiftCards({ weekDates, weekOffset, setWeekOffset, schedule }) {
         {weekDates.map((date) => {
           const meta = formatDayLabel(date);
           const entries = getEntries(schedule, date);
+          const isToday = date === todayDate;
 
           return (
-            <section key={date} className="shift-day-card">
+            <section key={date} className={`shift-day-card ${isToday ? "today" : ""}`}>
               <div className="shift-day-header">
                 <div className="shift-day-left">
                   <strong style={{ color: meta.color }}>{meta.day}</strong>
                   <span>{meta.shortDate}</span>
+                  {isToday ? <em className="today-badge">오늘</em> : null}
                 </div>
                 <div className="shift-day-right">{date}</div>
               </div>
@@ -173,6 +185,8 @@ export function ShiftTab({ weekDates = [], weekOffset = 0, setWeekOffset, schedu
     typeof window !== "undefined" ? window.innerWidth <= 768 : false,
   );
 
+  const todayDate = useMemo(() => normalizeDate(new Date()), []);
+
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", onResize);
@@ -187,6 +201,7 @@ export function ShiftTab({ weekDates = [], weekOffset = 0, setWeekOffset, schedu
           weekOffset={weekOffset}
           setWeekOffset={setWeekOffset}
           schedule={schedule}
+          todayDate={todayDate}
         />
       ) : (
         <DesktopShiftTable
@@ -194,6 +209,7 @@ export function ShiftTab({ weekDates = [], weekOffset = 0, setWeekOffset, schedu
           weekOffset={weekOffset}
           setWeekOffset={setWeekOffset}
           schedule={schedule}
+          todayDate={todayDate}
         />
       )}
     </div>

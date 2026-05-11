@@ -1,131 +1,115 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { getApprovalReasonLabel, getApprovalStatusLabel } from "../../shared/hooks/useApi";
 
-function safeArray(value) {
-  return Array.isArray(value) ? value : [];
+/* ================================================================
+   순수 유틸
+================================================================ */
+function safeArray(v) {
+  return Array.isArray(v) ? v : [];
 }
 
 function timeRange(start, end) {
-  const s = start || "-";
-  const e = end || "-";
-  return `${s} ~ ${e}`;
-}
-
-function getPartLabel(part) {
-  switch (String(part || "").toLowerCase()) {
-    case "open":
-      return "오픈";
-    case "middle":
-      return "미들";
-    case "close":
-      return "마감";
-    case "extra":
-      return "추가";
-    default:
-      return part || "-";
-  }
-}
-
-function getOpenAttendance(attendanceList) {
-  return attendanceList.find((row) => row.check_in && !row.check_out) || null;
-}
-
-function getLatestAttendance(attendanceList) {
-  if (!attendanceList.length) return null;
-
-  return [...attendanceList].sort((a, b) => {
-    const aa = `${a.date || ""} ${a.check_in || ""}`;
-    const bb = `${b.date || ""} ${b.check_in || ""}`;
-    return bb.localeCompare(aa);
-  })[0];
+  return `${start || "-"} ~ ${end || "-"}`;
 }
 
 function toMin(t) {
   const [h, m] = String(t || "")
     .split(":")
     .map(Number);
-
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  return h * 60 + m;
+  return Number.isNaN(h) || Number.isNaN(m) ? null : h * 60 + m;
 }
 
-function getTodaySchedule(scheduleList, attendanceRow) {
+function getPartLabel(part) {
+  const map = {
+    open: "오픈",
+    middle: "미들",
+    close: "마감",
+    extra: "추가",
+    unscheduled: "비정규",
+    대타: "대타",
+  };
+  return map[String(part || "").toLowerCase()] ?? part ?? "-";
+}
+
+/* ================================================================
+   schedule 전용 계산 — attendance 데이터 절대 참조 금지
+================================================================ */
+
+/** 지금 시각 기준 가장 적합한 스케줄 1개 (없으면 null) */
+function pickDisplaySchedule(scheduleList) {
   if (!scheduleList.length) return null;
 
-  // 중요: 이미 퇴근했으면 (check_out이 있으면) attendance row의 part를 참고하지 않음
-  // → 다음 파트로 새로 출근하는 경우를 처리하기 위함
-  if (attendanceRow?.part && attendanceRow?.check_in && !attendanceRow?.check_out) {
-    // 현재 근무 중인 경우만 attendance row의 part를 참고
-    const matched = scheduleList.find(
-      (row) => String(row.part || "") === String(attendanceRow.part || ""),
-    );
-    if (matched) return matched;
-  }
-
-  const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
 
   const withRange = scheduleList
-    .map((row) => ({
-      ...row,
-      _start: toMin(row.planned_start),
-      _end: toMin(row.planned_end),
-    }))
-    .filter((row) => row._start !== null && row._end !== null);
+    .map((r) => ({ ...r, _start: toMin(r.planned_start), _end: toMin(r.planned_end) }))
+    .filter((r) => r._start !== null && r._end !== null);
 
-  const currentMatch = withRange.find((row) => nowMin >= row._start && nowMin < row._end);
-  if (currentMatch) return currentMatch;
-
-  const upcoming = withRange
-    .filter((row) => row._start >= nowMin)
-    .sort((a, b) => a._start - b._start);
-
-  if (upcoming.length) return upcoming[0];
-
-  return withRange.sort((a, b) => a._start - b._start)[0] || null;
+  return (
+    withRange.find((r) => nowMin >= r._start && nowMin < r._end) ||
+    [...withRange].filter((r) => r._start >= nowMin).sort((a, b) => a._start - b._start)[0] ||
+    [...withRange].sort((a, b) => a._start - b._start)[0] ||
+    null
+  );
 }
 
-function getPartCandidates(scheduleList) {
-  if (!scheduleList.length) return [];
-
-  const now = new Date();
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-
-  return scheduleList.filter((row) => {
-    const start = toMin(row.planned_start);
-    const end = toMin(row.planned_end);
-
-    if (start === null || end === null) return false;
-
-    const bufferedStart = start - 30;
-    const bufferedEnd = end + 30;
-
-    return nowMin >= bufferedStart && nowMin <= bufferedEnd;
+/** 현재 출근 가능한 파트 후보 (±30분 버퍼) */
+function getCandidates(scheduleList) {
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  return scheduleList.filter((r) => {
+    const s = toMin(r.planned_start);
+    const e = toMin(r.planned_end);
+    return s !== null && e !== null && nowMin >= s - 30 && nowMin <= e + 30;
   });
 }
 
-function getStaffAttendanceMessage(row) {
-  if (!row) return "오늘 근태 기록이 없습니다.";
+/* ================================================================
+   attendance 전용 계산 — schedule 데이터 절대 참조 금지
+================================================================ */
 
-  if (row.approval_status === "pending") {
-    return `${getApprovalReasonLabel(row.approval_reason)} 상태입니다. 관리자 확인 후 확정됩니다.`;
-  }
+/** 현재 열린(미퇴근) attendance */
+function getOpenAttendance(list) {
+  return list.find((r) => r.check_in && !r.check_out) || null;
+}
 
-  if (row.approval_status === "rejected") {
-    return "관리자 확인 결과 조정된 기록이 있습니다.";
-  }
+/** 오늘 가장 최근 attendance */
+function getLatestAttendance(list) {
+  if (!list.length) return null;
+  return [...list].sort((a, b) => {
+    const ka = `${a.date || ""} ${a.check_in || ""}`;
+    const kb = `${b.date || ""} ${b.check_in || ""}`;
+    return kb.localeCompare(ka);
+  })[0];
+}
 
-  if (row.check_in && !row.check_out) {
+/* ================================================================
+   상태 메시지 — schedule/attendance 각자 상태에서 조합
+================================================================ */
+function buildHeroMessage({ hasSchedule, openAtt, latestAtt }) {
+  if (openAtt) {
+    if (openAtt.approval_status === "pending") {
+      return `${getApprovalReasonLabel(openAtt.approval_reason)} 상태입니다. 관리자 확인 후 확정됩니다.`;
+    }
     return "현재 근무 중입니다.";
   }
 
-  if (row.check_in && row.check_out) {
+  if (latestAtt?.check_out) {
+    if (latestAtt.approval_status === "pending") {
+      return `${getApprovalReasonLabel(latestAtt.approval_reason)} 상태입니다. 관리자 확인 후 확정됩니다.`;
+    }
+    if (latestAtt.approval_status === "rejected") {
+      return "관리자 확인 결과 조정된 기록이 있습니다.";
+    }
     return "오늘 근무가 종료되었습니다.";
   }
 
-  return "근태 상태를 확인해주세요.";
+  if (hasSchedule) return "스케줄이 등록되어 있습니다. 출근 버튼을 눌러 시작하세요.";
+  return "오늘 등록된 스케줄이 없습니다. 출근 버튼으로 기록할 수 있습니다.";
 }
 
+/* ================================================================
+   서브 컴포넌트
+================================================================ */
 function StatusBadge({ status }) {
   return (
     <span className={`staff-state-badge status-${status || "default"}`}>
@@ -145,78 +129,92 @@ function InfoCard({ title, children }) {
   );
 }
 
-export default function StaffHome(props) {
-  const {
-    employee = null,
-    todaySchedule = [],
-    todayAttendance = [],
-    onCheckIn,
-    onCheckOut,
-    checking = false,
-  } = props;
+function InfoRow({ label, value }) {
+  return (
+    <div className="staff-info-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
 
+/* ================================================================
+   메인
+================================================================ */
+export default function StaffHome({
+  employee = null,
+  todaySchedule = [],
+  todayAttendance = [],
+  onCheckIn,
+  onCheckOut,
+  checking = false,
+}) {
   const scheduleList = safeArray(todaySchedule);
   const attendanceList = safeArray(todayAttendance);
 
+  // ── schedule 파생 (attendance 참조 없음) ───────────────────────
+  const displaySchedule = useMemo(() => pickDisplaySchedule(scheduleList), [scheduleList]);
+  const candidates = useMemo(() => getCandidates(scheduleList), [scheduleList]);
+  const hasSchedule = scheduleList.length > 0;
+
+  // ── attendance 파생 (schedule 참조 없음) ───────────────────────
   const openAttendance = useMemo(() => getOpenAttendance(attendanceList), [attendanceList]);
   const latestAttendance = useMemo(() => getLatestAttendance(attendanceList), [attendanceList]);
-  const displayAttendance = openAttendance || latestAttendance || null;
+  const hasAttendance = attendanceList.length > 0;
 
-  const mainSchedule = useMemo(
-    () => getTodaySchedule(scheduleList, displayAttendance),
-    [scheduleList, displayAttendance],
-  );
+  // ── 출퇴근 가능 여부 (schedule 없어도 체크인 항상 가능) ─────────
+  const canCheckIn = !openAttendance && !checking;
+  const canCheckOut = !!openAttendance && !checking;
 
-  const candidateSchedules = useMemo(() => getPartCandidates(scheduleList), [scheduleList]);
-
+  // ── 파트 선택 state ────────────────────────────────────────────
   const [selectedPart, setSelectedPart] = useState("");
 
   useEffect(() => {
-    if (candidateSchedules.length === 1) {
-      setSelectedPart(candidateSchedules[0].part || "");
+    if (candidates.length === 1) {
+      setSelectedPart(candidates[0].part || "");
       return;
     }
-
-    if (
-      candidateSchedules.length > 1 &&
-      !candidateSchedules.some((row) => String(row.part || "") === String(selectedPart || ""))
-    ) {
+    if (candidates.length === 0) {
       setSelectedPart("");
       return;
     }
+    if (!candidates.some((r) => r.part === selectedPart)) setSelectedPart("");
+  }, [candidates, selectedPart]);
 
-    if (candidateSchedules.length === 0) {
-      setSelectedPart("");
-    }
-  }, [candidateSchedules, selectedPart]);
+  // ── 히어로 배지: attendance 상태가 있을 때만 표시 ─────────────
+  const heroBadgeStatus =
+    openAttendance?.approval_status || latestAttendance?.approval_status || null;
 
-  const canCheckIn = !openAttendance;
-  const canCheckOut = !!openAttendance;
+  const heroMessage = buildHeroMessage({
+    hasSchedule,
+    openAtt: openAttendance,
+    latestAtt: latestAttendance,
+  });
 
-  const employeeName = employee?.name || displayAttendance?.name || mainSchedule?.name || "직원";
-
+  // ── 체크인 ─────────────────────────────────────────────────────
   const handleCheckIn = async () => {
     if (!onCheckIn || !employee?.employee_id) return;
 
-    const autoPart = candidateSchedules.length === 1 ? candidateSchedules[0].part || "" : "";
-
-    const finalPart = selectedPart || autoPart;
-
-    if (candidateSchedules.length > 1 && !finalPart) {
+    if (candidates.length > 1 && !selectedPart) {
       alert("겹치는 시간대입니다. 출근할 파트를 선택해주세요.");
       return;
     }
 
+    const finalPart = selectedPart || (candidates.length === 1 ? candidates[0].part : "");
+    const noSchedule = !hasSchedule || !finalPart;
+
     await onCheckIn({
       employee_id: employee.employee_id,
       name: employee.name,
-      ...(finalPart ? { part: finalPart } : {}),
+      part: noSchedule ? "unscheduled" : finalPart,
+      is_substitute: noSchedule,
+      approval_required: noSchedule,
     });
   };
 
+  // ── 체크아웃 ────────────────────────────────────────────────────
   const handleCheckOut = async () => {
     if (!onCheckOut || !employee?.employee_id || !openAttendance) return;
-
     await onCheckOut({
       employee_id: employee.employee_id,
       attendance_id: openAttendance.attendance_id,
@@ -230,71 +228,72 @@ export default function StaffHome(props) {
         <div className="staff-hero-top">
           <div>
             <div className="staff-hero-label">오늘 근무 상태</div>
-            <h2 className="staff-hero-name">{employeeName}</h2>
+            <h2 className="staff-hero-name">{employee?.name || "직원"}</h2>
           </div>
-
-          <StatusBadge status={displayAttendance?.approval_status || "approved"} />
+          {heroBadgeStatus && <StatusBadge status={heroBadgeStatus} />}
         </div>
 
-        <p className="staff-hero-message">{getStaffAttendanceMessage(displayAttendance)}</p>
+        <p className="staff-hero-message">{heroMessage}</p>
 
         <div className="staff-hero-meta">
           <div className="staff-meta-item">
             <span className="staff-meta-label">오늘 파트</span>
-            <strong>{getPartLabel(mainSchedule?.part || displayAttendance?.part || "-")}</strong>
-          </div>
-
-          <div className="staff-meta-item">
-            <span className="staff-meta-label">예정시간</span>
             <strong>
-              {timeRange(
-                mainSchedule?.planned_start || displayAttendance?.planned_start,
-                mainSchedule?.planned_end || displayAttendance?.planned_end,
-              )}
+              {hasSchedule ? getPartLabel(displaySchedule?.part) : "오늘 스케줄 없음"}
+            </strong>
+          </div>
+          <div className="staff-meta-item">
+            <span className="staff-meta-label">예정 시간</span>
+            <strong>
+              {hasSchedule
+                ? timeRange(displaySchedule?.planned_start, displaySchedule?.planned_end)
+                : "-"}
             </strong>
           </div>
         </div>
 
-        {candidateSchedules.length > 1 ? (
+        {candidates.length > 1 && canCheckIn && (
           <div className="staff-part-picker">
             <div className="staff-part-picker-label">출근 파트 선택</div>
             <div className="staff-part-picker-buttons">
-              {candidateSchedules.map((row) => {
-                const active = String(selectedPart || "") === String(row.part || "");
-
-                return (
-                  <button
-                    key={`${row.part}-${row.schedule_id || row.employee_id}`}
-                    type="button"
-                    className={`staff-part-btn ${active ? "active" : ""}`}
-                    onClick={() => setSelectedPart(row.part || "")}
-                  >
-                    {getPartLabel(row.part)} · {timeRange(row.planned_start, row.planned_end)}
-                  </button>
-                );
-              })}
+              {candidates.map((r) => (
+                <button
+                  key={`${r.part}-${r.schedule_id || r.employee_id}`}
+                  type="button"
+                  className={`staff-part-btn ${selectedPart === r.part ? "active" : ""}`}
+                  onClick={() => setSelectedPart(r.part || "")}
+                >
+                  {getPartLabel(r.part)} · {timeRange(r.planned_start, r.planned_end)}
+                </button>
+              ))}
             </div>
             <div className="staff-part-picker-help">
-              겹치는 시간대라 출근 파트를 직접 선택해야 합니다.
+              겹치는 시간대라 파트를 직접 선택해야 합니다.
             </div>
           </div>
-        ) : null}
+        )}
+
+        {!hasSchedule && canCheckIn && (
+          <div className="staff-note-box" style={{ marginTop: 14 }}>
+            오늘 스케줄이 없는 상태로 출근하면 <strong>승인대기</strong>로 기록됩니다. 관리자 확인
+            후 확정됩니다.
+          </div>
+        )}
 
         <div className="staff-actions">
           <button
             type="button"
             className="staff-action-btn primary"
             onClick={handleCheckIn}
-            disabled={!canCheckIn || checking}
+            disabled={!canCheckIn}
           >
             출근
           </button>
-
           <button
             type="button"
             className="staff-action-btn secondary"
             onClick={handleCheckOut}
-            disabled={!canCheckOut || checking}
+            disabled={!canCheckOut}
           >
             퇴근
           </button>
@@ -303,20 +302,16 @@ export default function StaffHome(props) {
 
       <div className="staff-home-grid">
         <InfoCard title="오늘 스케줄">
-          {mainSchedule ? (
+          {hasSchedule ? (
             <div className="staff-info-list">
-              <div className="staff-info-row">
-                <span>파트</span>
-                <strong>{getPartLabel(mainSchedule.part)}</strong>
-              </div>
-              <div className="staff-info-row">
-                <span>예정 시간</span>
-                <strong>{timeRange(mainSchedule.planned_start, mainSchedule.planned_end)}</strong>
-              </div>
-              <div className="staff-info-row">
-                <span>직원 ID</span>
-                <strong>{mainSchedule.employee_id || "-"}</strong>
-              </div>
+              <InfoRow label="파트" value={getPartLabel(displaySchedule?.part)} />
+              <InfoRow
+                label="예정 시간"
+                value={timeRange(displaySchedule?.planned_start, displaySchedule?.planned_end)}
+              />
+              {scheduleList.length > 1 && (
+                <InfoRow label="총 파트 수" value={`${scheduleList.length}개`} />
+              )}
             </div>
           ) : (
             <div className="staff-empty">오늘 등록된 스케줄이 없습니다.</div>
@@ -324,58 +319,57 @@ export default function StaffHome(props) {
         </InfoCard>
 
         <InfoCard title="오늘 근태 기록">
-          {displayAttendance ? (
-            <div className="staff-info-list">
-              <div className="staff-info-row">
-                <span>상태</span>
-                <strong>{getApprovalStatusLabel(displayAttendance.approval_status)}</strong>
-              </div>
-
-              {displayAttendance.approval_reason ? (
-                <div className="staff-info-row">
-                  <span>사유</span>
-                  <strong>{getApprovalReasonLabel(displayAttendance.approval_reason)}</strong>
-                </div>
-              ) : null}
-
-              <div className="staff-info-row">
-                <span>실제 시간</span>
-                <strong>
-                  {timeRange(displayAttendance.check_in, displayAttendance.check_out)}
-                </strong>
-              </div>
-
-              <div className="staff-info-row">
-                <span>예정 시간</span>
-                <strong>
-                  {timeRange(displayAttendance.planned_start, displayAttendance.planned_end)}
-                </strong>
-              </div>
-
-              <div className="staff-info-row">
-                <span>휴게시간</span>
-                <strong>{Number(displayAttendance.break_min || 0)}분</strong>
-              </div>
-
-              {displayAttendance.approval_note ? (
-                <div className="staff-note-box">{displayAttendance.approval_note}</div>
-              ) : null}
-            </div>
+          {hasAttendance ? (
+            <AttendanceSummary attendance={openAttendance || latestAttendance} />
           ) : (
             <div className="staff-empty">오늘 기록이 아직 없습니다.</div>
           )}
         </InfoCard>
       </div>
 
+      {!hasSchedule && hasAttendance && (
+        <section className="staff-card">
+          <div className="staff-card-body">
+            <div className="notice">
+              오늘 스케줄 외 출근 기록이 있습니다.
+              <br />
+              관리자 승인 후 근태가 확정됩니다.
+            </div>
+          </div>
+        </section>
+      )}
+
       <InfoCard title="안내">
         <ul className="staff-guide-list">
           <li>하루에 여러 번 출근할 수 있습니다. 퇴근 후 다시 출근도 가능합니다.</li>
           <li>근무 중일 때만 퇴근 버튼이 활성화됩니다.</li>
           <li>지각, 조기퇴근, 추가근무는 관리자 확인 후 최종 확정됩니다.</li>
+          <li>스케줄 없이 출근하면 승인대기 상태로 기록됩니다.</li>
           <li>겹치는 시간대에는 출근 파트를 직접 선택해야 합니다.</li>
           <li>표시된 지급 기준 시간은 실제 근무시간과 다를 수 있습니다.</li>
         </ul>
       </InfoCard>
+    </div>
+  );
+}
+
+/* ── attendance 요약 (schedule 참조 없음) ─────────────────────── */
+function AttendanceSummary({ attendance }) {
+  if (!attendance) return null;
+
+  return (
+    <div className="staff-info-list">
+      <InfoRow label="상태" value={getApprovalStatusLabel(attendance.approval_status)} />
+      {attendance.approval_reason && (
+        <InfoRow label="사유" value={getApprovalReasonLabel(attendance.approval_reason)} />
+      )}
+      <InfoRow label="실제 시간" value={timeRange(attendance.check_in, attendance.check_out)} />
+      <InfoRow
+        label="예정 시간"
+        value={timeRange(attendance.planned_start, attendance.planned_end)}
+      />
+      <InfoRow label="휴게" value={`${Number(attendance.break_min || 0)}분`} />
+      {attendance.approval_note && <div className="staff-note-box">{attendance.approval_note}</div>}
     </div>
   );
 }

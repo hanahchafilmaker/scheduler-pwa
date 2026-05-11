@@ -448,3 +448,20 @@
     padding: 3px 5px;
   }
 }
+.shift-day-card.today {
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+}
+
+.today-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}

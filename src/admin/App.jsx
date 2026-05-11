@@ -1,295 +1,407 @@
-﻿// src/shared/utils/pay.js
-// UTF-8 — 한글 깨짐 주의
-//
-// 최종 정산 원칙
-// 1) attendance 원본(check_in/check_out, planned_start/planned_end)은 수정하지 않음
-// 2) 기본 근무시간 표시는 스케줄 시간(planned_start ~ planned_end)
-// 3) 지각 / 조기퇴근은 기본급에서 차감
-// 4) 조기출근 / 마감 후 추가근무 / 스케줄 외 출근은 추가 수당으로 처리
-// 5) approval_status === "pending" 인 건은 미확정으로 간주
-// 6) 임금명세서에는 추가 수당 "시간"은 굳이 표시하지 않고 금액만 표시 가능
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export default function App() {
-  function toParsedMin(t) {
-    const m = String(t || "").match(/(\d+):(\d+)/);
-    if (!m) return null;
-    return Number(m[1]) * 60 + Number(m[2]);
-  }
+import useApi from "../shared/hooks/useApi";
+import { Sidebar, MobileTabs } from "../shared/components/Nav";
+import TodayTab from "../shared/components/TodayTab";
+import AttTab from "../shared/components/AttTab";
+import { ShiftTab } from "../shared/components/ShiftTab";
+import { SimTab } from "../shared/components/SimTab";
+import { Toast } from "../shared/components/UI";
+import { calcMonthSummary, calcRowPayWithSeparation } from "../shared/utils/pay";
+import { safeStr } from "../shared/utils";
+import { SHIFT_TIME } from "../shared/constants";
 
-  export function toMin(t) {
-    const parsed = toParsedMin(t);
-    return parsed === null ? 0 : parsed;
-  }
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
 
-  export function diffMinutes(start, end) {
-    if (!start || !end) return 0;
+function currentYM() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+}
 
-    const s = toParsedMin(start);
-    const e = toParsedMin(end);
+function addMonths(ym, offset) {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m - 1 + offset, 1);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+}
 
-    if (s === null || e === null) return 0;
-    if (e < s) return 0;
+function monthLabel(ym) {
+  const [y, m] = ym.split("-");
+  return `${y}년 ${Number(m)}월`;
+}
 
-    return Math.max(0, e - s);
-  }
+function getWeekDates(offset = 0) {
+  const now = new Date();
+  const day = now.getDay();
+  const mondayDiff = day === 0 ? -6 : 1 - day;
 
-  export function calcWorkMinutes(paidCheckIn, paidCheckOut, breakMin = 0) {
-    if (!paidCheckIn || !paidCheckOut) return 0;
-    const total = diffMinutes(paidCheckIn, paidCheckOut);
-    return Math.max(0, total - Math.max(0, Number(breakMin) || 0));
-  }
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + mondayDiff + offset * 7);
 
-  export function calcActualWorkMinutes(checkIn, checkOut, breakMin = 0) {
-    if (!checkIn || !checkOut) return 0;
-    const total = diffMinutes(checkIn, checkOut);
-    return Math.max(0, total - Math.max(0, Number(breakMin) || 0));
-  }
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  });
+}
 
-  // 구 로직 호환용
-  export function calcNightMinutes(paidCheckIn, paidCheckOut, breakMin = 0) {
-    if (!paidCheckIn || !paidCheckOut) return 0;
+// 새 정산 기준:
+// - attendance 원본 유지: check_in/check_out 그대로 보존
+// - payroll 계산 분리: 파트 예정시간 기준 + 추가 수당
+// - approval_status === "pending" 제외
+function buildSettlement({ attendance = [], employees = [], month }) {
+  const empMap = new Map(employees.map((e) => [safeStr(e.employee_id), e]));
+  const rowsMap = new Map();
 
-    const start = toParsedMin(paidCheckIn);
-    const end = toParsedMin(paidCheckOut);
+  // 정산 포함 조건: check_in + check_out 있고 pending 아닌 것
+  // - 스케줄 근무: planned_start/end 기준 기본급 + 추가 수당
+  // - 스케줄 외(out_of_schedule) 또는 planned 없음: 기본급 0, 실제 근무 전체 추가 수당
+  const doneRows = attendance.filter((a) => {
+    const d = String(a.date || "");
+    return d.startsWith(month) && a.check_in && a.check_out && a.approval_status !== "pending";
+  });
 
-    if (start === null || end === null) return 0;
-    if (end < start) return 0;
+  doneRows.forEach((a) => {
+    const empId = safeStr(a.employee_id);
+    const emp = empMap.get(empId) || {};
+    const wage = Number(emp.hourly_wage || a.hourly_wage || 0);
 
-    const total = end - start;
-    if (total <= 0) return 0;
+    // payroll 계산: 파트 기본시간 + 추가 수당 분리
+    const payrollData = calcRowPayWithSeparation(a, wage);
 
-    const nightStart = 22 * 60;
-    const nightEnd = 24 * 60;
-
-    const overlap = Math.max(0, Math.min(end, nightEnd) - Math.max(start, nightStart));
-    if (overlap <= 0) return 0;
-
-    const breakDeduction = (Number(breakMin) || 0) * (overlap / total);
-    return Math.max(0, overlap - breakDeduction);
-  }
-
-  // 구 로직 호환용
-  export function calcNightMinutesSimple(paidCheckIn, paidCheckOut) {
-    if (!paidCheckIn || !paidCheckOut) return 0;
-
-    const start = toParsedMin(paidCheckIn);
-    const end = toParsedMin(paidCheckOut);
-
-    if (start === null || end === null) return 0;
-    if (end < start) return 0;
-
-    const nightStart = 22 * 60;
-    const nightEnd = 24 * 60;
-
-    return Math.max(0, Math.min(end, nightEnd) - Math.max(start, nightStart));
-  }
-
-  export function isPaySettledRow(row) {
-    if (!row) return false;
-    return row.approval_status !== "pending";
-  }
-
-  /* =========================
-   새 payroll 계산
-========================= */
-
-  /**
-   * 스케줄 기본 근무시간 (표시용)
-   */
-  export function calcPayrollBasePlannedMinutes(plannedStart, plannedEnd) {
-    return diffMinutes(plannedStart, plannedEnd);
-  }
-
-  /**
-   * 지각 차감 시간
-   * planned_start 보다 늦게 출근한 경우
-   */
-  export function calcPayrollLateDeductMinutes(plannedStart, actualCheckIn) {
-    if (!plannedStart || !actualCheckIn) return 0;
-
-    const planned = toParsedMin(plannedStart);
-    const actual = toParsedMin(actualCheckIn);
-
-    if (planned === null || actual === null) return 0;
-    return Math.max(0, actual - planned);
-  }
-
-  /**
-   * 조기퇴근 차감 시간
-   * planned_end 보다 일찍 퇴근한 경우
-   */
-  export function calcPayrollEarlyLeaveDeductMinutes(plannedEnd, actualCheckOut) {
-    if (!plannedEnd || !actualCheckOut) return 0;
-
-    const planned = toParsedMin(plannedEnd);
-    const actual = toParsedMin(actualCheckOut);
-
-    if (planned === null || actual === null) return 0;
-    return Math.max(0, planned - actual);
-  }
-
-  /**
-   * 조기출근 추가 시간
-   */
-  export function calcPayrollExtraEarlyMinutes(plannedStart, actualCheckIn) {
-    if (!plannedStart || !actualCheckIn) return 0;
-
-    const planned = toParsedMin(plannedStart);
-    const actual = toParsedMin(actualCheckIn);
-
-    if (planned === null || actual === null) return 0;
-    return Math.max(0, planned - actual);
-  }
-
-  /**
-   * 마감 후 추가 시간
-   */
-  export function calcPayrollExtraLateMinutes(plannedEnd, actualCheckOut) {
-    if (!plannedEnd || !actualCheckOut) return 0;
-
-    const planned = toParsedMin(plannedEnd);
-    const actual = toParsedMin(actualCheckOut);
-
-    if (planned === null || actual === null) return 0;
-    return Math.max(0, actual - planned);
-  }
-
-  /**
-   * 개별 row 급여 계산
-   *
-   * - 스케줄 근무: 기본급 = 스케줄 시간 - 지각/조기퇴근 차감
-   * - 추가 수당 = 조기출근 + 마감 후 추가
-   * - 스케줄 외 출근: 기본급 0, 실제 근무시간 전체를 추가 수당
-   */
-  export function calcRowPayWithSeparation(row, hourlyWage) {
-    if (!row || !isPaySettledRow(row)) {
-      return {
-        payrollBasePlannedMin: 0, // 명세서 표시용 스케줄 시간
-        payrollLateDeductMin: 0,
-        payrollEarlyLeaveDeductMin: 0,
-        payrollBasePaidMin: 0, // 실제 기본급 계산용 시간
-        payrollExtraEarlyMin: 0,
-        payrollExtraLateMin: 0,
-        payrollExtraMin: 0,
+    if (!rowsMap.has(empId)) {
+      rowsMap.set(empId, {
+        employee_id: empId,
+        name: a.name || emp.name || "-",
+        wage,
+        // payroll 기반 집계 필드
+        payrollBasePlannedHours: 0,
         payrollBasePay: 0,
         payrollExtraPay: 0,
-        payrollTotalPay: 0,
+        workDays: 0,
+        days: [],
+      });
+    }
+
+    const row = rowsMap.get(empId);
+    row.payrollBasePlannedHours += payrollData.payrollBasePlannedMin / 60;
+    row.payrollBasePay += payrollData.payrollBasePay;
+    row.payrollExtraPay += payrollData.payrollExtraPay;
+    row.workDays += 1;
+    row.days.push({
+      date: a.date,
+      // 원본 attendance 필드: 절대 수정 금지
+      check_in: a.check_in,
+      check_out: a.check_out,
+      planned_start: a.planned_start,
+      planned_end: a.planned_end,
+      // payroll 계산값 (표시용)
+      payrollBasePlannedMin: payrollData.payrollBasePlannedMin,
+      payrollLateDeductMin: payrollData.payrollLateDeductMin,
+      payrollEarlyLeaveDeductMin: payrollData.payrollEarlyLeaveDeductMin,
+      payrollBasePaidMin: payrollData.payrollBasePaidMin,
+      payrollExtraMin: payrollData.payrollExtraMin,
+      payrollBasePay: payrollData.payrollBasePay,
+      payrollExtraPay: payrollData.payrollExtraPay,
+      payrollTotalPay: payrollData.payrollTotalPay,
+      approval_status: a.approval_status,
+      approval_reason: a.approval_reason,
+    });
+  });
+
+  const rows = [...rowsMap.values()].map((r) => ({
+    ...r,
+    days: r.days.sort((a, b) => String(a.date).localeCompare(String(b.date))),
+  }));
+
+  const summary = calcMonthSummary(doneRows, Object.fromEntries(empMap));
+
+  return {
+    rows,
+    // payroll 기반 집계
+    totalPayrollBasePlannedHours: rows.reduce((sum, r) => sum + r.payrollBasePlannedHours, 0),
+    totalPayrollBasePay: rows.reduce((sum, r) => sum + r.payrollBasePay, 0),
+    totalPayrollExtraPay: rows.reduce((sum, r) => sum + r.payrollExtraPay, 0),
+    totalPayrollPay: rows.reduce((sum, r) => sum + (r.payrollBasePay + r.payrollExtraPay), 0),
+    totalWorkDays: rows.reduce((sum, r) => sum + r.workDays, 0),
+    summary,
+  };
+}
+
+const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift"]);
+
+export default function App() {
+  const [tab, setTab] = useState("today");
+  const [toast, setToast] = useState(null);
+  const [settlementOffset, setSettlementOffset] = useState(0);
+  const [selectedMonth, setSelectedMonth] = useState(currentYM());
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  const toastTimerRef = useRef(null);
+
+  const showToast = useCallback((msg, type = "ok") => {
+    setToast({ msg, type });
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 2400);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  const {
+    loading,
+    error,
+    employees = [],
+    schedule = [],
+    monthAttendance = [],
+    todayAttendance = [],
+    todaySchedule = [],
+    refreshAll,
+    refreshAdminToday,
+    approveAttendance,
+    addSchedule,
+    updateSchedule,
+    deleteSchedule,
+  } = useApi({
+    month: selectedMonth,
+  });
+
+  useEffect(() => {
+    if (error) showToast(error, "err");
+  }, [error, showToast]);
+
+  const settlementMonth = useMemo(
+    () => addMonths(currentYM(), settlementOffset),
+    [settlementOffset],
+  );
+
+  const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
+
+  const monthRange = useMemo(() => {
+    const payrollMonth = addMonths(settlementMonth, 1);
+    const [py, pm] = payrollMonth.split("-");
+    return {
+      month: settlementMonth,
+      label: monthLabel(settlementMonth),
+      workMonth: settlementMonth,
+      payrollMonth,
+      payDateLabel: `${py}.${pm}.10`,
+    };
+  }, [settlementMonth]);
+
+  const settlement = useMemo(
+    () =>
+      buildSettlement({
+        attendance: monthAttendance,
+        employees,
+        month: settlementMonth,
+      }),
+    [monthAttendance, employees, settlementMonth],
+  );
+
+  useEffect(() => {
+    if (tab === "today") {
+      refreshAdminToday().catch(() => {});
+      return;
+    }
+
+    if (tab === "att") {
+      refreshAll().catch(() => {});
+      return;
+    }
+
+    if (tab === "sim") {
+      if (selectedMonth !== settlementMonth) {
+        setSelectedMonth(settlementMonth);
+      }
+      refreshAll().catch(() => {});
+      return;
+    }
+
+    if (tab === "shift") {
+      refreshAll().catch(() => {});
+    }
+  }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth]);
+
+  useEffect(() => {
+    if (tab === "att") {
+      refreshAll().catch(() => {});
+    }
+  }, [selectedMonth, tab, refreshAll]);
+
+  const handleApprove = useCallback(
+    async (row) => {
+      await approveAttendance({
+        attendance_id: row.attendance_id,
+        approved: true,
+        approved_by: "manager",
+        approval_note: "",
+        date: row.date,
+      });
+      showToast("승인되었습니다");
+    },
+    [approveAttendance, showToast],
+  );
+
+  const handleReject = useCallback(
+    async (row) => {
+      await approveAttendance({
+        attendance_id: row.attendance_id,
+        approved: false,
+        approved_by: "manager",
+        approval_note: "",
+        date: row.date,
+      });
+      showToast("거절 처리되었습니다");
+    },
+    [approveAttendance, showToast],
+  );
+
+  const handleRefresh = useCallback(() => {
+    if (tab === "today") {
+      refreshAdminToday();
+      return;
+    }
+    refreshAll();
+  }, [tab, refreshAdminToday, refreshAll]);
+
+  const handleSaveCell = useCallback(
+    (cellEdit, employeeId) => {
+      const emp = employees.find((e) => safeStr(e.employee_id) === safeStr(employeeId));
+      const shift = SHIFT_TIME[cellEdit.part] || {};
+
+      const payload = {
+        date: cellEdit.date,
+        part: cellEdit.part,
+        employee_id: employeeId || "",
+        name: emp?.name || "",
+        planned_start: shift.start || "",
+        planned_end: shift.end || "",
       };
+
+      const refetch = () => refreshAll();
+
+      if (cellEdit.scheduleId) {
+        if (!employeeId) {
+          deleteSchedule({
+            schedule_id: cellEdit.scheduleId,
+            date: cellEdit.date,
+          })
+            .then(refetch)
+            .catch(() => {});
+          return;
+        }
+
+        updateSchedule({
+          schedule_id: cellEdit.scheduleId,
+          ...payload,
+        })
+          .then(refetch)
+          .catch(() => {});
+        return;
+      }
+
+      if (!employeeId) return;
+
+      addSchedule(payload)
+        .then(refetch)
+        .catch(() => {});
+    },
+    [employees, refreshAll, addSchedule, updateSchedule, deleteSchedule],
+  );
+
+  const renderTab = () => {
+    if (tab === "today") {
+      return (
+        <TodayTab
+          todaySchedule={todaySchedule}
+          todayAttendance={todayAttendance}
+          employees={employees}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
+      );
     }
 
-    const wage = Number(hourlyWage ?? row.hourly_wage ?? 0) || 0;
-    const isOutOfSchedule = row.approval_reason === "out_of_schedule";
-    const hasPlannedRange = !!row.planned_start && !!row.planned_end;
-
-    let payrollBasePlannedMin = 0;
-    let payrollLateDeductMin = 0;
-    let payrollEarlyLeaveDeductMin = 0;
-    let payrollBasePaidMin = 0;
-    let payrollExtraEarlyMin = 0;
-    let payrollExtraLateMin = 0;
-    let payrollExtraMin = 0;
-
-    if (isOutOfSchedule || !hasPlannedRange) {
-      // 스케줄 외 출근: 기본급 없음, 실제 근무시간 전체를 추가 수당
-      payrollBasePlannedMin = 0;
-      payrollBasePaidMin = 0;
-      payrollExtraMin = calcActualWorkMinutes(row.check_in, row.check_out, row.break_min);
-    } else {
-      payrollBasePlannedMin = calcPayrollBasePlannedMinutes(row.planned_start, row.planned_end);
-
-      payrollLateDeductMin = calcPayrollLateDeductMinutes(row.planned_start, row.check_in);
-      payrollEarlyLeaveDeductMin = calcPayrollEarlyLeaveDeductMinutes(
-        row.planned_end,
-        row.check_out,
+    if (tab === "sim") {
+      return (
+        <SimTab
+          settlement={settlement}
+          monthRange={monthRange}
+          settlementOffset={settlementOffset}
+          setSettlementOffset={setSettlementOffset}
+        />
       );
-
-      payrollBasePaidMin = Math.max(
-        0,
-        payrollBasePlannedMin - payrollLateDeductMin - payrollEarlyLeaveDeductMin,
-      );
-
-      payrollExtraEarlyMin = calcPayrollExtraEarlyMinutes(row.planned_start, row.check_in);
-      payrollExtraLateMin = calcPayrollExtraLateMinutes(row.planned_end, row.check_out);
-      payrollExtraMin = payrollExtraEarlyMin + payrollExtraLateMin;
     }
 
-    const payrollBasePay = Math.round((payrollBasePaidMin / 60) * wage);
-    const payrollExtraPay = Math.round((payrollExtraMin / 60) * wage);
-    const payrollTotalPay = payrollBasePay + payrollExtraPay;
+    if (tab === "shift") {
+      return (
+        <ShiftTab
+          weekDates={weekDates}
+          weekOffset={weekOffset}
+          setWeekOffset={setWeekOffset}
+          schedule={schedule}
+          employees={employees}
+          onSaveCell={handleSaveCell}
+        />
+      );
+    }
 
-    return {
-      payrollBasePlannedMin,
-      payrollLateDeductMin,
-      payrollEarlyLeaveDeductMin,
-      payrollBasePaidMin,
-      payrollExtraEarlyMin,
-      payrollExtraLateMin,
-      payrollExtraMin,
-      payrollBasePay,
-      payrollExtraPay,
-      payrollTotalPay,
-    };
-  }
-
-  // 구 로직 호환용
-  export function calcRowPay(row, hourlyWage) {
-    if (!row || !isPaySettledRow(row)) return 0;
-
-    const wage = Number(hourlyWage ?? row.hourly_wage ?? 0) || 0;
-    const workMin = calcWorkMinutes(row.paid_check_in, row.paid_check_out, row.break_min);
-    const nightMin = calcNightMinutes(row.paid_check_in, row.paid_check_out, row.break_min);
-
-    return Math.round((workMin / 60) * wage + (nightMin / 60) * wage * 0.5);
-  }
-
-  // 구 로직 호환용
-  export function calcPay(paidCheckIn, paidCheckOut, breakMin, hourlyWage) {
-    const wage = Number(hourlyWage) || 0;
-    const workMin = calcWorkMinutes(paidCheckIn, paidCheckOut, breakMin);
-    const nightMin = calcNightMinutes(paidCheckIn, paidCheckOut, breakMin);
-
-    return Math.round((workMin / 60) * wage + (nightMin / 60) * wage * 0.5);
-  }
-
-  // 월별 합산 — 새 payroll 기준
-  export function calcMonthSummary(rows = [], employeeMap = {}) {
-    const settledRows = rows.filter(
-      (row) => isPaySettledRow(row) && row?.check_in && row?.check_out,
+    return (
+      <AttTab
+        monthAttendance={monthAttendance}
+        approveAttendance={approveAttendance}
+        selectedMonth={selectedMonth}
+        currentManagerName="manager"
+      />
     );
+  };
 
-    const totals = settledRows.reduce(
-      (acc, row) => {
-        const wage =
-          Number(employeeMap?.[String(row.employee_id)]?.hourly_wage ?? row.hourly_wage ?? 0) || 0;
+  return (
+    <div className="admin-app">
+      <Sidebar tab={tab} setTab={setTab} loading={loading} onRefresh={handleRefresh} />
 
-        const payroll = calcRowPayWithSeparation(row, wage);
+      <main className="main-content">
+        <MobileTabs tab={tab} setTab={setTab} />
 
-        acc.totalPayrollBasePlannedMin += payroll.payrollBasePlannedMin;
-        acc.totalPayrollLateDeductMin += payroll.payrollLateDeductMin;
-        acc.totalPayrollEarlyLeaveDeductMin += payroll.payrollEarlyLeaveDeductMin;
-        acc.totalPayrollBasePaidMin += payroll.payrollBasePaidMin;
-        acc.totalPayrollExtraMin += payroll.payrollExtraMin;
-        acc.totalPayrollBasePay += payroll.payrollBasePay;
-        acc.totalPayrollExtraPay += payroll.payrollExtraPay;
-        return acc;
-      },
-      {
-        totalPayrollBasePlannedMin: 0,
-        totalPayrollLateDeductMin: 0,
-        totalPayrollEarlyLeaveDeductMin: 0,
-        totalPayrollBasePaidMin: 0,
-        totalPayrollExtraMin: 0,
-        totalPayrollBasePay: 0,
-        totalPayrollExtraPay: 0,
-      },
-    );
+        {!TABS_WITHOUT_MONTH_BAR.has(tab) && (
+          <div className="month-toolbar">
+            <button
+              type="button"
+              className="ghost-sm"
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
+            >
+              ◀
+            </button>
 
-    return {
-      totalRows: rows.length,
-      settledRows: settledRows.length,
-      pendingRows: rows.filter((row) => row.approval_status === "pending").length,
-      ...totals,
-      totalPayrollPay: totals.totalPayrollBasePay + totals.totalPayrollExtraPay,
-    };
-  }
+            <strong>{monthLabel(selectedMonth)}</strong>
+
+            <button
+              type="button"
+              className="ghost-sm"
+              onClick={() => setSelectedMonth(currentYM())}
+            >
+              이번 달
+            </button>
+
+            <button
+              type="button"
+              className="ghost-sm"
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+            >
+              ▶
+            </button>
+          </div>
+        )}
+
+        {renderTab()}
+      </main>
+
+      <Toast toast={toast} />
+    </div>
+  );
 }

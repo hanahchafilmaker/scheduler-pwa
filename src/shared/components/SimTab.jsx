@@ -25,7 +25,7 @@ function DayTable({ days, basePay, extraPay }) {
         <span>실제 퇴근</span>
         <span>기본 근무시간</span>
         <span>기본급</span>
-        <span>추가 수당</span>
+        <span>시간 외 추가수당</span>
       </div>
 
       {days.map((d, i) => {
@@ -105,7 +105,7 @@ function EmpCard({ e, totalPay, expanded, onToggle, onPayslip }) {
         </div>
 
         <div className="sim-detail-item accent">
-          <span>추가 수당</span>
+          <span>시간 외 추가수당</span>
           <strong>+{fmtKRW(extraPay)}</strong>
         </div>
 
@@ -140,7 +140,7 @@ export function SimTab({ settlement, monthRange, settlementOffset, setSettlement
     <div className="page">
       <PageHeader
         title="정산"
-        description="스케줄 기본시간 기준으로 기본급을 계산하고, 추가 근무는 추가 수당으로 분리합니다"
+        description="스케줄 기본시간 기준으로 기본급을 계산하고, 추가 근무는 시간 외 수당으로 분리합니다"
         right={
           <div className="cal-month-nav">
             <button className="cal-nav-btn" onClick={() => setSettlementOffset((o) => o - 1)}>

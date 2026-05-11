@@ -22,6 +22,8 @@ function getPartLabel(part) {
       return "마감";
     case "extra":
       return "추가";
+    case "unscheduled":
+      return "비정규";
     default:
       return part || "-";
   }
@@ -93,6 +95,24 @@ function findMatchingAttendance(scheduleRow, attendanceList) {
   );
 }
 
+function hasMatchingSchedule(attendanceRow, scheduleList) {
+  return scheduleList.some((scheduleRow) => {
+    if (
+      attendanceRow.schedule_id &&
+      scheduleRow.schedule_id &&
+      String(attendanceRow.schedule_id) === String(scheduleRow.schedule_id)
+    ) {
+      return true;
+    }
+
+    return (
+      String(scheduleRow.employee_id || "") === String(attendanceRow.employee_id || "") &&
+      String(scheduleRow.date || "") === String(attendanceRow.date || "") &&
+      String(scheduleRow.part || "") === String(attendanceRow.part || "")
+    );
+  });
+}
+
 export default function TodayTab(props) {
   const { todaySchedule = [], todayAttendance = [], employees = [], onApprove, onReject } = props;
 
@@ -107,12 +127,32 @@ export default function TodayTab(props) {
     }, {});
   }, [employeeList]);
 
-  const workingNow = useMemo(() => {
+  const openAttendanceList = useMemo(() => {
     return attendanceList.filter((row) => row.check_in && !row.check_out);
   }, [attendanceList]);
 
+  const attentionOpenList = useMemo(() => {
+    return openAttendanceList.filter((row) => {
+      const pending = String(row.approval_status || "") === "pending";
+      const outOfSchedule = String(row.approval_reason || "") === "out_of_schedule";
+      const matchedSchedule = hasMatchingSchedule(row, scheduleList);
+
+      return pending || outOfSchedule || !matchedSchedule;
+    });
+  }, [openAttendanceList, scheduleList]);
+
+  const workingNow = useMemo(() => {
+    return openAttendanceList.filter((row) => {
+      const pending = String(row.approval_status || "") === "pending";
+      const outOfSchedule = String(row.approval_reason || "") === "out_of_schedule";
+      const matchedSchedule = hasMatchingSchedule(row, scheduleList);
+
+      return !pending && !outOfSchedule && matchedSchedule;
+    });
+  }, [openAttendanceList, scheduleList]);
+
   const pendingList = useMemo(() => {
-    return attendanceList.filter((row) => row.approval_status === "pending");
+    return attendanceList.filter((row) => row.approval_status === "pending" && !!row.check_out);
   }, [attendanceList]);
 
   const extensionPending = useMemo(() => {
@@ -163,7 +203,7 @@ export default function TodayTab(props) {
       <div className="today-overview">
         <StatCard title="현재 근무중" count={workingNow.length}>
           {workingNow.length === 0 ? (
-            <EmptyState text="현재 근무 중인 직원이 없습니다." />
+            <EmptyState text="현재 정상 근무 중인 직원이 없습니다." />
           ) : (
             workingNow.map((row) => (
               <PersonRow
@@ -177,6 +217,70 @@ export default function TodayTab(props) {
           )}
         </StatCard>
 
+        <StatCard title="확인필요" count={attentionOpenList.length}>
+          {attentionOpenList.length === 0 ? (
+            <EmptyState text="즉시 확인이 필요한 열린 기록이 없습니다." />
+          ) : (
+            attentionOpenList.map((row) => {
+              const matchedSchedule = hasMatchingSchedule(row, scheduleList);
+
+              return (
+                <div className="today-approval-item" key={row.attendance_id}>
+                  <PersonRow
+                    title={`${row.name || "-"} · ${getPartLabel(row.part)}`}
+                    subtitle={`실제 ${timeRange(row.check_in, row.check_out || "")}`}
+                    extra={
+                      <>
+                        <div>예정 {timeRange(row.planned_start, row.planned_end)}</div>
+                        <div>지급 {timeRange(row.paid_check_in, row.paid_check_out || "")}</div>
+                        {!matchedSchedule ? (
+                          <div className="today-note">
+                            오늘 스케줄과 매칭되지 않는 열린 근무 기록입니다.
+                          </div>
+                        ) : null}
+                        {row.approval_note ? (
+                          <div className="today-note">{row.approval_note}</div>
+                        ) : null}
+                      </>
+                    }
+                    right={
+                      <div className="today-inline-badges">
+                        <span className="today-badge warning">확인필요</span>
+                        {row.approval_reason ? <ReasonBadge reason={row.approval_reason} /> : null}
+                      </div>
+                    }
+                  />
+
+                  {(onApprove || onReject) && (
+                    <div className="today-actions">
+                      {onApprove ? (
+                        <button
+                          type="button"
+                          className="today-btn approve"
+                          onClick={() => onApprove(row)}
+                        >
+                          승인
+                        </button>
+                      ) : null}
+                      {onReject ? (
+                        <button
+                          type="button"
+                          className="today-btn reject"
+                          onClick={() => onReject(row)}
+                        >
+                          거절
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </StatCard>
+      </div>
+
+      <div className="today-overview">
         <StatCard title="승인대기" count={normalPending.length}>
           {normalPending.length === 0 ? (
             <EmptyState text="현재 승인대기 건이 없습니다." />
@@ -224,9 +328,7 @@ export default function TodayTab(props) {
             ))
           )}
         </StatCard>
-      </div>
 
-      <div className="today-overview">
         <StatCard title="연장 요청" count={extensionPending.length}>
           {extensionPending.length === 0 ? (
             <EmptyState text="자동 연장 요청이 없습니다." />
@@ -274,7 +376,9 @@ export default function TodayTab(props) {
             ))
           )}
         </StatCard>
+      </div>
 
+      <div className="today-overview">
         <StatCard title="미출근" count={lateNoShowList.length}>
           {lateNoShowList.length === 0 ? (
             <EmptyState text="오늘 미출근 예정자는 없습니다." />
@@ -290,15 +394,8 @@ export default function TodayTab(props) {
             ))
           )}
         </StatCard>
-      </div>
 
-      <section className="today-card">
-        <div className="today-card-header">
-          <h3>오늘 스케줄 요약</h3>
-          <span className="today-card-count">{scheduleList.length}</span>
-        </div>
-
-        <div className="today-card-body">
+        <StatCard title="오늘 스케줄 요약" count={scheduleList.length}>
           {scheduleList.length === 0 ? (
             <EmptyState text="오늘 등록된 스케줄이 없습니다." />
           ) : (
@@ -325,8 +422,8 @@ export default function TodayTab(props) {
               );
             })
           )}
-        </div>
-      </section>
+        </StatCard>
+      </div>
     </div>
   );
 }

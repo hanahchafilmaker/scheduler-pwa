@@ -268,3 +268,14 @@
     flex: 1;
   }
 }
+.today-inline-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.today-badge.warning {
+  background: #fff4d6;
+  color: #a16207;
+}

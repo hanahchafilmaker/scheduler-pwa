@@ -23,6 +23,8 @@ function getPartLabel(part) {
   const map = {
     open: "오픈",
     middle: "미들",
+    middle_a: "미들A",
+    middle_b: "미들B",
     close: "마감",
     extra: "추가",
     unscheduled: "비정규",

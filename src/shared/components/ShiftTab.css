@@ -249,7 +249,9 @@
   border-color: #d1fae5;
   color: #065f46;
 }
-.shift-chip-middle {
+.shift-chip-middle,
+.shift-chip-middle_A,
+.shift-chip-middle_B {
   background: #eff6ff;
   border-color: #dbeafe;
   color: #1e40af;

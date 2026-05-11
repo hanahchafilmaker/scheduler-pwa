@@ -32,7 +32,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
       <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
         <div className="payslip-header">
           <div>
-            <div className="payslip-brand">SHIFT</div>
+            <div className="payslip-brand">DUNKIN</div>
             <div className="payslip-title">임금명세서</div>
           </div>
 
@@ -48,7 +48,8 @@ export function PayslipModal({ emp, monthRange, onClose }) {
 
         <div className="payslip-info-grid">
           {[
-            ["사업장명", "SHIFT"],
+            ["사업장명", "던킨 송도 랜드마크시티점"],
+            ["사업장 주소", "인천광역시 연수구 송도동 311 301동 100호"],
             ["임금산정기간", `${monthRange.label} 근무분`],
             ["성명", emp.name],
             ["지급일", monthRange.payDateLabel],
@@ -78,29 +79,26 @@ export function PayslipModal({ emp, monthRange, onClose }) {
 
         <div className="payslip-section-title">근무 상세</div>
         <div className="payslip-table">
-          <div className="payslip-row header payslip-row-6">
+          <div className="payslip-row header payslip-row-4">
             <span>날짜</span>
-            <span>실제 출근</span>
-            <span>실제 퇴근</span>
-            <span>기본 근무시간</span>
+            <span>스케줄 근무시간</span>
             <span>기본급</span>
             <span>추가 수당</span>
           </div>
 
           {emp.days.map((d, i) => {
             const dayKr = DAY_KR[new Date(d.date).getDay()];
-            const dayBasePlanned = formatMinutesToHourLabel(d.payrollBasePlannedMin || 0);
             const dayBasePay = Math.round(d.payrollBasePay || 0);
             const dayExtraPay = Math.round(d.payrollExtraPay || 0);
 
             return (
-              <div key={i} className="payslip-row payslip-row-6">
+              <div key={i} className="payslip-row payslip-row-4">
                 <span>
                   {d.date.slice(5)} ({dayKr})
                 </span>
-                <span>{formatTime(d.check_in)}</span>
-                <span>{formatTime(d.check_out)}</span>
-                <span>{dayBasePlanned}</span>
+                <span>
+                  {formatTime(d.planned_start)} ~ {formatTime(d.planned_end)}
+                </span>
                 <span>{fmtKRW(dayBasePay)}</span>
                 <span>{fmtKRW(dayExtraPay)}</span>
               </div>
@@ -132,7 +130,11 @@ export function PayslipModal({ emp, monthRange, onClose }) {
         </div>
 
         <div className="payslip-foot">
-          위 금액을 {monthRange.label} 근무분 급여로 {monthRange.payDateLabel} 지급함을 확인합니다.
+          <div>
+            던킨 송도 랜드마크시티점은 위 금액을 {monthRange.label} 근무분 급여로{" "}
+            {monthRange.payDateLabel} 지급함을 확인합니다.
+          </div>
+          <div style={{ marginTop: 8 }}>이번 달도 근무해주셔서 감사합니다.</div>
         </div>
 
         <button className="payslip-print-btn" onClick={() => window.print()}>

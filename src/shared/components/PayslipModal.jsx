@@ -2,6 +2,17 @@ import { fmtKRW, formatTime } from "../utils";
 
 const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
 
+function formatMinutesToHourLabel(min) {
+  const minutes = Number(min || 0);
+  if (minutes <= 0) return "0시간";
+
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+
+  if (m === 0) return `${h}시간`;
+  return `${h}시간 ${m}분`;
+}
+
 export function PayslipModal({ emp, monthRange, onClose }) {
   if (!emp) return null;
 
@@ -10,6 +21,11 @@ export function PayslipModal({ emp, monthRange, onClose }) {
   const totalPay = basePay + extraPay;
   const deductTotal = 0;
   const netPay = totalPay - deductTotal;
+
+  const totalBasePlannedMin = (emp.days || []).reduce(
+    (sum, d) => sum + Number(d.payrollBasePlannedMin || 0),
+    0,
+  );
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -36,6 +52,7 @@ export function PayslipModal({ emp, monthRange, onClose }) {
             ["임금산정기간", `${monthRange.label} 근무분`],
             ["성명", emp.name],
             ["지급일", monthRange.payDateLabel],
+            ["기본 근무시간", formatMinutesToHourLabel(totalBasePlannedMin)],
           ].map(([label, value]) => (
             <div key={label}>
               <span>{label}</span>
@@ -61,26 +78,29 @@ export function PayslipModal({ emp, monthRange, onClose }) {
 
         <div className="payslip-section-title">근무 상세</div>
         <div className="payslip-table">
-          <div className="payslip-row header">
+          <div className="payslip-row header payslip-row-6">
             <span>날짜</span>
             <span>실제 출근</span>
             <span>실제 퇴근</span>
+            <span>기본 근무시간</span>
             <span>기본급</span>
             <span>추가 수당</span>
           </div>
 
           {emp.days.map((d, i) => {
             const dayKr = DAY_KR[new Date(d.date).getDay()];
-            // 일자별 기본급: 각 day의 payrollBasePay 직접 사용
+            const dayBasePlanned = formatMinutesToHourLabel(d.payrollBasePlannedMin || 0);
             const dayBasePay = Math.round(d.payrollBasePay || 0);
             const dayExtraPay = Math.round(d.payrollExtraPay || 0);
+
             return (
-              <div key={i} className="payslip-row">
+              <div key={i} className="payslip-row payslip-row-6">
                 <span>
                   {d.date.slice(5)} ({dayKr})
                 </span>
                 <span>{formatTime(d.check_in)}</span>
                 <span>{formatTime(d.check_out)}</span>
+                <span>{dayBasePlanned}</span>
                 <span>{fmtKRW(dayBasePay)}</span>
                 <span>{fmtKRW(dayExtraPay)}</span>
               </div>
@@ -89,6 +109,10 @@ export function PayslipModal({ emp, monthRange, onClose }) {
         </div>
 
         <div className="payslip-summary">
+          <div className="ps-row">
+            <span>기본 근무시간</span>
+            <span>{formatMinutesToHourLabel(totalBasePlannedMin)}</span>
+          </div>
           <div className="ps-row">
             <span>기본급</span>
             <span>{fmtKRW(basePay)}</span>

@@ -1,0 +1,39 @@
+데이터 정책
+
+직원/스케줄/출퇴근의 운영 원본은 모두 Supabase로 통일하고, 시트는 백업용으로만 남긴다. 계획(schedule)과 실제(attendance)는 절대 섞지 않으며, 관리자 스케줄 편집은 기존 schedules CRUD를 재사용해 ShiftTab에서 처리한다.
+
+
+
+1. 원본 데이터
+- employees = 직원 마스터 원본
+- schedules = 계획 스케줄 원본
+- attendance = 실제 출퇴근 원본
+- template_schedule = 템플릿/백업용 보조 데이터
+- Google Sheets = export/backup 전용, 운영 원본 아님
+
+2. 운영 기준
+- 조회/수정/저장 모두 Supabase 기준으로 처리
+- 시트는 직접 수정하지 않고 필요할 때만 내보내기/백업용으로 사용
+
+3. 스케줄 정책
+- 관리자 스케줄 탭의 원본은 schedules
+- ShiftTab 편집 저장은 onSaveCell → handleSaveCell → schedules CRUD 재사용
+- 기존 row 있으면 update
+- 기존 row 비우면 delete
+- 기존 row 없고 새 직원 배정이면 add
+
+4. 출퇴근 정책
+- schedule은 계획, attendance는 실제
+- 둘은 절대 서로 덮어쓰지 않음
+- 승인/정산/상태 계산은 schedule과 attendance를 비교해서 처리
+
+5. 구현 원칙
+- 새 schedule API를 만들지 말고 기존 addSchedule / updateSchedule / deleteSchedule 재사용
+- admin/App.jsx의 handleSaveCell 구조를 유지
+- ShiftTab만 조회 전용에서 편집형으로 변경
+- 현재 프로젝트 구조(src/admin, src/shared, src/staff)는 유지
+
+6. 정리 대상
+- ShiftTab의 readonly 구조 제거 후 편집 UI 연결
+- UI 문구 중 Google Sheets 원본처럼 보이게 하는 표현 제거
+- template_schedule는 운영 원본이 아니라 템플릿/백업 용도로만 유지

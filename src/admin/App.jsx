@@ -6,6 +6,7 @@ import TodayTab from "../shared/components/TodayTab";
 import AttTab from "../shared/components/AttTab";
 import { ShiftTab } from "../shared/components/ShiftTab";
 import { SimTab } from "../shared/components/SimTab";
+import EmployeeTab from "../shared/components/EmployeeTab";
 import { Toast } from "../shared/components/UI";
 import { calcMonthSummary, calcRowPayWithSeparation } from "../shared/utils/pay";
 import { safeStr } from "../shared/utils";
@@ -54,9 +55,6 @@ function buildSettlement({ attendance = [], employees = [], month }) {
   const empMap = new Map(employees.map((e) => [safeStr(e.employee_id), e]));
   const rowsMap = new Map();
 
-  // 정산 포함 조건: check_in + check_out 있고 pending 아닌 것
-  // - 스케줄 근무: planned_start/end 기준 기본급 + 추가 수당
-  // - 스케줄 외(out_of_schedule) 또는 planned 없음: 기본급 0, 실제 근무 전체 추가 수당
   const doneRows = attendance.filter((a) => {
     const d = String(a.date || "");
     return d.startsWith(month) && a.check_in && a.check_out && a.approval_status !== "pending";
@@ -67,7 +65,6 @@ function buildSettlement({ attendance = [], employees = [], month }) {
     const emp = empMap.get(empId) || {};
     const wage = Number(emp.hourly_wage || a.hourly_wage || 0);
 
-    // payroll 계산: 파트 기본시간 + 추가 수당 분리
     const payrollData = calcRowPayWithSeparation(a, wage);
 
     if (!rowsMap.has(empId)) {
@@ -75,7 +72,6 @@ function buildSettlement({ attendance = [], employees = [], month }) {
         employee_id: empId,
         name: a.name || emp.name || "-",
         wage,
-        // payroll 기반 집계 필드
         payrollBasePlannedHours: 0,
         payrollBasePay: 0,
         payrollExtraPay: 0,
@@ -91,12 +87,10 @@ function buildSettlement({ attendance = [], employees = [], month }) {
     row.workDays += 1;
     row.days.push({
       date: a.date,
-      // 원본 attendance 필드: 절대 수정 금지
       check_in: a.check_in,
       check_out: a.check_out,
       planned_start: a.planned_start,
       planned_end: a.planned_end,
-      // payroll 계산값 (표시용)
       payrollBasePlannedMin: payrollData.payrollBasePlannedMin,
       payrollLateDeductMin: payrollData.payrollLateDeductMin,
       payrollEarlyLeaveDeductMin: payrollData.payrollEarlyLeaveDeductMin,
@@ -119,7 +113,6 @@ function buildSettlement({ attendance = [], employees = [], month }) {
 
   return {
     rows,
-    // payroll 기반 집계
     totalPayrollBasePlannedHours: rows.reduce((sum, r) => sum + r.payrollBasePlannedHours, 0),
     totalPayrollBasePay: rows.reduce((sum, r) => sum + r.payrollBasePay, 0),
     totalPayrollExtraPay: rows.reduce((sum, r) => sum + r.payrollExtraPay, 0),
@@ -129,7 +122,7 @@ function buildSettlement({ attendance = [], employees = [], month }) {
   };
 }
 
-const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift"]);
+const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift", "emp"]);
 
 export default function App() {
   const [tab, setTab] = useState("today");
@@ -166,6 +159,9 @@ export default function App() {
     addSchedule,
     updateSchedule,
     deleteSchedule,
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
   } = useApi({
     month: selectedMonth,
   });
@@ -223,6 +219,11 @@ export default function App() {
     }
 
     if (tab === "shift") {
+      refreshAll().catch(() => {});
+      return;
+    }
+
+    if (tab === "emp") {
       refreshAll().catch(() => {});
     }
   }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth]);
@@ -347,6 +348,17 @@ export default function App() {
           schedule={schedule}
           employees={employees}
           onSaveCell={handleSaveCell}
+        />
+      );
+    }
+
+    if (tab === "emp") {
+      return (
+        <EmployeeTab
+          employees={employees}
+          addEmployee={addEmployee}
+          updateEmployee={updateEmployee}
+          deleteEmployee={deleteEmployee}
         />
       );
     }

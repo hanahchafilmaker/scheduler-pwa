@@ -1044,13 +1044,19 @@ export default function useApi(options = {}) {
   const todayStr = getTodayStr();
 
   const todayScheduleFromMonth = useMemo(
-    () => schedule.filter((row) => row.date === todayStr),
-    [schedule, todayStr],
+    () =>
+      schedule.filter(
+        (row) => row.date === todayStr && (!employeeId || row.employee_id === employeeId),
+      ),
+    [schedule, todayStr, employeeId],
   );
 
   const todayAttendanceFromMonth = useMemo(
-    () => monthAttendance.filter((row) => row.date === todayStr),
-    [monthAttendance, todayStr],
+    () =>
+      monthAttendance.filter(
+        (row) => row.date === todayStr && (!employeeId || row.employee_id === employeeId),
+      ),
+    [monthAttendance, todayStr, employeeId],
   );
 
   const mergedTodaySchedule = todaySchedule.length ? todaySchedule : todayScheduleFromMonth;

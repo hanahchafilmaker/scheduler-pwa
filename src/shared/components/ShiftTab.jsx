@@ -198,7 +198,7 @@ function DesktopShiftTable({
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
 
-      <div className="card shift-card-table" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="card shift-card-table" style={{ padding: 0, overflow: "visible" }}>
         <div className="shift-wrap">
           <table className="shift-table shift-grid">
             <thead>

@@ -453,23 +453,3 @@ function AttendanceSummary({ attendance, label }) {
     </div>
   );
 }
-
-/* ── StatusBadge (파일 내 공유) ── */
-function StatusBadge({ status }) {
-  if (!status) return null;
-  return (
-    <span className={`staff-state-badge status-${status}`}>
-      {getApprovalStatusLabel(status)}
-    </span>
-  );
-}
-
-/* ── InfoRow (파일 내 공유) ── */
-function InfoRow({ label, value }) {
-  return (
-    <div className="staff-info-row">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}

@@ -115,6 +115,77 @@ function hasMatchingSchedule(attendanceRow, scheduleList) {
   });
 }
 
+const EXTENSION_REASONS = new Set([
+  "next_part_late_extension",
+  "next_part_no_show_extension",
+]);
+
+/**
+ * selectTodayState
+ * 순수 함수 — 컴포넌트 외부에서 분류 로직 전체를 처리.
+ * useMemo 의존성은 이 함수 하나로 통합.
+ */
+function selectTodayState(scheduleList, attendanceList, employeeList) {
+  const employeeMap = employeeList.reduce((acc, emp) => {
+    acc[String(emp.employee_id)] = emp;
+    return acc;
+  }, {});
+
+  // ── attendance 분류 ──────────────────────────────────────
+  const openList = attendanceList.filter((row) => row.check_in && !row.check_out);
+
+  const workingNow = [];
+  const attentionOpenList = [];
+
+  openList.forEach((row) => {
+    const isPending = row.approval_status === "pending";
+    const isOutOfSchedule = row.approval_reason === "out_of_schedule";
+    const matchedSchedule = hasMatchingSchedule(row, scheduleList);
+
+    if (!isPending && !isOutOfSchedule && matchedSchedule) {
+      workingNow.push(row);
+    } else {
+      attentionOpenList.push(row);
+    }
+  });
+
+  const pendingWithCheckout = attendanceList.filter(
+    (row) => row.approval_status === "pending" && !!row.check_out,
+  );
+
+  const extensionPending = pendingWithCheckout.filter((row) =>
+    EXTENSION_REASONS.has(row.approval_reason),
+  );
+
+  const normalPending = pendingWithCheckout.filter(
+    (row) => !EXTENSION_REASONS.has(row.approval_reason),
+  );
+
+  // ── schedule 분류 (미출근) ───────────────────────────────
+  const matchedScheduleIds = new Set();
+  scheduleList.forEach((scheduleRow) => {
+    const matched = findMatchingAttendance(scheduleRow, attendanceList);
+    if (matched?.schedule_id) {
+      matchedScheduleIds.add(String(scheduleRow.schedule_id));
+    }
+  });
+
+  const lateNoShowList = scheduleList
+    .filter((row) => !matchedScheduleIds.has(String(row.schedule_id)))
+    .map((row) => {
+      const emp = employeeMap[String(row.employee_id)] || null;
+      return { ...row, employee_name: row.name || emp?.name || "-" };
+    });
+
+  return {
+    workingNow,
+    attentionOpenList,
+    normalPending,
+    extensionPending,
+    lateNoShowList,
+  };
+}
+
 export default function TodayTab(props) {
   const { todaySchedule = [], todayAttendance = [], employees = [], onApprove, onReject } = props;
 
@@ -122,83 +193,16 @@ export default function TodayTab(props) {
   const attendanceList = safeArray(todayAttendance);
   const employeeList = safeArray(employees);
 
-  const employeeMap = useMemo(() => {
-    return employeeList.reduce((acc, emp) => {
-      acc[String(emp.employee_id)] = emp;
-      return acc;
-    }, {});
-  }, [employeeList]);
-
-  const openAttendanceList = useMemo(() => {
-    return attendanceList.filter((row) => row.check_in && !row.check_out);
-  }, [attendanceList]);
-
-  const attentionOpenList = useMemo(() => {
-    return openAttendanceList.filter((row) => {
-      const pending = String(row.approval_status || "") === "pending";
-      const outOfSchedule = String(row.approval_reason || "") === "out_of_schedule";
-      const matchedSchedule = hasMatchingSchedule(row, scheduleList);
-
-      return pending || outOfSchedule || !matchedSchedule;
-    });
-  }, [openAttendanceList, scheduleList]);
-
-  const workingNow = useMemo(() => {
-    return openAttendanceList.filter((row) => {
-      const pending = String(row.approval_status || "") === "pending";
-      const outOfSchedule = String(row.approval_reason || "") === "out_of_schedule";
-      const matchedSchedule = hasMatchingSchedule(row, scheduleList);
-
-      return !pending && !outOfSchedule && matchedSchedule;
-    });
-  }, [openAttendanceList, scheduleList]);
-
-  const pendingList = useMemo(() => {
-    return attendanceList.filter((row) => row.approval_status === "pending" && !!row.check_out);
-  }, [attendanceList]);
-
-  const extensionPending = useMemo(() => {
-    return pendingList.filter(
-      (row) =>
-        row.approval_reason === "next_part_late_extension" ||
-        row.approval_reason === "next_part_no_show_extension",
-    );
-  }, [pendingList]);
-
-  const normalPending = useMemo(() => {
-    return pendingList.filter(
-      (row) =>
-        row.approval_reason !== "next_part_late_extension" &&
-        row.approval_reason !== "next_part_no_show_extension",
-    );
-  }, [pendingList]);
-
-  const matchedScheduleIds = useMemo(() => {
-    const ids = new Set();
-
-    scheduleList.forEach((scheduleRow) => {
-      const matched = findMatchingAttendance(scheduleRow, attendanceList);
-      if (matched?.schedule_id) {
-        ids.add(String(scheduleRow.schedule_id));
-      }
-    });
-
-    return ids;
-  }, [scheduleList, attendanceList]);
-
-  const absentList = useMemo(() => {
-    return scheduleList.filter((row) => !matchedScheduleIds.has(String(row.schedule_id)));
-  }, [scheduleList, matchedScheduleIds]);
-
-  const lateNoShowList = useMemo(() => {
-    return absentList.map((row) => {
-      const emp = employeeMap[String(row.employee_id)] || null;
-      return {
-        ...row,
-        employee_name: row.name || emp?.name || "-",
-      };
-    });
-  }, [absentList, employeeMap]);
+  const {
+    workingNow,
+    attentionOpenList,
+    normalPending,
+    extensionPending,
+    lateNoShowList,
+  } = useMemo(
+    () => selectTodayState(scheduleList, attendanceList, employeeList),
+    [scheduleList, attendanceList, employeeList],
+  );
 
   return (
     <div className="today-tab">

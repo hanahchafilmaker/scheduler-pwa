@@ -45,6 +45,8 @@ function normalizeSchedule(row) {
 function approvedToStatus(approved) {
   if (approved === true) return "approved";
   if (approved === false) return "rejected";
+  // string이 직접 넘어오는 경우 그대로 통과 (향후 varchar 마이그레이션 대비)
+  if (typeof approved === "string") return approved;
   return "pending";
 }
 
@@ -73,7 +75,7 @@ function normalizeAttendance(row) {
     paid_check_out: row?.paid_check_out || row?.check_out || "",
 
     approval_status: approvedToStatus(row?.approved),
-    approval_reason: "",
+    approval_reason: row?.approval_reason || "",
     approval_note: row?.approval_note || "",
     requested_at: row?.requested_at || "",
     approved_at: row?.approved_at || "",
@@ -414,6 +416,14 @@ async function doCheckIn(body) {
   const isOutOfSchedule = !matched && !isSubstitute;
   const checkInEval = evaluateCheckIn(checkInTime, plannedStart);
 
+  const approvalReason = isOutOfSchedule
+    ? isSubstitute
+      ? "substitute"
+      : "out_of_schedule"
+    : checkInEval.late_min > RULES.LATE_GRACE_MIN
+      ? "late"
+      : "";
+
   const row = {
     id: generateId("ATT"),
     schedule_id: matched?.id || null,
@@ -428,6 +438,7 @@ async function doCheckIn(body) {
     paid_check_in: checkInEval.paidCheckIn || null,
     paid_check_out: null,
     approved: isOutOfSchedule ? null : checkInEval.approved,
+    approval_reason: approvalReason,
     approval_note: isOutOfSchedule
       ? isSubstitute
         ? "대타 출근 요청"
@@ -545,11 +556,11 @@ async function doUpdateAttendance(body) {
   const { attendance_id, ...fields } = body;
 
   const updates = {};
+  // check_in / check_out 은 원본 로그 — 절대 수정 불가
+  // paid_check_in / paid_check_out 만 수정 허용
   const mutableFields = [
     "planned_start",
     "planned_end",
-    "check_in",
-    "check_out",
     "paid_check_in",
     "paid_check_out",
     "approval_note",
@@ -764,8 +775,25 @@ async function doApplyTemplate(startDateStr) {
 // 공개 유틸
 // ----------------------------------------------------------------
 
-export function getApprovalReasonLabel() {
-  return "확인 필요";
+export function getApprovalReasonLabel(reason) {
+  switch (reason) {
+    case "out_of_schedule":
+      return "스케줄 외 출근";
+    case "substitute":
+      return "대타";
+    case "late":
+      return "지각";
+    case "early_leave":
+      return "조기퇴근";
+    case "overtime":
+      return "연장근무";
+    case "next_part_late_extension":
+      return "다음 파트 연장";
+    case "next_part_no_show_extension":
+      return "다음 파트 미출근 연장";
+    default:
+      return reason ? "확인 필요" : "-";
+  }
 }
 
 export function getApprovalStatusLabel(status) {

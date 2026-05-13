@@ -8,7 +8,7 @@ import { ShiftTab } from "../shared/components/ShiftTab";
 import { SimTab } from "../shared/components/SimTab";
 import EmployeeTab from "../shared/components/EmployeeTab";
 import { Toast } from "../shared/components/UI";
-import { calcMonthSummary, calcRowPayWithSeparation } from "../shared/utils/pay";
+import { buildSettlement } from "../shared/utils/pay";
 import { safeStr } from "../shared/utils";
 import { SHIFT_TIME } from "../shared/constants";
 
@@ -45,81 +45,6 @@ function getWeekDates(offset = 0) {
     d.setDate(monday.getDate() + i);
     return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
   });
-}
-
-// 새 정산 기준:
-// - attendance 원본 유지: check_in/check_out 그대로 보존
-// - payroll 계산 분리: 파트 예정시간 기준 + 추가 수당
-// - approval_status === "pending" 제외
-function buildSettlement({ attendance = [], employees = [], month }) {
-  const empMap = new Map(employees.map((e) => [safeStr(e.employee_id), e]));
-  const rowsMap = new Map();
-
-  const doneRows = attendance.filter((a) => {
-    const d = String(a.date || "");
-    return d.startsWith(month) && a.check_in && a.check_out && a.approval_status !== "pending";
-  });
-
-  doneRows.forEach((a) => {
-    const empId = safeStr(a.employee_id);
-    const emp = empMap.get(empId) || {};
-    const wage = Number(emp.hourly_wage || a.hourly_wage || 0);
-
-    const payrollData = calcRowPayWithSeparation(a, wage);
-
-    if (!rowsMap.has(empId)) {
-      rowsMap.set(empId, {
-        employee_id: empId,
-        name: a.name || emp.name || "-",
-        wage,
-        payrollBasePlannedHours: 0,
-        payrollBasePay: 0,
-        payrollExtraPay: 0,
-        workDays: 0,
-        days: [],
-      });
-    }
-
-    const row = rowsMap.get(empId);
-    row.payrollBasePlannedHours += payrollData.payrollBasePlannedMin / 60;
-    row.payrollBasePay += payrollData.payrollBasePay;
-    row.payrollExtraPay += payrollData.payrollExtraPay;
-    row.workDays += 1;
-    row.days.push({
-      date: a.date,
-      check_in: a.check_in,
-      check_out: a.check_out,
-      planned_start: a.planned_start,
-      planned_end: a.planned_end,
-      payrollBasePlannedMin: payrollData.payrollBasePlannedMin,
-      payrollLateDeductMin: payrollData.payrollLateDeductMin,
-      payrollEarlyLeaveDeductMin: payrollData.payrollEarlyLeaveDeductMin,
-      payrollBasePaidMin: payrollData.payrollBasePaidMin,
-      payrollExtraMin: payrollData.payrollExtraMin,
-      payrollBasePay: payrollData.payrollBasePay,
-      payrollExtraPay: payrollData.payrollExtraPay,
-      payrollTotalPay: payrollData.payrollTotalPay,
-      approval_status: a.approval_status,
-      approval_reason: a.approval_reason,
-    });
-  });
-
-  const rows = [...rowsMap.values()].map((r) => ({
-    ...r,
-    days: r.days.sort((a, b) => String(a.date).localeCompare(String(b.date))),
-  }));
-
-  const summary = calcMonthSummary(doneRows, Object.fromEntries(empMap));
-
-  return {
-    rows,
-    totalPayrollBasePlannedHours: rows.reduce((sum, r) => sum + r.payrollBasePlannedHours, 0),
-    totalPayrollBasePay: rows.reduce((sum, r) => sum + r.payrollBasePay, 0),
-    totalPayrollExtraPay: rows.reduce((sum, r) => sum + r.payrollExtraPay, 0),
-    totalPayrollPay: rows.reduce((sum, r) => sum + (r.payrollBasePay + r.payrollExtraPay), 0),
-    totalWorkDays: rows.reduce((sum, r) => sum + r.workDays, 0),
-    summary,
-  };
 }
 
 const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift", "emp"]);

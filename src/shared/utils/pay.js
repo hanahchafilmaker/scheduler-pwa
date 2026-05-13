@@ -389,3 +389,88 @@ export function calcMonthSummary(rows = [], employeeMap = {}) {
     totalPayrollPay: totals.totalPayrollBasePay + totals.totalPayrollExtraPay,
   };
 }
+
+// ---------------------------------------------------------------------------
+// 정산 집계 (App.jsx에서 이동)
+// ---------------------------------------------------------------------------
+
+/**
+ * buildSettlement
+ *
+ * 월별 직원별 정산 집계를 생성한다.
+ *
+ * 정산 기준:
+ * - attendance 원본(check_in/check_out) 수정 없음
+ * - approval_status === "pending" 제외
+ * - 기본급 / 추가 수당 분리 구조
+ */
+export function buildSettlement({ attendance = [], employees = [], month }) {
+  const empMap  = new Map(employees.map((e) => [String(e.employee_id || ""), e]));
+  const rowsMap = new Map();
+
+  const doneRows = attendance.filter((a) => {
+    const d = String(a.date || "");
+    return d.startsWith(month) && a.check_in && a.check_out && a.approval_status !== "pending";
+  });
+
+  doneRows.forEach((a) => {
+    const empId = String(a.employee_id || "");
+    const emp   = empMap.get(empId) || {};
+    const wage  = Number(emp.hourly_wage || a.hourly_wage || 0);
+
+    const payrollData = calcRowPayWithSeparation(a, wage);
+
+    if (!rowsMap.has(empId)) {
+      rowsMap.set(empId, {
+        employee_id:              empId,
+        name:                     a.name || emp.name || "-",
+        wage,
+        payrollBasePlannedHours:  0,
+        payrollBasePay:           0,
+        payrollExtraPay:          0,
+        workDays:                 0,
+        days:                     [],
+      });
+    }
+
+    const row = rowsMap.get(empId);
+    row.payrollBasePlannedHours += payrollData.payrollBasePlannedMin / 60;
+    row.payrollBasePay          += payrollData.payrollBasePay;
+    row.payrollExtraPay         += payrollData.payrollExtraPay;
+    row.workDays                += 1;
+    row.days.push({
+      date:                       a.date,
+      check_in:                   a.check_in,
+      check_out:                  a.check_out,
+      planned_start:              a.planned_start,
+      planned_end:                a.planned_end,
+      payrollBasePlannedMin:      payrollData.payrollBasePlannedMin,
+      payrollLateDeductMin:       payrollData.payrollLateDeductMin,
+      payrollEarlyLeaveDeductMin: payrollData.payrollEarlyLeaveDeductMin,
+      payrollBasePaidMin:         payrollData.payrollBasePaidMin,
+      payrollExtraMin:            payrollData.payrollExtraMin,
+      payrollBasePay:             payrollData.payrollBasePay,
+      payrollExtraPay:            payrollData.payrollExtraPay,
+      payrollTotalPay:            payrollData.payrollTotalPay,
+      approval_status:            a.approval_status,
+      approval_reason:            a.approval_reason,
+    });
+  });
+
+  const rows = [...rowsMap.values()].map((r) => ({
+    ...r,
+    days: r.days.sort((a, b) => String(a.date).localeCompare(String(b.date))),
+  }));
+
+  const summary = calcMonthSummary(doneRows, Object.fromEntries(empMap));
+
+  return {
+    rows,
+    totalPayrollBasePlannedHours: rows.reduce((sum, r) => sum + r.payrollBasePlannedHours, 0),
+    totalPayrollBasePay:          rows.reduce((sum, r) => sum + r.payrollBasePay,          0),
+    totalPayrollExtraPay:         rows.reduce((sum, r) => sum + r.payrollExtraPay,         0),
+    totalPayrollPay:              rows.reduce((sum, r) => sum + (r.payrollBasePay + r.payrollExtraPay), 0),
+    totalWorkDays:                rows.reduce((sum, r) => sum + r.workDays,                0),
+    summary,
+  };
+}

@@ -537,3 +537,24 @@
   font-size: 12px;
   color: #9ca3af;
 }
+/* staff.css 에 추가 — 지각/조기퇴근 태그 */
+
+.staff-deduct-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.staff-deduct-tag.late {
+  background: #422006;
+  color: #fbbf24;
+}
+
+.staff-deduct-tag.early {
+  background: #1e3a5f;
+  color: #93c5fd;
+}

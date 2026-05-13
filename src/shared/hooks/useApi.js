@@ -511,13 +511,22 @@ async function doCheckOut(body) {
 }
 
 async function doApproveAttendance(body) {
-  const { attendance_id, approved, approved_by = null, approval_note = "" } = body;
+  const { attendance_id, approved, approved_by = null, approval_note } = body;
+
+  // 기존 레코드 조회 → approval_note 미전달 시 기존 값 보존
+  const { data: existing, error: fetchError } = await supabase
+    .from("attendance")
+    .select("approval_note")
+    .eq("id", attendance_id)
+    .single();
+
+  assertNoError(fetchError, "approve_attendance fetch");
 
   const updates = {
-    approved: approved === true,
+    approved: approved === true ? true : false,
     approved_by: approved_by || null,
     approved_at: nowDateTimeString(),
-    approval_note,
+    approval_note: approval_note !== undefined ? approval_note : (existing?.approval_note || ""),
   };
 
   const { data, error } = await supabase

@@ -1,69 +1,79 @@
-﻿# scheduler-pwa 아키텍처
+# SHIFT Scheduler PWA Architecture
 
-## 프로젝트 목적
+## 1. 프로젝트 개요
 
-scheduler-pwa는 작은 사업장을 위한 출퇴근 및 근무 관리 프로젝트이다.
+SHIFT Scheduler PWA는 소규모 매장의 스케줄, 출퇴근, 승인 처리, 임금 계산 보조를 위해 만든 관리자/직원 분리형 웹앱입니다.
 
-핵심 목적:
+이 프로젝트는 아래 두 개의 앱으로 구성됩니다.
 
-- 오늘 근무 현황 확인
-- 출퇴근 기록 관리
-- 승인 대기 관리
-- 대타 흐름 관리
-- 실제 근무 기준 급여 정산
+- **관리자 앱**
+- **직원 앱**
 
-## 핵심 데이터 구조
+두 앱은 하나의 저장소 안에서 공통 모듈을 공유하며, Vite 멀티 엔트리 구조로 빌드됩니다.
 
-schedule = 계획
-attendance = 실제 기록
+---
 
-정산은 attendance 기준으로만 계산한다.
+## 2. 앱 구성
 
-## 현재 폴더 구조
+### 관리자 앱
+관리자가 사용하는 화면입니다.
 
-src/
-├─ admin/
-├─ staff/
-├─ shared/
-│  ├─ api/
-│  ├─ components/
-│  ├─ constants/
-│  ├─ hooks/
-│  └─ utils/
+주요 역할:
+- 직원 관리
+- 월간 스케줄 확인 및 수정
+- 당일 출퇴근 기록 확인
+- 승인 대기 내역 처리
+- 대타 / 추가근무 / 연장근무 확인
+- 월별 정산 데이터 확인
 
-## 주요 컴포넌트
+진입점:
+- `index.html`
 
-- TodayTab
-- AttTab
-- ShiftTab
-- SimTab
-- Nav
+개발 주소:
+- `http://localhost:5173`
 
-## Today 운영 중심 구조
+배포 주소 예시:
+- `/`
 
-TodayTab은 아래 4개 섹션 기준으로 동작한다.
+---
 
-1. 현재 근무중
-2. 승인대기
-3. 미출근
-4. 자동퇴근 예정
+### 직원 앱
+직원이 사용하는 화면입니다.
 
-## 정산 기준
+주요 역할:
+- PIN 로그인
+- 오늘 스케줄 확인
+- 출근 / 퇴근 처리
+- 대타 출근 요청
+- 내 출근 기록 확인
+- 승인 상태 확인
 
-정산 포함 조건:
+진입점:
+- `staff.html`
 
-- attendance 존재
-- check_in 존재
-- check_out 존재
-- approved = true
+개발 주소:
+- `http://localhost:5174/staff.html`
 
-## 절대 금지
+배포 주소 예시:
+- `/staff`
 
-- schedule과 attendance 혼합 금지
-- todayAttendance / monthAttendance 혼합 금지
-- TodayTab 내부 fetch 금지
-- App.jsx 상태 구조 임의 변경 금지
+---
 
-## 인코딩 원칙
+## 3. 디렉토리 구조
 
-모든 파일은 UTF-8로 저장한다.
+```txt
+scheduler-pwa/
+├─ docs/
+│  ├─ ARCHITECTURE.md
+│  ├─ BUSINESS_RULES.md
+│  └─ DEPLOY.md
+├─ public/
+├─ src/
+│  ├─ admin/
+│  ├─ staff/
+│  └─ shared/
+├─ index.html
+├─ staff.html
+├─ vite.config.js
+├─ vercel.json
+└─ package.json

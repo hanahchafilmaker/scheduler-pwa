@@ -26,15 +26,11 @@ function getEntry(schedule, date, part) {
   return schedule.find((s) => s.part === part && normalizeDate(s.date) === date) || null;
 }
 
-/* ════════════════════════════════════════════
-   셀 편집 팝오버
-   - 직원 선택 드롭다운 + 저장/취소/삭제
-   ════════════════════════════════════════════ */
 function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchorRef }) {
   const [selectedId, setSelectedId] = useState(entry?.employee_id || "");
+  const [position, setPosition] = useState({ top: "calc(100% + 6px)", left: 0 });
   const popRef = useRef(null);
 
-  // 바깥 클릭 닫기
   useEffect(() => {
     const handler = (e) => {
       if (
@@ -50,6 +46,25 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
     return () => document.removeEventListener("mousedown", handler);
   }, [onClose, anchorRef]);
 
+  useEffect(() => {
+    const anchor = anchorRef?.current;
+    if (!anchor) return;
+
+    const rect = anchor.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    const isBottom = rect.bottom > viewportHeight - 220;
+    const isRight = rect.right > viewportWidth - 260;
+
+    setPosition({
+      top: isBottom ? "auto" : "calc(100% + 6px)",
+      bottom: isBottom ? "calc(100% + 6px)" : "auto",
+      left: isRight ? "auto" : 0,
+      right: isRight ? 0 : "auto",
+    });
+  }, [anchorRef]);
+
   const handleSave = () => {
     onSaveCell({ date, part, scheduleId: entry?.schedule_id || "" }, selectedId);
     onClose();
@@ -60,10 +75,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
       onClose();
       return;
     }
-    onSaveCell(
-      { date, part, scheduleId: entry.schedule_id },
-      "", // employeeId 없으면 delete
-    );
+    onSaveCell({ date, part, scheduleId: entry.schedule_id }, "");
     onClose();
   };
 
@@ -76,15 +88,14 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
       className="cell-popover"
       style={{
         position: "absolute",
-        zIndex: 200,
+        zIndex: 9999,
         background: "#fff",
         border: "1px solid #e5e7eb",
         borderRadius: 10,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.13)",
+        boxShadow: "0 10px 28px rgba(0,0,0,0.14)",
         padding: "14px 16px",
         minWidth: 220,
-        top: "calc(100% + 6px)",
-        left: 0,
+        ...position,
       }}
     >
       <div style={{ marginBottom: 10 }}>
@@ -100,12 +111,11 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
         onChange={(e) => setSelectedId(e.target.value)}
         style={{
           width: "100%",
-          padding: "7px 10px",
-          borderRadius: 6,
+          padding: "8px 10px",
+          borderRadius: 8,
           border: "1px solid #d1d5db",
           fontSize: 13,
           marginBottom: 10,
-          cursor: "pointer",
         }}
         autoFocus
       >
@@ -146,9 +156,6 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
   );
 }
 
-/* ════════════════════════════════════════════
-   공통 헤더
-   ════════════════════════════════════════════ */
 function ShiftHeader({ weekDates, weekOffset, setWeekOffset }) {
   const rangeLabel = weekDates.length === 7 ? `${weekDates[0]} – ${weekDates[6]}` : "";
 
@@ -176,41 +183,28 @@ function ShiftHeader({ weekDates, weekOffset, setWeekOffset }) {
   );
 }
 
-/* ════════════════════════════════════════════
-   데스크탑 테이블
-   ════════════════════════════════════════════ */
-function DesktopShiftTable({
-  weekDates,
-  weekOffset,
-  setWeekOffset,
-  schedule,
-  employees,
-  todayDate,
-  onSaveCell,
-}) {
-  // { key: "date_part" } → true
+function DesktopShiftTable(props) {
+  const { weekDates, weekOffset, setWeekOffset, schedule, employees, todayDate, onSaveCell } =
+    props;
   const [openCell, setOpenCell] = useState(null);
   const cellRefs = useRef({});
-
-  const toggleCell = (key) => setOpenCell((prev) => (prev === key ? null : key));
 
   return (
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
 
       <div className="card shift-card-table" style={{ padding: 0, overflow: "visible" }}>
-        <div className="shift-wrap">
+        <div className="shift-wrap" style={{ overflow: "visible" }}>
           <table className="shift-table shift-grid">
             <thead>
               <tr>
                 <th className="part-col">파트</th>
                 {weekDates.map((d) => {
                   const meta = formatDayLabel(d);
-                  const isToday = d === todayDate;
                   return (
                     <th
                       key={d}
-                      className={`date-col ${isToday ? "today" : ""}`}
+                      className={`date-col ${d === todayDate ? "today" : ""}`}
                       style={{ color: meta.color }}
                     >
                       {meta.day}
@@ -225,35 +219,28 @@ function DesktopShiftTable({
               {PARTS.map((part) => (
                 <tr key={part}>
                   <td className="part-label-cell">
-                    <strong>{PART_LABEL[part] || part}</strong>
-                    <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 400, marginTop: 2 }}>
-                      {SHIFT_TIME[part] ? `${SHIFT_TIME[part].start}~${SHIFT_TIME[part].end}` : ""}
+                    <strong>{PART_LABEL[part]}</strong>
+                    <div style={{ fontSize: 11, color: "#9ca3af" }}>
+                      {SHIFT_TIME[part]?.start}~{SHIFT_TIME[part]?.end}
                     </div>
                   </td>
 
                   {weekDates.map((date) => {
                     const cellKey = `${date}_${part}`;
                     const entry = getEntry(schedule, date, part);
-                    const isToday = date === todayDate;
                     const isOpen = openCell === cellKey;
-
-                    if (!cellRefs.current[cellKey]) {
-                      cellRefs.current[cellKey] = { current: null };
-                    }
 
                     return (
                       <td
                         key={cellKey}
-                        className={`shift-cell editable ${isToday ? "today" : ""} ${isOpen ? "active" : ""}`}
-                        style={{ position: "relative", cursor: "pointer" }}
-                        ref={(el) => {
-                          cellRefs.current[cellKey] = { current: el };
-                        }}
-                        onClick={() => toggleCell(cellKey)}
+                        className={`shift-cell editable ${isOpen ? "active" : ""}`}
+                        style={{ position: "relative" }}
+                        ref={(el) => (cellRefs.current[cellKey] = { current: el })}
+                        onClick={() => setOpenCell(isOpen ? null : cellKey)}
                       >
                         {entry ? (
                           <div className="shift-cell-filled">
-                            <span className="cell-name">{PART_LABEL[part] || part}</span>
+                            <span className="cell-name">{PART_LABEL[part]}</span>
                             <span className="cell-employee-mini">{entry.name}</span>
                           </div>
                         ) : (
@@ -284,119 +271,79 @@ function DesktopShiftTable({
   );
 }
 
-/* ════════════════════════════════════════════
-   모바일 카드
-   ════════════════════════════════════════════ */
-function MobileShiftCards({
-  weekDates,
-  weekOffset,
-  setWeekOffset,
-  schedule,
-  employees,
-  todayDate,
-  onSaveCell,
-}) {
+function MobileShiftCards(props) {
+  const { weekDates, weekOffset, setWeekOffset, schedule, employees, todayDate, onSaveCell } =
+    props;
   const [openCell, setOpenCell] = useState(null);
   const cardRefs = useRef({});
-
-  const toggleCell = (key) => setOpenCell((prev) => (prev === key ? null : key));
 
   return (
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
 
       <div className="shift-mobile-list">
-        {weekDates.map((date) => {
-          const meta = formatDayLabel(date);
-          const entries = getEntries(schedule, date);
-          const isToday = date === todayDate;
+        {weekDates.map((date) => (
+          <section key={date} className={`shift-day-card ${date === todayDate ? "today" : ""}`}>
+            <div className="shift-day-parts">
+              {PARTS.map((part) => {
+                const cellKey = `${date}_${part}`;
+                const entry = getEntry(schedule, date, part);
+                const isOpen = openCell === cellKey;
 
-          return (
-            <section key={date} className={`shift-day-card ${isToday ? "today" : ""}`}>
-              <div className="shift-day-header">
-                <div className="shift-day-left">
-                  <strong style={{ color: meta.color }}>{meta.day}</strong>
-                  <span>{meta.shortDate}</span>
-                  {isToday ? <em className="today-badge">오늘</em> : null}
-                </div>
-                <div className="shift-day-right">{date}</div>
-              </div>
+                return (
+                  <div
+                    key={cellKey}
+                    ref={(el) => (cardRefs.current[cellKey] = { current: el })}
+                    className={`shift-part-card editable ${isOpen ? "active" : ""}`}
+                    style={{ position: "relative" }}
+                    onClick={() => setOpenCell(isOpen ? null : cellKey)}
+                  >
+                    <div className="shift-part-top">
+                      <span className="shift-part-name">{PART_LABEL[part]}</span>
+                      <span className="shift-part-time">
+                        {SHIFT_TIME[part]?.start} ~ {SHIFT_TIME[part]?.end}
+                      </span>
+                    </div>
 
-              <div className="shift-day-parts">
-                {PARTS.map((part) => {
-                  const cellKey = `${date}_${part}`;
-                  const entry = entries.find((e) => e.part === part);
-                  const shift = SHIFT_TIME[part] || {};
-                  const isOpen = openCell === cellKey;
-
-                  if (!cardRefs.current[cellKey]) {
-                    cardRefs.current[cellKey] = { current: null };
-                  }
-
-                  return (
-                    <div
-                      key={cellKey}
-                      ref={(el) => {
-                        cardRefs.current[cellKey] = { current: el };
-                      }}
-                      className={`shift-part-card editable ${entry ? "filled" : "empty"} ${isOpen ? "active" : ""}`}
-                      style={{ position: "relative", cursor: "pointer" }}
-                      onClick={() => toggleCell(cellKey)}
-                    >
-                      <div className="shift-part-top">
-                        <span className="shift-part-name">{PART_LABEL[part] || part}</span>
-                        <span className="shift-part-time">
-                          {shift.start} ~ {shift.end}
-                        </span>
-                      </div>
-
-                      <div className="shift-part-bottom">
-                        {entry ? (
-                          <strong className="shift-part-employee">{entry.name}</strong>
-                        ) : (
-                          <span className="shift-part-empty">＋ 배정</span>
-                        )}
-                      </div>
-
-                      {isOpen && (
-                        <CellPopover
-                          entry={entry}
-                          date={date}
-                          part={part}
-                          employees={employees}
-                          onSaveCell={onSaveCell}
-                          onClose={() => setOpenCell(null)}
-                          anchorRef={cardRefs.current[cellKey]}
-                        />
+                    <div className="shift-part-bottom">
+                      {entry ? (
+                        <strong className="shift-part-employee">{entry.name}</strong>
+                      ) : (
+                        <span className="shift-part-empty">＋ 배정</span>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
+
+                    {isOpen && (
+                      <CellPopover
+                        entry={entry}
+                        date={date}
+                        part={part}
+                        employees={employees}
+                        onSaveCell={onSaveCell}
+                        onClose={() => setOpenCell(null)}
+                        anchorRef={cardRefs.current[cellKey]}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </div>
     </>
   );
 }
 
-/* ════════════════════════════════════════════
-   메인 export — props 시그니처 유지
-   employees / onSaveCell 추가 수신
-   ════════════════════════════════════════════ */
 export function ShiftTab({
   weekDates = [],
   weekOffset = 0,
   setWeekOffset,
   schedule = [],
-  employees = [], // App.jsx에서 이미 전달 중
-  onSaveCell, // App.jsx에서 이미 전달 중
+  employees = [],
+  onSaveCell,
 }) {
-  const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth <= 768 : false,
-  );
-
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const todayDate = useMemo(() => normalizeDate(new Date()), []);
 
   useEffect(() => {

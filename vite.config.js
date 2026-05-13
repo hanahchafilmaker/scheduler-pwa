@@ -2,6 +2,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const GAS_PATH =
   "/macros/s/AKfycbyHU9b2OEeLMY9z9S94M7XWhfOYV7AwmZ8DHTzeBDspD3dGnf9GT2xCRzCaAQGTZ342zQ/exec";
@@ -13,6 +17,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: "auto",
+      workbox: {
+        globPatterns: ["**/*.{js,css,html}"],
+      },
+      includeAssets: ["icons.jpg"],
       manifest: {
         name: "스마트 스케줄러",
         short_name: "스케줄러",
@@ -38,6 +47,8 @@ export default defineConfig({
   },
 
   build: {
+    outDir: "dist",
+    emptyOutDir: true,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, "index.html"),
@@ -62,7 +73,6 @@ export default defineConfig({
         rewrite: (urlPath) =>
           urlPath.replace(/^\/api\/scheduler/, GAS_PATH),
       },
-
       "/api/staff": {
         target: "https://script.google.com",
         changeOrigin: true,

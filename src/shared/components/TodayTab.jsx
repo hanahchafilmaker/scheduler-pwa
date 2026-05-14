@@ -136,55 +136,45 @@ function selectTodayState(scheduleList, attendanceList, employeeList) {
     return acc;
   }, {});
 
-  // ── attendance 분류 ──────────────────────────────────────
-  // 근무 중(WORKING or PENDING or REJECTED) = check_in 있고 check_out 없는 상태
-  // getAttendanceStatus로 판별 — raw 비교 제거
-  const openList = attendanceList.filter((row) => {
-    const s = getAttendanceStatus(row);
-    return s === ATTENDANCE_STATUS.WORKING || s === ATTENDANCE_STATUS.PENDING || s === ATTENDANCE_STATUS.REJECTED;
-  });
-
+  // ── attendance 분류 (status 기준 단일 패스) ─────────────
   const workingNow = [];
   const attentionOpenList = [];
+  const normalPending = [];
+  const extensionPending = [];
 
-  openList.forEach((row) => {
-    const isPending = getAttendanceStatus(row) === ATTENDANCE_STATUS.PENDING;
-    const isOutOfSchedule = row.approval_reason === "out_of_schedule";
-    const matchedSchedule = hasMatchingSchedule(row, scheduleList);
+  for (const row of attendanceList) {
+    const status = getAttendanceStatus(row);
 
-    if (!isPending && !isOutOfSchedule && matchedSchedule) {
+    if (status === ATTENDANCE_STATUS.WORKING) {
       workingNow.push(row);
-    } else {
-      attentionOpenList.push(row);
+      continue;
     }
-  });
 
-  // 퇴근 완료(CLOSED) 중 아직 미승인인 것 = 승인 대기 중인 완료 기록
-  // CLOSED 내부는 getAttendanceStatus가 구분하지 않으므로 approval_status로 세분화.
-  // approval_status는 normalizeAttendance → approvedToStatus()를 거친 값으로 안전함.
-  const PENDING_STATUS = "pending"; // approvedToStatus(null) 결과값 (useApi 매핑과 동일)
-  const pendingWithCheckout = attendanceList.filter(
-    (row) =>
-      getAttendanceStatus(row) === ATTENDANCE_STATUS.CLOSED &&
-      row.approval_status === PENDING_STATUS,
-  );
+    if (status === ATTENDANCE_STATUS.PENDING) {
+      // 미퇴근 상태 + 미승인 → 관리자 확인 필요
+      attentionOpenList.push(row);
+      continue;
+    }
 
-  const extensionPending = pendingWithCheckout.filter((row) =>
-    EXTENSION_REASONS.has(row.approval_reason),
-  );
-
-  const normalPending = pendingWithCheckout.filter(
-    (row) => !EXTENSION_REASONS.has(row.approval_reason),
-  );
+    if (status === ATTENDANCE_STATUS.CLOSED && row.approval_status === "pending") {
+      // 퇴근 완료 + 미승인 → 승인대기 또는 연장요청
+      if (EXTENSION_REASONS.has(row.approval_reason)) {
+        extensionPending.push(row);
+      } else {
+        normalPending.push(row);
+      }
+    }
+    // CLOSED + approved/rejected, NONE, REJECTED → 표시 불필요
+  }
 
   // ── schedule 분류 (미출근) ───────────────────────────────
-  const matchedScheduleIds = new Set();
-  scheduleList.forEach((scheduleRow) => {
-    const matched = findMatchingAttendance(scheduleRow, attendanceList);
-    if (matched?.schedule_id) {
-      matchedScheduleIds.add(String(scheduleRow.schedule_id));
-    }
-  });
+  // WORKING 상태 attendance의 schedule_id만 "출근 완료"로 간주
+  const matchedScheduleIds = new Set(
+    attendanceList
+      .filter((row) => getAttendanceStatus(row) === ATTENDANCE_STATUS.WORKING)
+      .map((row) => String(row.schedule_id))
+      .filter(Boolean),
+  );
 
   const lateNoShowList = scheduleList
     .filter((row) => !matchedScheduleIds.has(String(row.schedule_id)))
@@ -205,6 +195,9 @@ function selectTodayState(scheduleList, attendanceList, employeeList) {
 export default function TodayTab(props) {
   const { todaySchedule = [], todayAttendance = [], employees = [], onApprove, onReject } = props;
 
+  // deps를 props 원본으로 유지 → safeArray는 useMemo 내부에서 호출
+  // (외부에서 safeArray 호출 시 매 렌더마다 새 배열 → useMemo 무효화 반복)
+  // JSX 렌더에서도 사용하므로 컴포넌트 스코프에 선언
   const scheduleList = safeArray(todaySchedule);
   const attendanceList = safeArray(todayAttendance);
   const employeeList = safeArray(employees);
@@ -217,7 +210,8 @@ export default function TodayTab(props) {
     lateNoShowList,
   } = useMemo(
     () => selectTodayState(scheduleList, attendanceList, employeeList),
-    [scheduleList, attendanceList, employeeList],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [todaySchedule, todayAttendance, employees],
   );
 
   return (

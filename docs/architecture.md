@@ -1,254 +1,369 @@
-# 🏗 ARCHITECTURE.md
 
-md id="archdoc_final"
-# 🏗 Architecture Document
-
-## 1. 시스템 구조
-
-현재 시스템은 Event Sourcing이 아닌 상태 덮어쓰기 구조입니다.
-
-
-
-UI Layer (React)
-↓
-useApi (state + business logic)
-↓
-Supabase (attendance 중심)
-
-id="arch_a1"
+# 🧭 Attendance System Full Architecture (FE + BE + DB + Ops)
 
 ---
 
-## 2. 핵심 설계 철학
+# 1. 전체 구조 (End-to-End)
 
-### ❗ Single Source of Truth
-
- 
-attendance = 모든 출퇴근 상태의 기준
-
- id="arch_a2"
-
-이 하나의 row에:
-
-- 출근
-- 퇴근
-- 승인 상태
-- 급여 계산 결과
-
-가 모두 포함됩니다.
-
----
-
-## 3. attendance 상태 모델
-
-### 상태 구성 요소
-
- 
-
-approved (null | true | false)
-check_in / check_out
-evaluation result
-
- id="arch_a3"
-
----
-
-## 4. 상태 머신 (암묵적 구조)
-
-### 상태 정의
-
-| 상태 | 조건 |
-|------|------|
-| WORKING | check_in 있음, check_out 없음 |
-| PENDING | approved = null |
-| APPROVED | approved = true |
-| REJECTED | approved = false |
+```id="arch_overall"
+┌──────────────────────────────┐
+│          Frontend (PWA)       │
+│  React / TodayTab / Hooks     │
+└──────────────┬───────────────┘
+               │ REST / API
+               ▼
+┌──────────────────────────────┐
+│        API Gateway Layer      │
+│  Auth / RateLimit / Logging   │
+└──────────────┬───────────────┘
+               ▼
+┌──────────────────────────────┐
+│        Backend Service        │
+│  Attendance Domain Service    │
+│  Schedule Service             │
+│  Approval Service             │
+└──────────────┬───────────────┘
+               ▼
+┌──────────────────────────────┐
+│           Database            │
+│ PostgreSQL (core source)      │
+└──────────────┬───────────────┘
+               ▼
+┌──────────────────────────────┐
+│     Event / Trigger Layer     │
+│  DB Trigger / Event Queue     │
+│  (audit, sync, recalculation) │
+└──────────────────────────────┘
+```
 
 ---
 
-## 5. 상태 생성 흐름
+# 2. 핵심 도메인 구조 (Backend)
 
-### Check-in
+## 📦 3대 핵심 도메인
 
- 
-
-evaluateCheckIn()
-
- 
-
-결과:
-
-- 정상 → approved = true
-- 지각 → approved = null
-- 스케줄 외 → approved = null
+```id="domain_model"
+1. Attendance Domain
+2. Schedule Domain
+3. Approval Domain
+```
 
 ---
 
-### Check-out
+## 2.1 Attendance Domain
 
- 
+### 역할
 
-evaluateCheckOut()
+* 출근/퇴근 기록 생성
+* 상태 계산 기반 데이터 제공
 
- 
+### 핵심 테이블
 
-결과:
-
-- 정상 → 유지
-- 연장근무 → pending
-- 조기퇴근 → pending
-
----
-
-## 6. 핵심 로직 위치
-
-| 기능 | 위치 |
-|------|------|
-| 체크인 | doCheckIn |
-| 체크아웃 | doCheckOut |
-| 승인 | doApproveAttendance |
-| 평가 | evaluateCheckIn/out |
-
-👉 useApi.js에 집중
+```sql id="att_table"
+attendance
+- attendance_id
+- employee_id
+- schedule_id (nullable)
+- check_in
+- check_out
+- paid_check_in
+- paid_check_out
+- approval_status
+- approval_reason
+- created_at
+```
 
 ---
 
-## 7. 데이터 흐름
+### 상태는 DB가 아니라 “계산값”
 
-### Check-in Flow
-
- 
-
-User
-→ checkIn()
-→ doCheckIn()
-→ evaluateCheckIn()
-→ INSERT attendance
-
- id="arch_a4"
+> ⚠️ 절대 DB에 status 저장하지 않음 (중요)
 
 ---
 
-### Check-out Flow
+## 2.2 Schedule Domain
 
- 
-
-User
-→ checkOut()
-→ doCheckOut()
-→ evaluateCheckOut()
-→ UPDATE attendance
-
- id="arch_a5"
-
----
-
-### Approval Flow
-
- 
-
-Admin
-→ approveAttendance()
-→ UPDATE attendance.approved
-
- 
+```sql id="schedule_table"
+schedule
+- schedule_id
+- employee_id
+- date
+- part
+- planned_start
+- planned_end
+```
 
 ---
 
-## 8. 현재 구조의 특징
+## 2.3 Approval Domain
 
-### 1. Event Sourcing 아님
-
-- 이벤트 로그 없음
-- 상태 overwrite 구조
-
----
-
-### 2. 평가 기반 상태 머신
-
-- 상태는 DB가 아니라 함수로 결정됨
-- evaluateCheckIn/out이 핵심
-
----
-
-### 3. 승인과 근무 로직 결합
-
-- check-in 시 승인 생성
-- check-out 시 승인 변경 가능
+```sql id="approval_table"
+approval
+- approval_id
+- attendance_id
+- status (pending/approved/rejected)
+- reason
+- note
+- processed_by
+- processed_at
+```
 
 ---
 
-## 9. UI 영향 구조
+# 3. 상태 엔진 (Backend Core Logic)
 
-### Staff UI
+## 🔥 핵심 규칙: Status Engine = Backend에서 정의
 
-- workingNow (derived state)
-- today attendance merge
-
-### Admin UI
-
-- pending list
-- schedule + attendance merge
-- derived grouping logic
+```id="status_engine"
+getAttendanceStatus(attendance)
+```
 
 ---
 
-## 10. 주요 기술 특징
+## 상태 정의
 
-- React Hooks 중심 구조
-- Supabase 직접 호출
-- client-side business logic 집중
-- normalized data layer 존재
+```ts id="status_def"
+WORKING
+→ check_in exists AND check_out null
 
----
+CLOSED
+→ check_out exists
 
-## 11. 현재 구조의 한계
+PENDING
+→ CLOSED + approval pending
 
-### ❌ 1. 상태 추적 불가
-- 승인 history 없음
-
-### ❌ 2. 상태 단일값 문제
-- approval_reason 단일 string
-
-### ❌ 3. 이벤트 기반 아님
-- 변경 이력 없음
-
-### ❌ 4. UI 의존성 큼
-- TodayTab에서 상태 재계산 많음
+REJECTED
+→ approval rejected
+```
 
 ---
 
-## 12. 향후 구조 (권장)
+# 4. API 구조
 
-### Option A: 현재 구조 유지
+## 4.1 Today Dashboard API
 
-- 안정화
-- 로직 분리
-- UI 개선
+```http id="api_today"
+GET /api/today
+```
 
----
+### Response
 
-### Option B: Event-driven 구조
-
- 
-
-attendance (raw)
-work_events (state machine)
-
- id="arch_a6"
-
-- 완전 이벤트 기반
-- 승인 history
-- 확장성 확보
+```json id="today_response"
+{
+  "attendance": [],
+  "schedule": [],
+  "employees": []
+}
+```
 
 ---
 
-## 13. 결론
+## 4.2 Attendance APIs
 
-현재 시스템은:
+```http id="att_api"
+POST /attendance/check-in
+POST /attendance/check-out
+GET  /attendance/today
+```
 
-> “평가 함수 기반 단일 row 상태 머신”
+---
 
-즉,
-DB는 저장소, 상태는 코드가 결정하는 구조
- 
+## 4.3 Approval APIs
+
+```http id="approval_api"
+POST /approval/approve
+POST /approval/reject
+GET  /approval/pending
+```
+
+---
+
+# 5. Backend Processing Flow
+
+## 🧠 핵심 흐름
+
+```id="backend_flow"
+CHECK IN
+  ↓
+Attendance 생성 (WORKING)
+
+CHECK OUT
+  ↓
+Attendance 업데이트 (CLOSED)
+
+Trigger Event
+  ↓
+Approval 생성 (if needed)
+
+Frontend Query
+  ↓
+selectTodayState (FE or BE optional)
+```
+
+---
+
+# 6. Event / Trigger Layer (중요)
+
+## 목적
+
+* 데이터 자동 보정
+* 승인 상태 자동 생성
+* 이상 데이터 감지
+
+---
+
+## DB Trigger or Queue Event
+
+```id="event_layer"
+attendance.updated
+attendance.created
+schedule.missing_match
+```
+
+---
+
+## 예시
+
+```ts id="event_example"
+if (check_out exists && approval_status null) {
+  create approval(pending)
+}
+```
+
+---
+
+# 7. Frontend vs Backend 책임 분리
+
+## ❌ 잘못된 구조
+
+* FE가 상태 계산
+* FE가 매칭 판단
+* FE가 business rule 처리
+
+---
+
+## ✅ 올바른 구조
+
+| Layer    | 책임              |
+| -------- | --------------- |
+| Backend  | truth + rules   |
+| API      | normalized data |
+| Frontend | render only     |
+
+---
+
+# 8. 데이터 흐름 (Full Cycle)
+
+```id="full_flow"
+1. USER ACTION
+   check-in / check-out
+
+2. BACKEND
+   attendance update
+
+3. EVENT LAYER
+   approval 생성 / 상태 변화
+
+4. API
+   normalized response
+
+5. FRONTEND
+   selectTodayState()
+
+6. UI
+   TodayTab render
+```
+
+---
+
+# 9. 운영 안정 구조 (핵심)
+
+## 3단 안정 구조
+
+```id="stability"
+[1] Raw Data Layer (DB)
+[2] Domain Logic Layer (Backend)
+[3] Presentation Layer (Frontend)
+```
+
+---
+
+## 절대 원칙
+
+> “상태 판단은 Backend or Shared Engine 하나만 존재”
+
+---
+
+# 10. 디버깅 구조 (5분 컷 설계)
+
+## 문제 발생 시 3단계
+
+### 1️⃣ Backend 확인
+
+```sql
+SELECT * FROM attendance WHERE id=?
+```
+
+---
+
+### 2️⃣ Status Engine 확인
+
+```ts
+getAttendanceStatus(row)
+```
+
+---
+
+### 3️⃣ FE state 확인
+
+```ts
+selectTodayState()
+```
+
+---
+
+## 장애 유형 매핑
+
+| 증상       | 원인                       |
+| -------- | ------------------------ |
+| 승인 버튼 이상 | approval_status mismatch |
+| 근무 중 오류  | check_in/out 불일치         |
+| 미출근 오류   | schedule-matching 실패     |
+| UI 상태 꼬임 | FE raw logic 존재          |
+
+---
+
+# 11. 확장 구조 (운영 레벨)
+
+## 추천 확장
+
+### 1. Redis cache
+
+* 오늘 attendance pre-aggregation
+
+### 2. Event Queue (Kafka / RabbitMQ)
+
+* 상태 변화 이벤트 처리
+
+### 3. Audit Log
+
+```id="audit"
+attendance_change_log
+approval_log
+```
+
+---
+
+### 4. Status Service 분리 (Advanced)
+
+```id="status_service"
+attendance-status-service
+→ getAttendanceStatus() 중앙화
+```
+
+---
+
+# 🧾 한 줄 요약
+
+> 이 시스템의 핵심은 “Backend가 진짜 상태를 정의하고, Frontend는 그 결과만 렌더링하는 구조”이다.
+

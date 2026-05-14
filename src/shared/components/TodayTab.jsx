@@ -1,5 +1,10 @@
 import React, { useMemo } from "react";
-import { getApprovalReasonLabel, getApprovalStatusLabel } from "../hooks/useApi";
+import {
+  getApprovalReasonLabel,
+  getApprovalStatusLabel,
+  getAttendanceStatus,
+  ATTENDANCE_STATUS,
+} from "../hooks/useApi";
 import "./TodayTab.css";
 
 function safeArray(value) {
@@ -132,13 +137,18 @@ function selectTodayState(scheduleList, attendanceList, employeeList) {
   }, {});
 
   // ── attendance 분류 ──────────────────────────────────────
-  const openList = attendanceList.filter((row) => row.check_in && !row.check_out);
+  // 근무 중(WORKING or PENDING or REJECTED) = check_in 있고 check_out 없는 상태
+  // getAttendanceStatus로 판별 — raw 비교 제거
+  const openList = attendanceList.filter((row) => {
+    const s = getAttendanceStatus(row);
+    return s === ATTENDANCE_STATUS.WORKING || s === ATTENDANCE_STATUS.PENDING || s === ATTENDANCE_STATUS.REJECTED;
+  });
 
   const workingNow = [];
   const attentionOpenList = [];
 
   openList.forEach((row) => {
-    const isPending = row.approval_status === "pending";
+    const isPending = getAttendanceStatus(row) === ATTENDANCE_STATUS.PENDING;
     const isOutOfSchedule = row.approval_reason === "out_of_schedule";
     const matchedSchedule = hasMatchingSchedule(row, scheduleList);
 
@@ -149,8 +159,14 @@ function selectTodayState(scheduleList, attendanceList, employeeList) {
     }
   });
 
+  // 퇴근 완료(CLOSED) 중 아직 미승인인 것 = 승인 대기 중인 완료 기록
+  // CLOSED 내부는 getAttendanceStatus가 구분하지 않으므로 approval_status로 세분화.
+  // approval_status는 normalizeAttendance → approvedToStatus()를 거친 값으로 안전함.
+  const PENDING_STATUS = "pending"; // approvedToStatus(null) 결과값 (useApi 매핑과 동일)
   const pendingWithCheckout = attendanceList.filter(
-    (row) => row.approval_status === "pending" && !!row.check_out,
+    (row) =>
+      getAttendanceStatus(row) === ATTENDANCE_STATUS.CLOSED &&
+      row.approval_status === PENDING_STATUS,
   );
 
   const extensionPending = pendingWithCheckout.filter((row) =>

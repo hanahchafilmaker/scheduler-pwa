@@ -1,204 +1,328 @@
+# 📘 Attendance PWA Frontend Architecture (TodayTab 중심)
 
-# 📘 README.md
+## 1. 개요
 
- md id="readme_final"
-# ⏱ Scheduler PWA
+본 프로젝트는 출퇴근/스케줄/승인 상태를 통합 관리하는 **Attendance PWA 프론트엔드 시스템**이다.
 
-스케줄 기반 출퇴근 관리 + 승인 + 급여 계산을 통합한 근무 관리 시스템입니다.
+핵심 목표는 다음 3가지:
 
----
-
-## 📌 시스템 개요
-
-본 시스템은 다음을 처리합니다:
-
-- 직원 스케줄 관리
-- 출퇴근 체크인 / 체크아웃
-- 지각 / 조기퇴근 / 연장근무 자동 계산
-- 관리자 승인 프로세스
-- 급여 정산
+* 상태 기반 UI (status-driven UI)
+* raw field 직접 비교 제거
+* 운영 중 장애 디버깅 최소화 (5분 내 원인 추적)
 
 ---
 
-## 🧠 핵심 구조
+# 🧱 2. 전체 아키텍처 구조
 
- 
-
-React UI
-↓
-useApi (비즈니스 로직)
-↓
-Supabase (attendance 중심)
-
- id="arch_1"
-
----
-
-## 📊 핵심 데이터 모델
-
-### 1. attendance (핵심 테이블)
-
-모든 출퇴근 기록의 단일 진실(Source of Truth)
-
-| 필드 | 설명 |
-|------|------|
-| check_in | 실제 출근 |
-| check_out | 실제 퇴근 |
-| paid_check_in | 급여 반영 출근 |
-| paid_check_out | 급여 반영 퇴근 |
-| approved | 승인 상태 (null / true / false) |
-| approval_reason | 승인 필요 사유 |
-| approval_note | 관리자/시스템 설명 |
-| late_min | 지각 |
-| extra_work_min | 연장근무 |
-| early_leave_min | 조기퇴근 |
+```
+📦 Frontend (React)
+│
+├── 📁 pages
+│     └── TodayTab.jsx
+│
+├── 📁 hooks
+│     └── useApi.js
+│         ├── getAttendanceStatus()
+│         ├── ATTENDANCE_STATUS
+│         ├── getApprovalStatusLabel()
+│         └── getApprovalReasonLabel()
+│
+├── 📁 domain layer (logical)
+│     └── selectTodayState()
+│
+├── 📁 UI components
+│     ├── StatCard
+│     ├── PersonRow
+│     ├── StatusBadge
+│     └── ReasonBadge
+│
+└── 📁 styles
+      └── TodayTab.css
+```
 
 ---
 
-### 2. schedules
+# 🧠 3. 핵심 설계 원칙
 
-- 직원별 예정 근무 시간
+## 3.1 상태 기반 UI (State-Driven UI)
 
----
+모든 화면은 **raw data가 아니라 상태로만 렌더링한다**
 
-### 3. employees
+### ❌ 금지
 
-- 직원 정보 (급여 포함)
+```js
+row.check_out === null
+row.approval_status === "pending"
+```
 
----
+### ✅ 권장
 
-## ⚙️ 승인 시스템
-
-승인 상태는 3가지입니다:
-
- 
-
-null   → 승인 대기
-true   → 승인 완료
-false  → 거절
-
- id="arch_2"
+```js
+getAttendanceStatus(row) === ATTENDANCE_STATUS.WORKING
+```
 
 ---
 
-## 🔄 상태 흐름 (핵심 로직)
+## 3.2 Domain Layer 분리
 
-### 1. 체크인
+모든 분류 로직은 UI 밖에서 처리
 
- 
-
-checkIn()
-→ doCheckIn()
-→ evaluateCheckIn()
-→ attendance INSERT
-
- id="arch_3"
-
-### 평가 결과
-
-- 정상 출근 → approved = true
-- 지각 → approved = null (승인 필요)
-- 스케줄 외 → approved = null
+```
+TodayTab (UI)
+   ↓
+selectTodayState (Domain)
+   ↓
+getAttendanceStatus (Rule Engine)
+```
 
 ---
 
-### 2. 체크아웃
+## 3.3 단일 상태 엔진 원칙
 
- 
-
-checkOut()
-→ doCheckOut()
-→ evaluateCheckOut()
-→ attendance UPDATE
-
- id="arch_4"
-
-### 평가 결과
-
-- 정상 퇴근 → 승인 유지
-- 연장근무 → pending
-- 조기퇴근 → pending
+```
+getAttendanceStatus(row)
+→ 시스템의 "유일한 truth"
+```
 
 ---
 
-## 🧮 급여 계산 방식
+# ⚙️ 4. 상태 정의 (핵심)
 
-- paid_check_in/out 기준
-- break_min 차감
-- 야간 근무 포함
-- 실제 vs 지급 기준 분리
+## ATTENDANCE_STATUS
 
----
-
-## 🧩 UI 구조
-
-### Staff
-- 출근 / 퇴근
-- 오늘 근무 확인
-
-### Admin
-- 스케줄 관리
-- 승인 처리
-- 월별 정산
+```ts
+WORKING   // 출근 후 근무 중
+PENDING   // 승인 대기 상태
+CLOSED    // 퇴근 완료
+REJECTED  // 반려 상태
+```
 
 ---
 
-## 📁 구조
+## 상태 흐름
 
- 
-
-src/
-├── shared/
-│    ├── hooks/useApi.js   (핵심 로직)
-│    ├── utils/pay.js      (급여 계산)
-│    ├── api/
-├── staff/
-├── admin/
-
- id="arch_5"
-
----
-
-## ⚠️ 현재 구조 특징
-
-- Event Sourcing 아님
-- attendance row가 상태를 모두 포함
-- approval + work logic 혼합 구조
-- evaluate 함수 기반 상태 추론
+```
+CHECK IN
+   ↓
+WORKING
+   ↓
+CHECK OUT
+   ↓
+CLOSED
+   ↓
+APPROVAL
+   ├─ PENDING
+   ├─ APPROVED
+   └─ REJECTED
+```
 
 ---
 
-## 🚧 제한사항
+# 🧩 5. selectTodayState (Domain Engine)
 
-- approval_reason 단일값 구조
-- check-in / check-out 이벤트 분리 없음
-- 승인 history 없음
-- 상태 변경 로그 없음
+## 역할
 
----
-
-## 🔮 향후 확장 방향
-
-### Option A (현재 유지)
-- UI/로직 정리
-- 상태 계산 분리
-- 안정화 중심
-
-### Option B (권장 구조)
- 
-
-attendance (raw log)
-work_events (state machine)
-
- id="arch_6"
-
-- 이벤트 기반 구조
-- 승인 history 완전 분리
-- 확장성 확보
+TodayTab의 모든 데이터를 **5개 UI 상태로 변환**
 
 ---
 
-## 🎯 핵심 요약
+## 출력 구조
 
-> 현재 시스템은 “평가 기반 단일 row 상태 머신” 구조이다.
- 
+```ts
+{
+  workingNow: [],
+  attentionOpenList: [],
+  normalPending: [],
+  extensionPending: [],
+  lateNoShowList: []
+}
+```
+
+---
+
+## 분류 기준
+
+### 1. workingNow
+
+```
+ATTENDANCE_STATUS.WORKING
++ schedule 매칭됨
+```
+
+---
+
+### 2. attentionOpenList
+
+```
+WORKING / PENDING / REJECTED
++ 스케줄 mismatch or out_of_schedule
+```
+
+---
+
+### 3. normalPending
+
+```
+ATTENDANCE_STATUS.CLOSED
++ approval_status = pending
++ 일반 승인 건
+```
+
+---
+
+### 4. extensionPending
+
+```
+CLOSED
++ extension reason
+```
+
+---
+
+### 5. lateNoShowList
+
+```
+schedule 존재
++ attendance 없음
+```
+
+---
+
+# 🖥 6. UI 구조 (TodayTab)
+
+## 화면 구성
+
+```
+[현재 근무중]
+[확인 필요]
+
+[승인 대기]
+[연장 요청]
+
+[미출근]
+[오늘 스케줄 요약]
+```
+
+---
+
+## UI 특징
+
+* 모든 badge는 status 기반
+* 모든 리스트는 domain state 기반
+* approve/reject는 event handler만 전달
+
+---
+
+# 🔌 7. 데이터 흐름
+
+```
+API Response
+   ↓
+safeArray normalization
+   ↓
+useMemo(selectTodayState)
+   ↓
+UI render only
+```
+
+---
+
+# 🧪 8. 디버깅 구조 (운영 기준)
+
+## 1단계: 상태 확인
+
+```js
+getAttendanceStatus(row)
+```
+
+---
+
+## 2단계: domain 분류 확인
+
+```js
+selectTodayState()
+```
+
+---
+
+## 3단계: UI 문제 확인
+
+```
+StatCard → PersonRow → Badge
+```
+
+---
+
+## 4단계: 매칭 문제
+
+```
+schedule ↔ attendance
+findMatchingAttendance()
+hasMatchingSchedule()
+```
+
+---
+
+# ⚠️ 9. 절대 금지 패턴
+
+## ❌ raw 상태 비교
+
+```js
+row.approval_status === "pending"
+row.check_out === null
+```
+
+---
+
+## ❌ UI에서 상태 계산
+
+```js
+if (row.check_in && !row.check_out)
+```
+
+---
+
+## ❌ schedule + attendance 혼합 판단
+
+UI 내부에서 직접 매칭 금지
+
+---
+
+# 🚀 10. 운영 안정성 설계
+
+## 목표
+
+* 상태 변경 시 UI 수정 없음
+* backend enum 변경 영향 최소화
+* 디버깅 5분 이내
+
+---
+
+## 핵심 전략
+
+```
+Single Source of Truth:
+→ getAttendanceStatus()
+
+Single Domain Layer:
+→ selectTodayState()
+
+UI is Pure Renderer:
+→ TodayTab
+```
+
+---
+
+# 📌 11. 향후 개선 방향 (권장)
+
+* selectTodayState → reducer 구조로 전환
+* status logging middleware 추가
+* attendance 상태 event log 저장
+* schedule-attendance 매칭 cache화
+* approve/reject mutation layer 분리
+
+---
+
+# 🧾 한 줄 요약
+
+> 이 구조의 핵심은 “UI에서 판단하지 않고, 상태 엔진 하나만 믿는 구조”이다.

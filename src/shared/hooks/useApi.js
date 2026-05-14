@@ -179,14 +179,19 @@ function minToTime(mins) {
 function evaluateCheckIn(actualCheckIn, plannedStart) {
   const result = {
     paidCheckIn: actualCheckIn || "",
-    approved: true,
+    approved: null, // 🔧 기본값: 스케줄 없으면 pending (자동 승인 금지)
     approval_note: "",
     late_min: 0,
     late_deduct_min: 0,
     requested_at: null,
   };
 
-  if (!plannedStart || !actualCheckIn) return result;
+  // plannedStart 없음 = 스케줄 외 출근 → pending 유지하고 반환
+  if (!plannedStart || !actualCheckIn) {
+    result.approval_note = plannedStart ? "" : "스케줄 없음 / 관리자 승인 필요";
+    result.requested_at = actualCheckIn ? nowDateTimeString() : null;
+    return result;
+  }
 
   const planMin = timeToMin(plannedStart);
   const actualMin = timeToMin(actualCheckIn);
@@ -195,6 +200,7 @@ function evaluateCheckIn(actualCheckIn, plannedStart) {
   if (actualMin < planMin) {
     const earlyMin = Math.min(RULES.EARLY_ARRIVAL_MAX_PAY_MIN, planMin - actualMin);
     result.paidCheckIn = minToTime(planMin - earlyMin);
+    result.approved = true; // 정상 조기 출근 → 승인
     return result;
   }
 
@@ -203,6 +209,7 @@ function evaluateCheckIn(actualCheckIn, plannedStart) {
 
   if (lateMin <= RULES.LATE_GRACE_MIN) {
     result.paidCheckIn = plannedStart;
+    result.approved = true; // 유예 범위 내 지각 → 정상 승인
     return result;
   }
 
@@ -417,12 +424,19 @@ async function doCheckIn(body) {
   const checkInEval = evaluateCheckIn(checkInTime, plannedStart);
 
   const approvalReason = isOutOfSchedule
-    ? isSubstitute
+    ? "out_of_schedule"
+    : isSubstitute
       ? "substitute"
-      : "out_of_schedule"
-    : checkInEval.late_min > RULES.LATE_GRACE_MIN
-      ? "late"
-      : "";
+      : checkInEval.late_min > RULES.LATE_GRACE_MIN
+        ? "late"
+        : "";
+
+  // 🔧 승인 기본값 결정:
+  //   - 스케줄 외 출근 → null (pending)
+  //   - 대타 → null (pending, 관리자 확인 필요)
+  //   - 정상/지각은 evaluateCheckIn 결과 사용 (정상=true, 지각=null)
+  const approvedValue =
+    isOutOfSchedule || isSubstitute ? null : checkInEval.approved;
 
   const row = {
     id: generateId("ATT"),
@@ -437,14 +451,15 @@ async function doCheckIn(body) {
     check_out: null,
     paid_check_in: checkInEval.paidCheckIn || null,
     paid_check_out: null,
-    approved: isOutOfSchedule ? null : checkInEval.approved,
+    approved: approvedValue,
     approval_reason: approvalReason,
     approval_note: isOutOfSchedule
-      ? isSubstitute
-        ? "대타 출근 요청"
-        : "스케줄 외 출근"
-      : checkInEval.approval_note,
-    requested_at: isOutOfSchedule || checkInEval.approved === null ? nowDateTimeString() : null,
+      ? "스케줄 외 출근 / 관리자 승인 필요"
+      : isSubstitute
+        ? "대타 출근 / 관리자 승인 필요"
+        : checkInEval.approval_note,
+    requested_at:
+      approvedValue === null ? nowDateTimeString() : null,
     approved_at: null,
     approved_by: null,
     late_min: checkInEval.late_min,
@@ -493,10 +508,18 @@ async function doCheckOut(body) {
 
   const evalResult = evaluateCheckOut(row.planned_end, checkOutTime);
 
+  // 🔧 checkout 시 approved 결정 규칙:
+  //   - 이미 pending(null)인 경우: pending 유지 (체크아웃 평가 결과와 무관하게 관리자가 한 번에 승인)
+  //     단, 체크아웃 평가에서 추가 이슈가 있으면 approval_note에 append
+  //   - 이미 approved(true)인 경우: 체크아웃 평가 결과 적용 (조기퇴근/연장 → pending)
+  //   - 이미 rejected(false)인 경우: 그대로 유지
   let newApproved = row.approved;
-  if (row.approved !== null) {
+  if (row.approved === true) {
+    // 정상 승인 상태였는데 체크아웃에서 이슈 발생 → pending으로 변경
     newApproved = evalResult.approved;
   }
+  // row.approved === null (pending) → null 유지
+  // row.approved === false (rejected) → false 유지
 
   const updates = {
     check_out: checkOutTime,
@@ -774,6 +797,47 @@ async function doApplyTemplate(startDateStr) {
 // ----------------------------------------------------------------
 // 공개 유틸
 // ----------------------------------------------------------------
+
+/**
+ * attendance 상태 상수
+ *
+ * UI에서 문자열 리터럴 직접 사용 금지 — 반드시 이 상수 사용
+ *
+ * @example
+ * import { getAttendanceStatus, ATTENDANCE_STATUS } from "../shared/hooks/useApi";
+ * if (getAttendanceStatus(row) === ATTENDANCE_STATUS.PENDING) { ... }
+ */
+export const ATTENDANCE_STATUS = Object.freeze({
+  NONE:     "NONE",     // 출근 기록 없음
+  PENDING:  "PENDING",  // 출근 중, 관리자 승인 대기
+  WORKING:  "WORKING",  // 출근 중, 승인 완료
+  REJECTED: "REJECTED", // 출근 중, 거절됨
+  CLOSED:   "CLOSED",   // 퇴근 완료
+});
+
+/**
+ * attendance row → UI 상태 (단일 진실)
+ *
+ * DB tri-state (approved 컬럼):
+ *   null  → PENDING
+ *   true  → WORKING or CLOSED
+ *   false → REJECTED
+ *
+ * ❌ UI에서 row.approved, row.approval_status, check_in && !check_out 직접 비교 금지
+ * ✅ 반드시 이 함수만 사용
+ *
+ * @param {object} row - normalizeAttendance() 결과
+ * @returns {string} ATTENDANCE_STATUS 상수 중 하나
+ */
+export function getAttendanceStatus(row) {
+  if (!row?.check_in) return ATTENDANCE_STATUS.NONE;
+  if (row.check_out)  return ATTENDANCE_STATUS.CLOSED;
+
+  const s = row.approval_status;
+  if (s === "approved") return ATTENDANCE_STATUS.WORKING;
+  if (s === "rejected") return ATTENDANCE_STATUS.REJECTED;
+  return ATTENDANCE_STATUS.PENDING; // null(pending) + fallback
+}
 
 export function getApprovalReasonLabel(reason) {
   switch (reason) {

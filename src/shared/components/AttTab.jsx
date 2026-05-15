@@ -50,12 +50,12 @@ export default function AttTab(props) {
       0,
     );
 
-    // 임시 시급 (나중에 employees 연결하면 실제값으로 변경 가능)
-    const HOURLY_WAGE = 10030;
-
-    const todayLaborCost = attendanceList.reduce((sum, row) => {
-      const workMin = getPaidWorkMinutes(row);
-      return sum + (HOURLY_WAGE * workMin / 60);
+    // 시급
+    const todayLaborCost = attendanceList.reduce
+    ((sum, row) => {
+    const wage = Number(row.hourly_wage || 0);
+    const workMin = getPaidWorkMinutes(row);
+    return sum + (wage * workMin / 60);
     }, 0);
 
     const now = new Date();

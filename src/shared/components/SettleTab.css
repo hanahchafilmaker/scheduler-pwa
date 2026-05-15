@@ -1,0 +1,293 @@
+/* SettleTab.css */
+
+.settle-tab {
+  padding: 0 0 2rem;
+}
+
+/* 헤더 */
+.settle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.settle-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.25rem;
+}
+
+.settle-sub {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* 마감 버튼 */
+.settle-lock-btn {
+  padding: 0.55rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.settle-lock-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.settle-lock-btn.locked {
+  background: #6b7280;
+}
+
+.settle-lock-btn.locked:hover:not(:disabled) {
+  background: #374151;
+}
+
+.settle-lock-btn.loading,
+.settle-lock-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 에러 / 배너 */
+.settle-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.settle-locked-banner {
+  background: #ecfdf5;
+  border: 1px solid #6ee7b7;
+  color: #065f46;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+/* 테이블 래퍼 */
+.settle-table-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.settle-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.settle-table th {
+  background: #f9fafb;
+  padding: 0.65rem 0.9rem;
+  text-align: right;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.settle-table th:first-child {
+  text-align: left;
+}
+
+.settle-table td {
+  padding: 0.65rem 0.9rem;
+  text-align: right;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  white-space: nowrap;
+}
+
+.settle-table td:first-child {
+  text-align: left;
+}
+
+.settle-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.settle-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.settle-table tfoot td {
+  border-top: 2px solid #e5e7eb;
+  font-weight: 700;
+  background: #f9fafb;
+}
+
+/* 셀 스타일 */
+.settle-name {
+  font-weight: 600;
+  color: #111827;
+}
+
+.settle-amount {
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.settle-total-label {
+  text-align: right !important;
+  color: #6b7280;
+}
+
+.settle-total-amount {
+  font-size: 1rem;
+  color: #111827;
+}
+
+.settle-badge-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.settle-ok {
+  color: #9ca3af;
+}
+
+.settle-deduct {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+/* 상세 버튼 */
+.settle-detail-btn {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.settle-detail-btn:hover {
+  background: #f3f4f6;
+}
+
+.settle-row.expanded td {
+  background: #eff6ff;
+}
+
+/* 상세 행 */
+.settle-detail-row td {
+  padding: 0 !important;
+  background: #f8fafc;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.settle-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.settle-detail-table th {
+  background: #f1f5f9;
+  padding: 0.45rem 0.9rem;
+  text-align: left;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.settle-detail-table td {
+  padding: 0.45rem 0.9rem;
+  text-align: left;
+  color: #374151;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.settle-detail-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* 상태 배지 */
+.settle-status-badge {
+  display: inline-block;
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-approved {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-rejected {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.status-auto_closed {
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+
+.settle-memo {
+  color: #6b7280;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 빈 상태 */
+.settle-empty {
+  text-align: center;
+  color: #9ca3af;
+  padding: 2rem;
+  font-size: 0.9rem;
+}
+
+.settle-empty-detail {
+  color: #9ca3af;
+  font-size: 0.82rem;
+  padding: 0.5rem 1rem;
+  margin: 0;
+}
+
+.settle-spinner {
+  text-align: center;
+  color: #6b7280;
+  padding: 2rem;
+  font-size: 0.88rem;
+}
+
+.settle-note {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  padding: 0.5rem 0.9rem;
+  margin: 0;
+}

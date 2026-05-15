@@ -745,6 +745,88 @@ async function doDeleteEmployee(body) {
 }
 
 // ----------------------------------------------------------------
+// 정산 마감 API
+// ----------------------------------------------------------------
+
+/**
+ * 특정 월의 직원별 급여를 final_pay에 저장(upsert)한다.
+ * @param {string} yearMonth  - "YYYY-MM"
+ * @param {Array}  attRows    - normalizeAttendance된 해당 월 전체 행
+ * @param {Array}  empRows    - normalizeEmployee된 전체 직원 행
+ * @param {string} lockedBy   - 마감 처리자 이름
+ * @param {Function} calcFn   - calcRowPayWithSeparation (pay.js)
+ * @returns {{ ok: boolean, count: number, rows: Array }}
+ */
+async function doLockMonthlyPay({ yearMonth, attRows, empRows, lockedBy, calcFn }) {
+  // 직원별로 그룹화
+  const grouped = {};
+  for (const row of attRows) {
+    if (!row.employee_id) continue;
+    if (!grouped[row.employee_id]) grouped[row.employee_id] = [];
+    grouped[row.employee_id].push(row);
+  }
+
+  const empMap = {};
+  for (const e of empRows) {
+    empMap[e.employee_id] = e;
+  }
+
+  const toUpsert = Object.entries(grouped).map(([empId, rows]) => {
+    const emp = empMap[empId] || {};
+    const hourlyWage = emp.hourly_wage || 0;
+
+    // approved 또는 auto_closed 행만 정산 대상
+    const settled = rows.filter(
+      (r) => r.approval_status === "approved" || r.approval_status === "auto_closed",
+    );
+
+    let basePay = 0;
+    let extraPay = 0;
+    let workDays = 0;
+    let totalLateDeductMin = 0;
+    let totalExtraMin = 0;
+    let totalPlannedMin = 0;
+
+    for (const r of settled) {
+      const result = calcFn({ ...r, hourly_wage: hourlyWage });
+      basePay += result.basePay || 0;
+      extraPay += result.extraPay || 0;
+      workDays += 1;
+      totalLateDeductMin += r.late_deduct_min || 0;
+      totalExtraMin += r.extra_work_min || 0;
+      totalPlannedMin += r.scheduled_work_min || 0;
+    }
+
+    return {
+      employee_id: empId,
+      year_month: yearMonth,
+      base_pay: Math.round(basePay),
+      extra_pay: Math.round(extraPay),
+      final_amount: Math.round(basePay + extraPay),
+      work_days: workDays,
+      base_planned_min: totalPlannedMin,
+      late_deduct_min: totalLateDeductMin,
+      extra_min: totalExtraMin,
+      calc_snapshot: settled,
+      locked_at: new Date().toISOString(),
+      locked_by: lockedBy || "manager",
+      status: "locked",
+    };
+  });
+
+  if (!toUpsert.length) return { ok: true, count: 0, rows: [] };
+
+  const { data, error } = await supabase
+    .from("final_pay")
+    .upsert(toUpsert, { onConflict: "employee_id,year_month" })
+    .select();
+
+  assertNoError(error, "lock_monthly_pay");
+
+  return { ok: true, count: toUpsert.length, rows: data || [] };
+}
+
+// ----------------------------------------------------------------
 // 템플릿 API
 // ----------------------------------------------------------------
 
@@ -1123,6 +1205,29 @@ const refreshAdminToday = useCallback(async () => {
     [refreshAll, refreshAdminToday],
   );
 
+  const lockMonthlyPay = useCallback(
+    async ({ yearMonth, lockedBy, calcFn }) => {
+      setLoading(true);
+      setError("");
+      try {
+        const result = await doLockMonthlyPay({
+          yearMonth,
+          attRows: monthAttendance,
+          empRows: employees,
+          lockedBy,
+          calcFn,
+        });
+        return result;
+      } catch (err) {
+        setError(err.message || "정산 마감에 실패했습니다.");
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [monthAttendance, employees],
+  );
+
   const runPolicySweep = useCallback(async () => {
     await refreshAll();
     await refreshAdminToday().catch(() => {});
@@ -1227,6 +1332,8 @@ const refreshAdminToday = useCallback(async () => {
 
     saveTemplate,
     applyTemplate,
+
+    lockMonthlyPay,
 
     runPolicySweep,
     clearCache,

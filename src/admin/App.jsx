@@ -6,11 +6,16 @@ import TodayTab from "../shared/components/TodayTab";
 import AttTab from "../shared/components/AttTab";
 import { ShiftTab } from "../shared/components/ShiftTab";
 import { SimTab } from "../shared/components/SimTab";
+import SettleTab from "../shared/components/SettleTab";
 import EmployeeTab from "../shared/components/EmployeeTab";
 import { Toast } from "../shared/components/UI";
+import AdminPinScreen from "../shared/components/Admin_PinScreen";
+
 import { buildSettlement } from "../shared/utils/pay";
 import { safeStr } from "../shared/utils";
 import { SHIFT_TIME } from "../shared/constants";
+
+/* ---------------- helpers ---------------- */
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -47,9 +52,15 @@ function getWeekDates(offset = 0) {
   });
 }
 
-const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift", "emp"]);
+const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift", "emp", "settle"]);
+
+/* ---------------- component ---------------- */
 
 export default function App() {
+  /* ===== PIN STATE ===== */
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  /* ===== UI STATE ===== */
   const [tab, setTab] = useState("today");
   const [toast, setToast] = useState(null);
   const [settlementOffset, setSettlementOffset] = useState(0);
@@ -70,6 +81,7 @@ export default function App() {
     };
   }, []);
 
+  /* ===== API ===== */
   const {
     loading,
     error,
@@ -88,6 +100,7 @@ export default function App() {
     addEmployee,
     updateEmployee,
     deleteEmployee,
+    lockMonthlyPay,
   } = useApi({
     month: selectedMonth,
   });
@@ -96,6 +109,7 @@ export default function App() {
     if (error) showToast(error, "err");
   }, [error, showToast]);
 
+  /* ===== derived ===== */
   const settlementMonth = useMemo(
     () => addMonths(currentYM(), settlementOffset),
     [settlementOffset],
@@ -125,7 +139,15 @@ export default function App() {
     [monthAttendance, employees, settlementMonth],
   );
 
+  /* ===== PIN SUCCESS ===== */
+  const handleAdminLogin = useCallback(() => {
+    setIsAdmin(true);
+  }, []);
+
+  /* ===== refresh logic ===== */
   useEffect(() => {
+    if (!isAdmin) return;
+
     if (tab === "today") {
       refreshAdminToday().catch(() => {});
       return;
@@ -151,15 +173,25 @@ export default function App() {
 
     if (tab === "emp") {
       refreshAll().catch(() => {});
+      return;
     }
-  }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth]);
+
+    if (tab === "settle") {
+      if (selectedMonth !== settlementMonth) {
+        setSelectedMonth(settlementMonth);
+      }
+      refreshAll().catch(() => {});
+    }
+  }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth, isAdmin]);
 
   useEffect(() => {
+    if (!isAdmin) return;
     if (tab === "att") {
       refreshAll().catch(() => {});
     }
-  }, [selectedMonth, tab, refreshAll]);
+  }, [selectedMonth, tab, refreshAll, isAdmin]);
 
+  /* ===== actions ===== */
   const handleApprove = useCallback(
     async (row) => {
       await approveAttendance({
@@ -291,17 +323,39 @@ export default function App() {
       );
     }
 
+    if (tab === "settle") {
+      return (
+        <SettleTab
+          monthAttendance={monthAttendance}
+          employees={employees}
+          selectedMonth={settlementMonth}
+          lockMonthlyPay={lockMonthlyPay}
+          currentManagerName="manager"
+        />
+      );
+    }
+
     return (
-  <AttTab
-    monthAttendance={monthAttendance}
-    approveAttendance={approveAttendance}
-    updateAttendance={updateAttendance}
-    selectedMonth={selectedMonth}
-    currentManagerName="manager"
-  />
-);
+      <AttTab
+        monthAttendance={monthAttendance}
+        approveAttendance={approveAttendance}
+        updateAttendance={updateAttendance}
+        selectedMonth={selectedMonth}
+        currentManagerName="manager"
+      />
+    );
   };
 
+  /* ===== PIN GATE ===== */
+  if (!isAdmin) {
+    return (
+      <AdminPinScreen
+        onSuccess={handleAdminLogin}
+      />
+    );
+  }
+
+  /* ===== MAIN APP ===== */
   return (
     <div className="admin-app">
       <Sidebar tab={tab} setTab={setTab} loading={loading} onRefresh={handleRefresh} />

@@ -88,6 +88,14 @@ function SummaryCard({ title, value, sub }) {
   );
 }
 
+function ApprovalModal() {
+  return null;
+}
+
+function EditModal() {
+  return null;
+}
+
 export default function AttTab(props) {
 
   const {

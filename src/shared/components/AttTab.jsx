@@ -8,8 +8,12 @@ import {
 } from "../hooks/useApi";
 import "./AttTab.css";
 
+function safeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
 
 export default function AttTab(props) {
+
   const {
     monthAttendance = [],
     approveAttendance,

@@ -7,6 +7,9 @@
  *   - getAttendanceStatus()만 사용하고, approval_status를 직접 비교하지 않는다.
  *   - DB 접근 없음. 순수 함수.
  *   - UI 렌더링 판단 로직은 포함하지 않는다.
+ *
+ * ⚠️  급여 계산 포함 여부는 pay.js의 isPaySettledRow()가 기준입니다.
+ *     isSettled / selectSettled 는 UI 표시용(처리완료 배지 등)으로만 사용하세요.
  */
 
 import { getAttendanceStatus, ATTENDANCE_STATUS } from "./getAttendanceStatus";
@@ -20,7 +23,13 @@ export const isApproved = (row) => getAttendanceStatus(row) === ATTENDANCE_STATU
 export const isRejected = (row) => getAttendanceStatus(row) === ATTENDANCE_STATUS.REJECTED;
 export const isClosed   = (row) => getAttendanceStatus(row) === ATTENDANCE_STATUS.CLOSED;
 
-/** 정산 포함 대상 (approved + auto_closed) */
+/**
+ * UI 표시용 정산 완료 판단 (approved + auto_closed + 기타 CLOSED)
+ *
+ * ⚠️  급여 계산 포함 여부와 다릅니다.
+ *     급여 포함 여부 → pay.js의 isPaySettledRow() 사용
+ *     이 함수는 UI에서 "처리완료" 상태 표시에만 사용할 것.
+ */
 export const isSettled  = (row) =>
   [ATTENDANCE_STATUS.APPROVED, ATTENDANCE_STATUS.CLOSED].includes(getAttendanceStatus(row));
 
@@ -41,7 +50,7 @@ export const selectPending  = (rows) => selectByStatus(rows, ATTENDANCE_STATUS.P
 /** 근무 중 목록 */
 export const selectWorking  = (rows) => selectByStatus(rows, ATTENDANCE_STATUS.WORKING);
 
-/** 정산 확정 목록 (approved + auto_closed) */
+/** UI 표시용 정산 확정 목록 (approved + auto_closed + CLOSED) */
 export const selectSettled  = (rows) => rows.filter(isSettled);
 
 /** 거절 목록 */

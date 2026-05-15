@@ -17,7 +17,7 @@
 
 - check_in 있음
 - check_out 없음
-- planned_end 기준 시간이 지남
+- planned_end 기준 시간이 30분 지남
 - AUTO_CHECKOUT_GRACE_MIN 유예 시간에 가까워짐 또는 경과
 
 ## 유예 시간

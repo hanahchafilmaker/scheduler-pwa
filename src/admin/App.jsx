@@ -63,8 +63,13 @@ export default function App() {
   /* ===== UI STATE ===== */
   const [tab, setTab] = useState("today");
   const [toast, setToast] = useState(null);
+
+  // att 탭 전용 월 선택
+  const [attMonth, setAttMonth] = useState(currentYM());
+
+  // sim / settle 탭 공유 정산 월 — 단일 소스
   const [settlementOffset, setSettlementOffset] = useState(0);
-  const [selectedMonth, setSelectedMonth] = useState(currentYM());
+
   const [weekOffset, setWeekOffset] = useState(0);
 
   const toastTimerRef = useRef(null);
@@ -80,6 +85,20 @@ export default function App() {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     };
   }, []);
+
+  /* ===== 정산 월 derived ===== */
+  // sim / settle 탭은 이 값을 공유 — selectedMonth 싱크 버그 제거
+  const settlementMonth = useMemo(
+    () => addMonths(currentYM(), settlementOffset),
+    [settlementOffset],
+  );
+
+  // API에 넘길 month: att 탭은 attMonth, sim/settle 탭은 settlementMonth
+  const apiMonth = useMemo(() => {
+    if (tab === "att") return attMonth;
+    if (tab === "sim" || tab === "settle") return settlementMonth;
+    return currentYM();
+  }, [tab, attMonth, settlementMonth]);
 
   /* ===== API ===== */
   const {
@@ -102,7 +121,7 @@ export default function App() {
     deleteEmployee,
     lockMonthlyPay,
   } = useApi({
-    month: selectedMonth,
+    month: apiMonth,
   });
 
   useEffect(() => {
@@ -110,11 +129,6 @@ export default function App() {
   }, [error, showToast]);
 
   /* ===== derived ===== */
-  const settlementMonth = useMemo(
-    () => addMonths(currentYM(), settlementOffset),
-    [settlementOffset],
-  );
-
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
   const monthRange = useMemo(() => {
@@ -153,43 +167,14 @@ export default function App() {
       return;
     }
 
-    if (tab === "att") {
-      refreshAll().catch(() => {});
-      return;
-    }
+    refreshAll().catch(() => {});
+  }, [tab, isAdmin, refreshAdminToday, refreshAll]);
 
-    if (tab === "sim") {
-      if (selectedMonth !== settlementMonth) {
-        setSelectedMonth(settlementMonth);
-      }
-      refreshAll().catch(() => {});
-      return;
-    }
-
-    if (tab === "shift") {
-      refreshAll().catch(() => {});
-      return;
-    }
-
-    if (tab === "emp") {
-      refreshAll().catch(() => {});
-      return;
-    }
-
-    if (tab === "settle") {
-      if (selectedMonth !== settlementMonth) {
-        setSelectedMonth(settlementMonth);
-      }
-      refreshAll().catch(() => {});
-    }
-  }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth, isAdmin]);
-
+  // att 탭에서 월 변경 시 재조회
   useEffect(() => {
-    if (!isAdmin) return;
-    if (tab === "att") {
-      refreshAll().catch(() => {});
-    }
-  }, [selectedMonth, tab, refreshAll, isAdmin]);
+    if (!isAdmin || tab !== "att") return;
+    refreshAll().catch(() => {});
+  }, [attMonth, tab, isAdmin, refreshAll]);
 
   /* ===== actions ===== */
   const handleApprove = useCallback(
@@ -335,12 +320,13 @@ export default function App() {
       );
     }
 
+    // att 탭
     return (
       <AttTab
         monthAttendance={monthAttendance}
         approveAttendance={approveAttendance}
         updateAttendance={updateAttendance}
-        selectedMonth={selectedMonth}
+        selectedMonth={attMonth}
         currentManagerName="manager"
       />
     );
@@ -363,22 +349,23 @@ export default function App() {
       <main className="main-content">
         <MobileTabs tab={tab} setTab={setTab} />
 
-        {!TABS_WITHOUT_MONTH_BAR.has(tab) && (
+        {/* att 탭 전용 월 선택 바 */}
+        {tab === "att" && (
           <div className="month-toolbar">
             <button
               type="button"
               className="ghost-sm"
-              onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
+              onClick={() => setAttMonth(addMonths(attMonth, -1))}
             >
               ◀
             </button>
 
-            <strong>{monthLabel(selectedMonth)}</strong>
+            <strong>{monthLabel(attMonth)}</strong>
 
             <button
               type="button"
               className="ghost-sm"
-              onClick={() => setSelectedMonth(currentYM())}
+              onClick={() => setAttMonth(currentYM())}
             >
               이번 달
             </button>
@@ -386,7 +373,7 @@ export default function App() {
             <button
               type="button"
               className="ghost-sm"
-              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
+              onClick={() => setAttMonth(addMonths(attMonth, 1))}
             >
               ▶
             </button>

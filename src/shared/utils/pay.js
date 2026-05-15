@@ -102,6 +102,10 @@ export function calcNightMinutesSimple(paidCheckIn, paidCheckOut) {
  * 포함: approved, auto_closed (및 그 외 명시되지 않은 상태)
  * 제외: pending  → 미확정
  *       rejected → 기록은 남기되 정산 불포함
+ *
+ * ⚠️  이 함수가 프로젝트 전체의 "settled" 기준 단일 소스입니다.
+ *     getAttendanceStatus.js의 isSettledStatus, selectors.js의 isSettled 모두
+ *     이 함수를 기준으로 맞춰야 합니다.
  */
 export function isPaySettledRow(row) {
   if (!row) return false;
@@ -359,6 +363,7 @@ export function calcPay(paidCheckIn, paidCheckOut, breakMin, hourlyWage) {
  *   totalPayrollPay            전체 합계(원)
  */
 export function calcMonthSummary(rows = [], employeeMap = {}) {
+  // ✅ FIX: isPaySettledRow 사용으로 rejected 제외 — 원칙 6 준수
   const settledRows  = rows.filter((row) => isPaySettledRow(row) && row?.check_in && row?.check_out);
   const pendingRows  = rows.filter((row) => row.approval_status === "pending");
   const rejectedRows = rows.filter((row) => row.approval_status === "rejected");
@@ -415,16 +420,17 @@ export function calcMonthSummary(rows = [], employeeMap = {}) {
  *
  * 정산 기준:
  * - attendance 원본(check_in/check_out) 수정 없음
- * - approval_status === "pending" 제외
+ * - isPaySettledRow() 기준으로 pending / rejected 모두 제외 (원칙 5, 6)
  * - 기본급 / 추가 수당 분리 구조
  */
 export function buildSettlement({ attendance = [], employees = [], month }) {
   const empMap  = new Map(employees.map((e) => [String(e.employee_id || ""), e]));
   const rowsMap = new Map();
 
+  // ✅ FIX: isPaySettledRow()로 통일 — rejected가 정산에 포함되던 버그 수정
   const doneRows = attendance.filter((a) => {
     const d = String(a.date || "");
-    return d.startsWith(month) && a.check_in && a.check_out && a.approval_status !== "pending";
+    return d.startsWith(month) && a.check_in && a.check_out && isPaySettledRow(a);
   });
 
   doneRows.forEach((a) => {

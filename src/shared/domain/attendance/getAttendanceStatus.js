@@ -1,4 +1,10 @@
 /**
+ * src/domain/attendance/getAttendanceStatus.js
+ *
+ * ⚠️  "settled" 판단의 단일 소스는 pay.js의 isPaySettledRow() 입니다.
+ *     isSettledStatus / isRowSettled 는 UI 상태 표시용으로만 사용하고,
+ *     급여 계산 포함 여부는 반드시 isPaySettledRow()를 사용하세요.
+ *
  * 상태 우선순위 (위에서 아래로):
  *   OPEN     → check_in 없음 (미출근)
  *   WORKING  → check_in 있고 check_out 없음 (단, approval_status=pending 제외)
@@ -40,6 +46,12 @@ export function getAttendanceStatus(row) {
   return ATTENDANCE_STATUS.CLOSED;
 }
 
+/**
+ * UI 표시용 settled 판단 (APPROVED + CLOSED)
+ *
+ * 급여 계산 포함 여부는 pay.js의 isPaySettledRow()를 사용할 것.
+ * 이 함수는 UI에서 "처리 완료" 배지 표시 등에만 사용.
+ */
 export function isSettledStatus(status) {
   return status === ATTENDANCE_STATUS.APPROVED || status === ATTENDANCE_STATUS.CLOSED;
 }

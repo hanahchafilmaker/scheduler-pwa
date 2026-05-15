@@ -39,3 +39,5 @@ export function calcExtraLate(plannedEnd, checkOut) {
   return Math.max(0, c - p);
 }
 
+
+export function calcWorkMinutes(checkIn, checkOut, breakMin = 0) { const t = toMin(checkOut) - toMin(checkIn); return Math.max(0, t - (Number(breakMin) || 0)); }

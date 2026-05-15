@@ -82,3 +82,5 @@ export function buildSettlement({ attendance = [], employees = [], month = '' })
 
 
 export { calcMonthSummary } from '../summary/paySummary';
+
+export { calcWorkMinutes } from './payCalculator';

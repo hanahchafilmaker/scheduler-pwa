@@ -76,7 +76,9 @@ export function calcPayrollEarlyLeaveDeductMinutes(row) { return calcEarlyLeaveD
 export function formatLateMinutes(min) { return min > 0 ? min + 'min' : ''; }
 export function formatEarlyLeaveMinutes(min) { return min > 0 ? min + 'min' : ''; }
 
-export { calcMonthSummary } from '../summary/paySummary';
+import { calcMonthSummary } from '../summary/paySummary';
 
 export function buildSettlement({ attendance = [], employees = [], month = '' }) { const employeeMap = Object.fromEntries(employees.map(e => [e.id, e])); const rows = attendance.filter(r => (r.work_date || '').startsWith(month)); return { month, rows, summary: calcMonthSummary(rows, employeeMap) }; }
 
+
+export { calcMonthSummary } from '../summary/paySummary';

@@ -81,6 +81,7 @@ export default function App() {
     refreshAll,
     refreshAdminToday,
     approveAttendance,
+    updateAttendance,
     addSchedule,
     updateSchedule,
     deleteSchedule,

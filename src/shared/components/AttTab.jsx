@@ -1,3 +1,14 @@
+import React, { useMemo, useState } from "react";
+import {
+  diffMinutes,
+  getApprovalReasonLabel,
+  getApprovalStatusLabel,
+  getPaidWorkMinutes,
+  getScheduledWorkMinutes,
+} from "../hooks/useApi";
+import "./AttTab.css";
+
+
 export default function AttTab(props) {
   const {
     monthAttendance = [],

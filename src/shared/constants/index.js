@@ -1,8 +1,5 @@
 ﻿// src/shared/constants/index.js
-// UTF-8 clean version
-
 /* ================= WORK TYPE ================= */
-
 export const WORK_TYPE = {
   OPEN: "open",
   MIDDLE_A: "middle_A",
@@ -11,85 +8,74 @@ export const WORK_TYPE = {
   EXTRA: "extra",
   OVERTIME: "overtime",
 };
-
 export const WORK_TYPE_LABEL = {
-  open: "",
-  middle_A: "A",
-  middle_B: "B",
-  close: "",
-  extra: "",
-  overtime: "",
+  open: "오픈",
+  middle_A: "미들A",
+  middle_B: "미들B",
+  close: "마감",
+  extra: "추가",
+  overtime: "야근",
 };
-
 /* ================= PART ================= */
-
 export const PARTS = ["open", "middle_A", "middle_B", "close"];
-
 export const PART_LABEL = {
-  open: "",
-  middle_A: "A",
-  middle_B: "B",
-  close: "",
-  extra: "",
+  open: "오픈",
+  middle_A: "미들A",
+  middle_B: "미들B",
+  close: "마감",
+  extra: "추가",
+  대타: "대타",
 };
-
-export const DAYS = ["", "", "", "", "", "", ""];
-
+export const DAYS = ["일", "월", "화", "수", "목", "금", "토"];
 /* ================= SHIFT TIME ================= */
-
 export const SHIFT_TIME = {
   open: { start: "07:00", end: "11:30", hours: 4.5 },
   middle_A: { start: "11:30", end: "15:30", hours: 4 },
   middle_B: { start: "15:30", end: "18:00", hours: 2.5 },
   close: { start: "18:00", end: "22:00", hours: 4 },
 };
-
 /* ================= STATUS COLORS ================= */
-
 export const STATUS_COLOR = {
-  normal: "#374151",
-  work: "#059669",
-  absent: "#dc2626",
-  late: "#dc2626",
-  early_leave: "#d97706",
-  overtime: "#7c3aed",
+  정상: "#374151",
+  근무중: "#059669",
+  결근: "#2563eb",
+  지각: "#dc2626",
+  조퇴: "#d97706",
+  야근: "#7c3aed",
+  무단조퇴: "#dc2626",
+  대타: "#7c3aed",
 };
-
 export const STATUS_BG = {
-  normal: "#f9fafb",
-  work: "#ecfdf5",
-  absent: "#fef2f2",
-  late: "#fef2f2",
-  early_leave: "#fffbeb",
-  overtime: "#f5f3ff",
+  정상: "#f9fafb",
+  근무중: "#ecfdf5",
+  결근: "#eff6ff",
+  지각: "#fef2f2",
+  조퇴: "#fffbeb",
+  야근: "#f5f3ff",
+  무단조퇴: "#fef2f2",
+  대타: "#f5f3ff",
 };
-
 /* ================= NAV ================= */
-
 export const NAV_ITEMS = [
-  { id: "today", label: " ", icon: "" },
-  { id: "att", label: " ", icon: "" },
-  { id: "shift", label: " ", icon: "" },
-  { id: "sim", label: " ", icon: "" },
-  { id: "settle", label: " ", icon: "" },
-  { id: "emp", label: " ", icon: "" },
+  { id: "today", label: "오늘 현황", icon: "📋" },
+  { id: "att", label: "근태 기록", icon: "📊" },
+  { id: "shift", label: "스케줄 관리", icon: "📅" },
+  { id: "sim", label: "급여 계산", icon: "💰" },
+  { id: "settle", label: "월 마감", icon: "✅" },
+  { id: "emp", label: "직원 관리", icon: "👥" },
 ];
-
 /* ================= PAGE TITLE ================= */
-
 export function getPageTitle(tab) {
   return {
-    today: { title: " ", sub: "  " },
-    att: { title: " ", sub: "  " },
-    shift: { title: " ", sub: "  " },
-    sim: { title: " ", sub: "  " },
-    settle: { title: " ", sub: "  " },
-    emp: { title: " ", sub: "   " },
+    today: { title: "오늘 현황", sub: "오늘 근무 현황 및 출퇴근 관리" },
+    att: { title: "근태 기록", sub: "실제 근무 기록 확인 및 승인" },
+    shift: { title: "스케줄 관리", sub: "주간 스케줄 확인" },
+    sim: { title: "급여 계산", sub: "실제 근태 기록 기반 급여 계산" },
+    settle: { title: "월 마감", sub: "월별 급여 정산 및 final_pay 저장" },
+    emp: { title: "직원 관리", sub: "직원 등록, 수정, 활성화 관리" },
   }[tab];
 }
-
 /* ================= EMP ================= */
-
 export const EMPTY_EMP_FORM = {
   name: "",
   phone: "",
@@ -98,17 +84,13 @@ export const EMPTY_EMP_FORM = {
   role: "staff",
   active: true,
 };
-
-/* ================= SUBSTITUTE ================= */
-
+/* ================= SUBSTITUTE STATUS ================= */
 export const SUBSTITUTE_STATUS = {
   REQUESTED: "requested",
   APPROVED: "approved",
   REJECTED: "rejected",
   FULFILLED: "fulfilled",
 };
-
 /* ================= CONFIG ================= */
-
 export const AUTO_CHECKOUT_GRACE_MIN = 30;
 export const ABSENT_GRACE_MIN = 0;

@@ -62,6 +62,32 @@ function matchesSearch(row, keyword) {
     .some((v) => String(v).toLowerCase().includes(q));
 }
 
+function StatusBadge({ status }) {
+  return (
+    <span className={`att-badge status-${status || "default"}`}>
+      {getApprovalStatusLabel(status)}
+    </span>
+  );
+}
+
+function ReasonBadge({ reason }) {
+  return (
+    <span className={`att-badge reason-${reason || "default"}`}>
+      {getApprovalReasonLabel(reason)}
+    </span>
+  );
+}
+
+function SummaryCard({ title, value, sub }) {
+  return (
+    <div className="att-summary-card">
+      <div className="att-summary-title">{title}</div>
+      <div className="att-summary-value">{value}</div>
+      {sub ? <div className="att-summary-sub">{sub}</div> : null}
+    </div>
+  );
+}
+
 export default function AttTab(props) {
 
   const {

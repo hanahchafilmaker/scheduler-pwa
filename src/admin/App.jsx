@@ -11,7 +11,7 @@ import EmployeeTab from "../shared/components/EmployeeTab";
 import { Toast } from "../shared/components/UI";
 import AdminPinScreen from "../shared/components/Admin_PinScreen";
 
-import { calcRowPayWithSeparation } from "../shared/domain/attendance/payroll/engine/payEngine";
+import { calcRowPayWithSeparation, buildSettlement } from "../shared/domain/attendance/payroll/engine/payEngine";
 import { safeStr } from "../shared/utils";
 import { SHIFT_TIME } from "../shared/constants";
 

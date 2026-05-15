@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import useApi from "../shared/hooks/useApi";
 import PinScreen from "./components/PinScreen";
 import StaffHome from "./components/StaffHome";
@@ -62,12 +62,12 @@ export default function StaffApp() {
     const normalizedPin = String(inputPin || "").trim();
 
     if (!normalizedPin) {
-      setPinError("PIN을 입력해주세요.");
+      setPinError("PIN .");
       return;
     }
 
     if (!Array.isArray(employees) || employees.length === 0) {
-      setPinError("직원 데이터를 아직 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+      setPinError("    .    .");
       return;
     }
 
@@ -76,21 +76,21 @@ export default function StaffApp() {
     );
 
     if (!found) {
-      setPinError("PIN이 올바르지 않습니다.");
+      setPinError("PIN  .");
       setInputPin("");
       return;
     }
 
     setCurrentEmployee(found);
     setInputPin("");
-    setToast(`${found.name}님 반가워요`);
+    setToast(`${found.name} `);
   };
 
   const handleLogout = () => {
     setCurrentEmployee(null);
     setInputPin("");
     setPinError("");
-    setToast("로그아웃되었습니다");
+    setToast("");
   };
 
   const handleCheckIn = async (payload) => {
@@ -110,7 +110,7 @@ export default function StaffApp() {
 
       handleLogout();
     } catch (err) {
-      setPinError(err?.message || "출근 처리에 실패했습니다.");
+      setPinError(err?.message || "  .");
     }
   };
 
@@ -124,9 +124,9 @@ export default function StaffApp() {
         date: payload?.date,
       });
 
-      setToast("퇴근 처리되었습니다");
+      setToast(" ");
     } catch (err) {
-      setPinError(err?.message || "퇴근 처리에 실패했습니다.");
+      setPinError(err?.message || "  .");
     }
   };
 
@@ -150,16 +150,16 @@ export default function StaffApp() {
       <header className="staff-header">
         <div>
           <div className="staff-brand">SHIFT</div>
-          <h1>{currentEmployeeFull.name}님</h1>
+          <h1>{currentEmployeeFull.name}</h1>
           <p>
             {todayLoading || loading
-              ? "데이터를 불러오는 중입니다."
-              : "오늘 근무 상태를 확인하세요."}
+              ? "  ."
+              : "   ."}
           </p>
         </div>
 
         <button type="button" className="logout-btn" onClick={handleLogout}>
-          로그아웃
+          
         </button>
       </header>
 
@@ -180,3 +180,4 @@ export default function StaffApp() {
     </div>
   );
 }
+

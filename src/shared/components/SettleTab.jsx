@@ -1,13 +1,17 @@
-// src/shared/components/SettleTab.jsx
-// 월 마감 정산 탭 — final_pay upsert + 직원별 breakdown 조회
+﻿// src/shared/components/SettleTab.jsx
+//      final_pay upsert +  breakdown 
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
-import { calcRowPayWithSeparation } from "../utils/pay";
+import {
+  calcRowPayWithSeparation,
+  calcMonthSummary,
+  buildSettlement
+} from "../domain/attendance/payroll/engine/payEngine";
 import { getApprovalStatusLabel } from "../domain/attendance/labels";
 
 /* ----------------------------------------------------------------
-   유틸
+   
 ---------------------------------------------------------------- */
 
 function pad2(n) {
@@ -15,15 +19,15 @@ function pad2(n) {
 }
 
 function fmtWon(n) {
-  if (n == null || isNaN(n)) return "–";
-  return Number(n).toLocaleString("ko-KR") + "원";
+  if (n == null || isNaN(n)) return "";
+  return Number(n).toLocaleString("ko-KR") + "";
 }
 
 function fmtMin(min) {
-  if (!min) return "–";
+  if (!min) return "";
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return h > 0 ? `${h}시간 ${m > 0 ? m + "분" : ""}`.trim() : `${m}분`;
+  return h > 0 ? `${h} ${m > 0 ? m + "" : ""}`.trim() : `${m}`;
 }
 
 async function fetchFinalPay(yearMonth) {
@@ -38,7 +42,7 @@ async function fetchFinalPay(yearMonth) {
 }
 
 /* ----------------------------------------------------------------
-   컴포넌트
+   
 ---------------------------------------------------------------- */
 
 export default function SettleTab({
@@ -54,7 +58,7 @@ export default function SettleTab({
   const [error, setError] = useState("");
   const [expandedEmp, setExpandedEmp] = useState(null);
 
-  // 이미 마감된 정산 데이터 조회
+  //     
   const loadFinalPay = useCallback(async () => {
     setFetchLoading(true);
     setError("");
@@ -62,7 +66,7 @@ export default function SettleTab({
       const rows = await fetchFinalPay(selectedMonth);
       setFinalRows(rows);
     } catch (err) {
-      setError(err.message || "정산 데이터 조회 실패");
+      setError(err.message || "   ");
     } finally {
       setFetchLoading(false);
     }
@@ -72,7 +76,7 @@ export default function SettleTab({
     loadFinalPay();
   }, [loadFinalPay]);
 
-  // 마감 처리
+  //  
   const handleLock = useCallback(async () => {
     const pendingCount = monthAttendance.filter(
       (r) => r.approval_status === "pending",
@@ -80,12 +84,12 @@ export default function SettleTab({
 
     if (pendingCount > 0) {
       const go = window.confirm(
-        `아직 승인 대기 중인 기록이 ${pendingCount}건 있습니다.\n미승인 기록을 제외하고 마감하시겠습니까?`,
+        `     ${pendingCount} .\n   ?`,
       );
       if (!go) return;
     } else {
       const go = window.confirm(
-        `${selectedMonth} 급여를 확정하시겠습니까?\n이미 마감된 데이터가 있으면 덮어씁니다.`,
+        `${selectedMonth}  ?\n    .`,
       );
       if (!go) return;
     }
@@ -100,7 +104,7 @@ export default function SettleTab({
       });
       await loadFinalPay();
     } catch (err) {
-      setError(err.message || "정산 마감에 실패했습니다.");
+      setError(err.message || "  .");
     } finally {
       setLockLoading(false);
     }
@@ -112,23 +116,23 @@ export default function SettleTab({
     loadFinalPay,
   ]);
 
-  // 미리보기 계산 (마감 전 예상)
+  //   (  )
   const preview = buildPreview(monthAttendance, employees);
   const isLocked = finalRows.length > 0;
 
   const [y, m] = selectedMonth.split("-");
-  const monthLabel = `${y}년 ${Number(m)}월`;
+  const monthLabel = `${y} ${Number(m)}`;
 
   return (
     <div className="settle-tab">
-      {/* 헤더 */}
+      {/*  */}
       <div className="settle-header">
         <div>
-          <h2 className="settle-title">{monthLabel} 급여 정산</h2>
+          <h2 className="settle-title">{monthLabel}  </h2>
           <p className="settle-sub">
             {isLocked
-              ? `마감 완료 — ${finalRows[0]?.locked_by || ""} · ${formatLockedAt(finalRows[0]?.locked_at)}`
-              : "출퇴근 기록 기준 예상 금액입니다. 마감 전까지 변동될 수 있습니다."}
+              ? `   ${finalRows[0]?.locked_by || ""}  ${formatLockedAt(finalRows[0]?.locked_at)}`
+              : "    .     ."}
           </p>
         </div>
         <button
@@ -137,25 +141,25 @@ export default function SettleTab({
           disabled={lockLoading || fetchLoading}
         >
           {lockLoading
-            ? "처리 중…"
+            ? " "
             : isLocked
-              ? "재마감 (덮어쓰기)"
-              : "이번 달 급여 마감"}
+              ? " ()"
+              : "   "}
         </button>
       </div>
 
       {error && <div className="settle-error">{error}</div>}
 
-      {/* 상태 배지 */}
+      {/*   */}
       {isLocked && (
         <div className="settle-locked-banner">
-          ✅ 정산 완료 — final_pay에 저장된 데이터를 표시합니다.
+              final_pay   .
         </div>
       )}
 
-      {/* 테이블 */}
+      {/*  */}
       {fetchLoading ? (
-        <div className="settle-spinner">불러오는 중…</div>
+        <div className="settle-spinner"> </div>
       ) : isLocked ? (
         <LockedTable
           rows={finalRows}
@@ -172,7 +176,7 @@ export default function SettleTab({
 }
 
 /* ----------------------------------------------------------------
-   미리보기 계산 (마감 전)
+     ( )
 ---------------------------------------------------------------- */
 
 function buildPreview(attRows, empRows) {
@@ -219,12 +223,12 @@ function buildPreview(attRows, empRows) {
 }
 
 /* ----------------------------------------------------------------
-   미리보기 테이블
+    
 ---------------------------------------------------------------- */
 
 function PreviewTable({ rows }) {
   if (!rows.length) {
-    return <div className="settle-empty">이번 달 출퇴근 기록이 없습니다.</div>;
+    return <div className="settle-empty">    .</div>;
   }
 
   const totalAmount = rows.reduce((s, r) => s + (r.final_amount || 0), 0);
@@ -234,13 +238,13 @@ function PreviewTable({ rows }) {
       <table className="settle-table">
         <thead>
           <tr>
-            <th>직원</th>
-            <th>시급</th>
-            <th>근무일</th>
-            <th>승인대기</th>
-            <th>기본급</th>
-            <th>추가수당</th>
-            <th>예상 합계</th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th> </th>
           </tr>
         </thead>
         <tbody>
@@ -248,16 +252,16 @@ function PreviewTable({ rows }) {
             <tr key={r.employee_id}>
               <td className="settle-name">{r.name}</td>
               <td>{fmtWon(r.hourly_wage)}</td>
-              <td>{r.work_days}일</td>
+              <td>{r.work_days}</td>
               <td>
                 {r.pending_count > 0 ? (
-                  <span className="settle-badge-pending">{r.pending_count}건</span>
+                  <span className="settle-badge-pending">{r.pending_count}</span>
                 ) : (
-                  <span className="settle-ok">–</span>
+                  <span className="settle-ok"></span>
                 )}
               </td>
               <td>{fmtWon(r.base_pay)}</td>
-              <td>{r.extra_pay > 0 ? fmtWon(r.extra_pay) : "–"}</td>
+              <td>{r.extra_pay > 0 ? fmtWon(r.extra_pay) : ""}</td>
               <td className="settle-amount">{fmtWon(r.final_amount)}</td>
             </tr>
           ))}
@@ -265,21 +269,21 @@ function PreviewTable({ rows }) {
         <tfoot>
           <tr>
             <td colSpan={6} className="settle-total-label">
-              총 인건비
+               
             </td>
             <td className="settle-total-amount">{fmtWon(totalAmount)}</td>
           </tr>
         </tfoot>
       </table>
       <p className="settle-note">
-        ※ 승인 대기 기록은 제외된 금액입니다. 마감 전에 승인을 완료하세요.
+             .    .
       </p>
     </div>
   );
 }
 
 /* ----------------------------------------------------------------
-   마감 후 테이블 (final_pay 기반)
+      (final_pay )
 ---------------------------------------------------------------- */
 
 function LockedTable({ rows, employees, expandedEmp, setExpandedEmp, monthAttendance }) {
@@ -293,12 +297,12 @@ function LockedTable({ rows, employees, expandedEmp, setExpandedEmp, monthAttend
       <table className="settle-table">
         <thead>
           <tr>
-            <th>직원</th>
-            <th>근무일</th>
-            <th>기본급</th>
-            <th>추가수당</th>
-            <th>지각차감</th>
-            <th>확정 금액</th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th> </th>
             <th></th>
           </tr>
         </thead>
@@ -306,7 +310,7 @@ function LockedTable({ rows, employees, expandedEmp, setExpandedEmp, monthAttend
           {rows.map((r) => {
             const isExpanded = expandedEmp === r.employee_id;
             const empName = empMap[r.employee_id]?.name || r.employee_id;
-            // 해당 직원의 월 출퇴근 상세
+            //     
             const attDetail = monthAttendance.filter(
               (a) => a.employee_id === r.employee_id,
             );
@@ -318,16 +322,16 @@ function LockedTable({ rows, employees, expandedEmp, setExpandedEmp, monthAttend
                   className={`settle-row${isExpanded ? " expanded" : ""}`}
                 >
                   <td className="settle-name">{empName}</td>
-                  <td>{r.work_days}일</td>
+                  <td>{r.work_days}</td>
                   <td>{fmtWon(r.base_pay)}</td>
-                  <td>{r.extra_pay > 0 ? fmtWon(r.extra_pay) : "–"}</td>
+                  <td>{r.extra_pay > 0 ? fmtWon(r.extra_pay) : ""}</td>
                   <td>
                     {r.late_deduct_min > 0 ? (
                       <span className="settle-deduct">
                         -{fmtMin(r.late_deduct_min)}
                       </span>
                     ) : (
-                      "–"
+                      ""
                     )}
                   </td>
                   <td className="settle-amount">{fmtWon(r.final_amount)}</td>
@@ -338,7 +342,7 @@ function LockedTable({ rows, employees, expandedEmp, setExpandedEmp, monthAttend
                         setExpandedEmp(isExpanded ? null : r.employee_id)
                       }
                     >
-                      {isExpanded ? "접기" : "상세"}
+                      {isExpanded ? "" : ""}
                     </button>
                   </td>
                 </tr>
@@ -356,7 +360,7 @@ function LockedTable({ rows, employees, expandedEmp, setExpandedEmp, monthAttend
         <tfoot>
           <tr>
             <td colSpan={5} className="settle-total-label">
-              총 인건비
+               
             </td>
             <td className="settle-total-amount" colSpan={2}>
               {fmtWon(totalAmount)}
@@ -369,22 +373,22 @@ function LockedTable({ rows, employees, expandedEmp, setExpandedEmp, monthAttend
 }
 
 /* ----------------------------------------------------------------
-   직원별 일별 상세 (expand 시)
+      (expand )
 ---------------------------------------------------------------- */
 
 function DetailTable({ rows }) {
-  if (!rows.length) return <p className="settle-empty-detail">기록 없음</p>;
+  if (!rows.length) return <p className="settle-empty-detail"> </p>;
 
   return (
     <table className="settle-detail-table">
       <thead>
         <tr>
-          <th>날짜</th>
-          <th>파트</th>
-          <th>출근</th>
-          <th>퇴근</th>
-          <th>상태</th>
-          <th>메모</th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -395,14 +399,14 @@ function DetailTable({ rows }) {
             <tr key={i} className={`detail-status-${r.approval_status}`}>
               <td>{r.date}</td>
               <td>{r.part}</td>
-              <td>{r.paid_check_in || r.check_in || "–"}</td>
-              <td>{r.paid_check_out || r.check_out || "–"}</td>
+              <td>{r.paid_check_in || r.check_in || ""}</td>
+              <td>{r.paid_check_out || r.check_out || ""}</td>
               <td>
                 <span className={`settle-status-badge status-${r.approval_status}`}>
                   {getApprovalStatusLabel(r.approval_status)}
                 </span>
               </td>
-              <td className="settle-memo">{r.approval_note || r.memo || "–"}</td>
+              <td className="settle-memo">{r.approval_note || r.memo || ""}</td>
             </tr>
           ))}
       </tbody>
@@ -411,7 +415,7 @@ function DetailTable({ rows }) {
 }
 
 /* ----------------------------------------------------------------
-   헬퍼
+   
 ---------------------------------------------------------------- */
 
 function formatLockedAt(isoStr) {
@@ -419,3 +423,4 @@ function formatLockedAt(isoStr) {
   const d = new Date(isoStr);
   return `${d.getFullYear()}.${pad2(d.getMonth() + 1)}.${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
+

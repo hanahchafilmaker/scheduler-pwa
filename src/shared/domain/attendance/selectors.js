@@ -1,20 +1,20 @@
-/**
+﻿/**
  * src/domain/attendance/selectors.js
  *
- * attendance row 배열을 상태 기반으로 필터링하는 순수 셀렉터 함수 모음.
+ * attendance row ??? ? ???? ?? ? .
  *
- * 규칙:
- *   - getAttendanceStatus()만 사용하고, approval_status를 직접 비교하지 않는다.
- *   - DB 접근 없음. 순수 함수.
- *   - UI 렌더링 판단 로직은 포함하지 않는다.
+ * :
+ *   - getAttendanceStatus()???, approval_status? ?? ???
+ *   - DB ? ?. ? ?.
+ *   - UI ??? ? ??? ???
  *
- * ⚠️  급여 계산 포함 여부는 pay.js의 isPaySettledRow()가 기준입니다.
- *     isSettled / selectSettled 는 UI 표시용(처리완료 배지 등)으로만 사용하세요.
+ * ?    ? ????pay.js??isPaySettledRow() ????
+ *     isSettled / selectSettled ??UI ???? ? ????????
  */
 
 import { getAttendanceStatus, ATTENDANCE_STATUS } from "./getAttendanceStatus";
 
-// ─── 단일 row 상태 필터 ───────────────────────────────────────────────────────
+// ??? ? row ? ? ???????????????????????????????????????????????????????
 
 export const isOpen     = (row) => getAttendanceStatus(row) === ATTENDANCE_STATUS.OPEN;
 export const isWorking  = (row) => getAttendanceStatus(row) === ATTENDANCE_STATUS.WORKING;
@@ -24,45 +24,45 @@ export const isRejected = (row) => getAttendanceStatus(row) === ATTENDANCE_STATU
 export const isClosed   = (row) => getAttendanceStatus(row) === ATTENDANCE_STATUS.CLOSED;
 
 /**
- * UI 표시용 정산 완료 판단 (approved + auto_closed + 기타 CLOSED)
+ * UI ???? ? ? (approved + auto_closed + ? CLOSED)
  *
- * ⚠️  급여 계산 포함 여부와 다릅니다.
- *     급여 포함 여부 → pay.js의 isPaySettledRow() 사용
- *     이 함수는 UI에서 "처리완료" 상태 표시에만 사용할 것.
+ * ?    ? ??? ??.
+ *      ? ?? ??pay.js??isPaySettledRow() ?
+ *     ?????UI? "?" ? ?? ????
  */
 export const isSettled  = (row) =>
   [ATTENDANCE_STATUS.APPROVED, ATTENDANCE_STATUS.CLOSED].includes(getAttendanceStatus(row));
 
-// ─── 배열 셀렉터 ─────────────────────────────────────────────────────────────
+// ???  ?? ?????????????????????????????????????????????????????????????
 
 /**
- * 특정 상태인 row 목록 반환
+ * ? ???row  
  * @param {object[]} rows
- * @param {string} status - ATTENDANCE_STATUS 값
+ * @param {string} status - ATTENDANCE_STATUS ?
  */
 export function selectByStatus(rows, status) {
   return rows.filter((row) => getAttendanceStatus(row) === status);
 }
 
-/** 승인대기 목록 */
+/** ??? */
 export const selectPending  = (rows) => selectByStatus(rows, ATTENDANCE_STATUS.PENDING);
 
-/** 근무 중 목록 */
+/**  ? */
 export const selectWorking  = (rows) => selectByStatus(rows, ATTENDANCE_STATUS.WORKING);
 
-/** UI 표시용 정산 확정 목록 (approved + auto_closed + CLOSED) */
+/** UI ???? ?  (approved + auto_closed + CLOSED) */
 export const selectSettled  = (rows) => rows.filter(isSettled);
 
-/** 거절 목록 */
+/**   */
 export const selectRejected = (rows) => selectByStatus(rows, ATTENDANCE_STATUS.REJECTED);
 
-/** 미출근 목록 (schedule은 있지만 attendance가 없는 경우는 별도 처리 필요) */
+/** ? (schedule? ???attendance ? ??  ?) */
 export const selectOpen     = (rows) => selectByStatus(rows, ATTENDANCE_STATUS.OPEN);
 
-// ─── 복합 셀렉터 ─────────────────────────────────────────────────────────────
+// ???  ?? ?????????????????????????????????????????????????????????????
 
 /**
- * 오늘 날짜 기준으로 필터링
+ * ? ? ?? ??
  * @param {object[]} rows
  * @param {string} dateStr - "YYYY-MM-DD"
  */
@@ -71,7 +71,7 @@ export function selectByDate(rows, dateStr) {
 }
 
 /**
- * 직원 ID 기준으로 필터링
+ *  ID ?? ??
  * @param {object[]} rows
  * @param {string|number} employeeId
  */
@@ -80,7 +80,7 @@ export function selectByEmployee(rows, employeeId) {
 }
 
 /**
- * 키워드 검색 (이름, 날짜, 파트, 사유, 메모 포함)
+ * ?????(?, ?, ?, ?,  ?)
  * @param {object[]} rows
  * @param {string} keyword
  */
@@ -95,7 +95,7 @@ export function selectByKeyword(rows, keyword) {
 }
 
 /**
- * 승인대기 요약 (AttTab summary용)
+ * ???? (AttTab summary??
  * @param {object[]} rows
  */
 export function buildAttendanceSummary(rows) {
@@ -108,3 +108,4 @@ export function buildAttendanceSummary(rows) {
     settled:  selectSettled(rows).length,
   };
 }
+

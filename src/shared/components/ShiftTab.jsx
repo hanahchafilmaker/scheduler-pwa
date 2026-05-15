@@ -1,10 +1,10 @@
-// src/shared/components/ShiftTab.jsx
+﻿// src/shared/components/ShiftTab.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PARTS, PART_LABEL, SHIFT_TIME } from "../constants";
-import { normalizeDate } from "../utils";
+import { toISODate } from "../utils";
 import "./ShiftTab.css";
 
-const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+const DAY_KO = ["", "", "", "", "", "", ""];
 const DAY_COLOR = { 0: "#dc2626", 6: "#2563eb" };
 
 function formatDayLabel(dateStr) {
@@ -19,7 +19,7 @@ function formatDayLabel(dateStr) {
 }
 
 function getEntry(schedule, date, part) {
-  return schedule.find((s) => s.part === part && normalizeDate(s.date) === date) || null;
+  return schedule.find((s) => s.part === part && toISODate(s.date) === date) || null;
 }
 
 function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchorRef, onToast }) {
@@ -69,7 +69,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
   const handleSave = () => {
     onSaveCell({ date, part, scheduleId: entry?.schedule_id || "", memo }, selectedId);
     onClose();
-    if (onToast) onToast(selectedId ? "저장되었습니다" : "배정이 해제되었습니다");
+    if (onToast) onToast(selectedId ? "" : " ");
   };
 
   const handleDelete = () => {
@@ -79,7 +79,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
     }
     onSaveCell({ date, part, scheduleId: entry.schedule_id, memo: "" }, "");
     onClose();
-    if (onToast) onToast("삭제되었습니다");
+    if (onToast) onToast("");
   };
 
   const shift = SHIFT_TIME[part] || {};
@@ -122,7 +122,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
         }}
         autoFocus
       >
-        <option value="">— 미배정 —</option>
+        <option value="">  </option>
         {employees
           .filter((e) => e.active !== false)
           .map((e) => (
@@ -135,7 +135,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
       <textarea
         value={memo}
         onChange={(e) => setMemo(e.target.value)}
-        placeholder="메모 (선택)"
+        placeholder=" ()"
         rows={2}
         style={{
           width: "100%",
@@ -157,10 +157,10 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
           style={{ flex: 1 }}
           onClick={handleSave}
         >
-          저장
+          
         </button>
         <button type="button" className="att-btn secondary small" onClick={onClose}>
-          취소
+          
         </button>
         {entry?.schedule_id && (
           <button
@@ -169,7 +169,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
             style={{ color: "#dc2626" }}
             onClick={handleDelete}
           >
-            삭제
+            
           </button>
         )}
       </div>
@@ -178,24 +178,24 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
 }
 
 function ShiftHeader({ weekDates, weekOffset, setWeekOffset }) {
-  const rangeLabel = weekDates.length === 7 ? `${weekDates[0]} – ${weekDates[6]}` : "";
+  const rangeLabel = weekDates.length === 7 ? `${weekDates[0]}  ${weekDates[6]}` : "";
 
   return (
     <div className="shift-tab-header">
       <div className="shift-header-copy">
-        <h2>스케줄 관리</h2>
-        <p>셀을 클릭해 직원을 배정하거나 수정합니다</p>
+        <h2> </h2>
+        <p>    </p>
       </div>
       <div className="shift-header-controls">
         <div className="week-nav modern">
           <button type="button" onClick={() => setWeekOffset(weekOffset - 1)}>
-            이전 주
+             
           </button>
           <button type="button" onClick={() => setWeekOffset(0)}>
-            이번 주
+             
           </button>
           <button type="button" onClick={() => setWeekOffset(weekOffset + 1)}>
-            다음 주
+             
           </button>
         </div>
         <div className="shift-range-pill">{rangeLabel}</div>
@@ -219,7 +219,7 @@ function DesktopShiftTable(props) {
           <table className="shift-table shift-grid">
             <thead>
               <tr>
-                <th className="part-col">파트</th>
+                <th className="part-col"></th>
                 {weekDates.map((d) => {
                   const meta = formatDayLabel(d);
                   return (
@@ -270,7 +270,7 @@ function DesktopShiftTable(props) {
                             )}
                           </div>
                         ) : (
-                          <span className="cell-empty">＋</span>
+                          <span className="cell-empty"></span>
                         )}
 
                         {isOpen && (
@@ -343,7 +343,7 @@ function MobileShiftCards(props) {
                           )}
                         </>
                       ) : (
-                        <span className="shift-part-empty">＋ 배정</span>
+                        <span className="shift-part-empty"> </span>
                       )}
                     </div>
 
@@ -380,7 +380,7 @@ export function ShiftTab({
   onToast,
 }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const todayDate = useMemo(() => normalizeDate(new Date()), []);
+  const todayDate = useMemo(() => toISODate(new Date()), []);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768);
@@ -405,3 +405,4 @@ export function ShiftTab({
     </div>
   );
 }
+

@@ -1,8 +1,8 @@
-import React from "react";
+﻿import React from "react";
 
 export default function PinScreen(props) {
   const {
-    mode = "staff", // 👈 추가
+    mode = "staff", //  
     inputPin = "",
     setInputPin,
     pinError = "",
@@ -29,12 +29,12 @@ export default function PinScreen(props) {
     <div className="pin-card">
       <div className="pin-brand">SHIFT</div>
 
-      <h1>{isAdmin ? "관리자 로그인" : "직원 로그인"}</h1>
+      <h1>{isAdmin ? " " : " "}</h1>
 
       <p>
         {isAdmin
-          ? "관리자 PIN을 입력하세요."
-          : "PIN을 입력하고 오늘 근무 상태를 확인하세요."}
+          ? " PIN ."
+          : "PIN     ."}
       </p>
 
       <form onSubmit={handleSubmit}>
@@ -42,7 +42,7 @@ export default function PinScreen(props) {
           type="password"
           inputMode="numeric"
           autoComplete="off"
-          placeholder="PIN 입력"
+          placeholder="PIN "
           value={inputPin}
           onChange={(e) => setInputPin?.(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -50,7 +50,7 @@ export default function PinScreen(props) {
         />
 
         <button type="submit" disabled={loading}>
-          {loading ? "불러오는 중..." : "로그인"}
+          {loading ? " ..." : ""}
         </button>
       </form>
 

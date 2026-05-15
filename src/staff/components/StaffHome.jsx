@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { getApprovalReasonLabel, getApprovalStatusLabel } from "../../shared/hooks/useApi";
+﻿import React, { useEffect, useMemo, useState } from "react";
+import { getApprovalReasonLabel, getApprovalStatusLabel } from "../../shared/domain/attendance/labels";
 import {
   calcPayrollLateDeductMinutes,
   calcPayrollEarlyLeaveDeductMinutes,
   formatLateMinutes,
   formatEarlyLeaveMinutes,
-} from "../../shared/utils/pay";
+} from "../../shared/domain/attendance/payroll/engine/payEngine";
 
 /* ================================================================
    순수 유틸
@@ -405,8 +405,8 @@ function AttendanceSummary({ attendance, label }) {
 
   // 지각/조기퇴근은 pay.js 유틸로 계산 (허용 구간 자동 적용)
   // attendance 원본은 그대로 두고 표시 목적으로만 계산
-  const lateMin = calcPayrollLateDeductMinutes(attendance.planned_start, attendance.check_in);
-  const earlyMin = calcPayrollEarlyLeaveDeductMinutes(attendance.planned_end, attendance.check_out);
+  const lateMin = calcPayrollLateDeductMinutes(attendance);
+  const earlyMin = calcPayrollEarlyLeaveDeductMinutes(attendance);
 
   const lateLabel  = formatLateMinutes(lateMin);       // "지각 12분" | null
   const earlyLabel = formatEarlyLeaveMinutes(earlyMin); // "조기퇴근 6분" | null

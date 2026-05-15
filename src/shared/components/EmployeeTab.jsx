@@ -1,4 +1,4 @@
-// src/shared/components/EmployeeTab.jsx
+﻿// src/shared/components/EmployeeTab.jsx
 import React, { useMemo, useState } from "react";
 import { EMPTY_EMP_FORM } from "../constants";
 
@@ -7,11 +7,11 @@ function safeArray(value) {
 }
 
 function validateForm(form) {
-  if (!form.name.trim()) return "이름을 입력해주세요.";
-  if (!form.pin.trim()) return "PIN을 입력해주세요.";
-  if (form.pin.trim().length < 4) return "PIN은 4자리 이상이어야 합니다.";
+  if (!form.name.trim()) return " .";
+  if (!form.pin.trim()) return "PIN .";
+  if (form.pin.trim().length < 4) return "PIN 4  .";
   if (form.hourly_wage !== "" && isNaN(Number(form.hourly_wage)))
-    return "시급은 숫자로 입력해주세요.";
+    return "  .";
   return null;
 }
 
@@ -30,7 +30,7 @@ export default function EmployeeTab({
 
   const employeeList = safeArray(employees);
 
-  /* ── 통계 ── */
+  /*    */
   const stats = useMemo(
     () => ({
       total: employeeList.length,
@@ -41,7 +41,7 @@ export default function EmployeeTab({
     [employeeList],
   );
 
-  /* ── 검색 + 필터 ── */
+  /*   +   */
   const filteredEmployees = useMemo(() => {
     const q = String(search || "")
       .trim()
@@ -58,7 +58,7 @@ export default function EmployeeTab({
     });
   }, [employeeList, search, filter]);
 
-  /* ── 폼 핸들러 ── */
+  /*     */
   const resetForm = () => {
     setForm(EMPTY_EMP_FORM);
     setEditingId("");
@@ -107,7 +107,7 @@ export default function EmployeeTab({
       }
       resetForm();
     } catch (err) {
-      setError(err.message || "직원 저장에 실패했습니다.");
+      setError(err.message || "  .");
     } finally {
       setSaving(false);
     }
@@ -117,42 +117,42 @@ export default function EmployeeTab({
     try {
       await updateEmployee({ employee_id: emp.employee_id, active: emp.active === false });
     } catch (err) {
-      setError(err.message || "상태 변경에 실패했습니다.");
+      setError(err.message || "  .");
     }
   };
 
   const handleDelete = async (emp) => {
-    if (!window.confirm(`${emp.name} 직원을 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(`${emp.name}  ?\n    .`)) return;
     try {
       await deleteEmployee({ employee_id: emp.employee_id });
       if (editingId === emp.employee_id) resetForm();
     } catch (err) {
-      setError(err.message || "직원 삭제에 실패했습니다.");
+      setError(err.message || "  .");
     }
   };
 
-  /* ── 렌더 ── */
+  /*    */
   return (
     <div className="page">
-      {/* ── 통계 요약 카드 ── */}
+      {/*      */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         {[
-          { label: "전체", value: stats.total, color: "#374151", bg: "#f9fafb", filterKey: "all" },
+          { label: "", value: stats.total, color: "#374151", bg: "#f9fafb", filterKey: "all" },
           {
-            label: "활성",
+            label: "",
             value: stats.active,
             color: "#059669",
             bg: "#ecfdf5",
             filterKey: "active",
           },
           {
-            label: "비활성",
+            label: "",
             value: stats.inactive,
             color: "#9ca3af",
             bg: "#f3f4f6",
             filterKey: "inactive",
           },
-          { label: "관리자", value: stats.admin, color: "#7c3aed", bg: "#f5f3ff", filterKey: null },
+          { label: "", value: stats.admin, color: "#7c3aed", bg: "#f5f3ff", filterKey: null },
         ].map(({ label, value, color, bg, filterKey }) => (
           <div
             key={label}
@@ -176,12 +176,12 @@ export default function EmployeeTab({
         ))}
       </div>
 
-      {/* ── 등록 / 수정 폼 ── */}
+      {/*   /    */}
       <div className="card" id="emp-form-top" style={{ marginBottom: 16 }}>
         <div style={{ marginBottom: 12 }}>
-          <h2 style={{ margin: 0 }}>{editingId ? "직원 수정" : "직원 추가"}</h2>
+          <h2 style={{ margin: 0 }}>{editingId ? " " : " "}</h2>
           <p style={{ margin: "6px 0 0", color: "#6b7280", fontSize: 14 }}>
-            직원 등록, 수정, 비활성화를 여기서 관리합니다.
+             , ,   .
           </p>
         </div>
 
@@ -193,22 +193,22 @@ export default function EmployeeTab({
               gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
             }}
           >
-            {/* 이름 */}
+            {/*  */}
             <label>
               <div style={{ marginBottom: 6, fontWeight: 700 }}>
-                이름 <span style={{ color: "#dc2626" }}>*</span>
+                 <span style={{ color: "#dc2626" }}>*</span>
               </div>
               <input
                 className="input"
                 value={form.name}
                 onChange={(e) => handleChange("name", e.target.value)}
-                placeholder="직원 이름"
+                placeholder=" "
               />
             </label>
 
-            {/* 전화번호 */}
+            {/*  */}
             <label>
-              <div style={{ marginBottom: 6, fontWeight: 700 }}>전화번호</div>
+              <div style={{ marginBottom: 6, fontWeight: 700 }}></div>
               <input
                 className="input"
                 value={form.phone}
@@ -217,9 +217,9 @@ export default function EmployeeTab({
               />
             </label>
 
-            {/* 시급 */}
+            {/*  */}
             <label>
-              <div style={{ marginBottom: 6, fontWeight: 700 }}>시급</div>
+              <div style={{ marginBottom: 6, fontWeight: 700 }}></div>
               <input
                 className="input"
                 type="number"
@@ -239,27 +239,27 @@ export default function EmployeeTab({
                 className="input"
                 value={form.pin}
                 onChange={(e) => handleChange("pin", e.target.value)}
-                placeholder="4자리 이상"
+                placeholder="4 "
                 maxLength={8}
               />
             </label>
 
-            {/* 역할 */}
+            {/*  */}
             <label>
-              <div style={{ marginBottom: 6, fontWeight: 700 }}>역할</div>
+              <div style={{ marginBottom: 6, fontWeight: 700 }}></div>
               <select
                 className="input"
                 value={form.role}
                 onChange={(e) => handleChange("role", e.target.value)}
                 style={{ cursor: "pointer" }}
               >
-                <option value="staff">일반 직원 (staff)</option>
-                <option value="admin">관리자 (admin)</option>
+                <option value="staff">  (staff)</option>
+                <option value="admin"> (admin)</option>
               </select>
             </label>
           </div>
 
-          {/* 활성 여부 */}
+          {/*   */}
           <label
             style={{
               display: "inline-flex",
@@ -276,31 +276,31 @@ export default function EmployeeTab({
               checked={form.active}
               onChange={(e) => handleChange("active", e.target.checked)}
             />
-            활성 직원으로 등록
+              
           </label>
 
-          {/* 에러 */}
+          {/*  */}
           {error && (
             <div style={{ marginTop: 10, color: "#dc2626", fontSize: 13, fontWeight: 600 }}>
-              ⚠️ {error}
+               {error}
             </div>
           )}
 
-          {/* 버튼 */}
+          {/*  */}
           <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
             <button type="submit" className="att-btn primary" disabled={saving}>
-              {saving ? "저장 중..." : editingId ? "✓ 수정 완료" : "+ 직원 추가"}
+              {saving ? " ..." : editingId ? "  " : "+  "}
             </button>
             {editingId && (
               <button type="button" className="att-btn secondary" onClick={resetForm}>
-                취소
+                
               </button>
             )}
           </div>
         </form>
       </div>
 
-      {/* ── 직원 목록 ── */}
+      {/*     */}
       <div className="card">
         <div
           style={{
@@ -313,13 +313,13 @@ export default function EmployeeTab({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <h3 style={{ margin: 0 }}>직원 목록</h3>
-            {/* 인라인 필터 탭 */}
+            <h3 style={{ margin: 0 }}> </h3>
+            {/*    */}
             <div style={{ display: "flex", gap: 4 }}>
               {[
-                { key: "all", label: "전체" },
-                { key: "active", label: "활성" },
-                { key: "inactive", label: "비활성" },
+                { key: "all", label: "" },
+                { key: "active", label: "" },
+                { key: "inactive", label: "" },
               ].map(({ key, label }) => (
                 <button
                   key={key}
@@ -349,7 +349,7 @@ export default function EmployeeTab({
             style={{ maxWidth: 240 }}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름, 전화번호, PIN 검색"
+            placeholder=", , PIN "
           />
         </div>
 
@@ -357,20 +357,20 @@ export default function EmployeeTab({
           <table className="att-table">
             <thead>
               <tr>
-                <th>이름</th>
-                <th>전화번호</th>
-                <th>시급</th>
+                <th></th>
+                <th></th>
+                <th></th>
                 <th>PIN</th>
-                <th>역할</th>
-                <th>상태</th>
-                <th>관리</th>
+                <th></th>
+                <th></th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
               {filteredEmployees.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="att-empty-cell">
-                    {search ? "검색 결과가 없습니다." : "등록된 직원이 없습니다."}
+                    {search ? "  ." : "  ."}
                   </td>
                 </tr>
               ) : (
@@ -398,12 +398,12 @@ export default function EmployeeTab({
                               borderRadius: 4,
                             }}
                           >
-                            편집중
+                            
                           </span>
                         )}
                       </td>
                       <td>{emp.phone || "-"}</td>
-                      <td>{Number(emp.hourly_wage || 0).toLocaleString()}원</td>
+                      <td>{Number(emp.hourly_wage || 0).toLocaleString()}</td>
                       <td>
                         <code style={{ fontSize: 13, letterSpacing: 2 }}>{emp.pin || "-"}</code>
                       </td>
@@ -418,7 +418,7 @@ export default function EmployeeTab({
                             color: emp.role === "admin" ? "#7c3aed" : "#374151",
                           }}
                         >
-                          {emp.role === "admin" ? "관리자" : "직원"}
+                          {emp.role === "admin" ? "" : ""}
                         </span>
                       </td>
                       <td>
@@ -432,7 +432,7 @@ export default function EmployeeTab({
                             color: isActive ? "#059669" : "#9ca3af",
                           }}
                         >
-                          {isActive ? "활성" : "비활성"}
+                          {isActive ? "" : ""}
                         </span>
                       </td>
                       <td>
@@ -442,14 +442,14 @@ export default function EmployeeTab({
                             className="att-btn primary small"
                             onClick={() => handleEdit(emp)}
                           >
-                            수정
+                            
                           </button>
                           <button
                             type="button"
                             className="att-btn secondary small"
                             onClick={() => handleToggleActive(emp)}
                           >
-                            {isActive ? "비활성화" : "활성화"}
+                            {isActive ? "" : ""}
                           </button>
                           <button
                             type="button"
@@ -457,7 +457,7 @@ export default function EmployeeTab({
                             onClick={() => handleDelete(emp)}
                             style={{ color: "#dc2626" }}
                           >
-                            삭제
+                            
                           </button>
                         </div>
                       </td>
@@ -471,10 +471,11 @@ export default function EmployeeTab({
 
         {filteredEmployees.length > 0 && (
           <div style={{ marginTop: 10, fontSize: 12, color: "#9ca3af", textAlign: "right" }}>
-            {filteredEmployees.length}명 표시 중 (전체 {stats.total}명)
+            {filteredEmployees.length}   ( {stats.total})
           </div>
         )}
       </div>
     </div>
   );
 }
+

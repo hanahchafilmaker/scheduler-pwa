@@ -11,7 +11,7 @@ import EmployeeTab from "../shared/components/EmployeeTab";
 import { Toast } from "../shared/components/UI";
 import AdminPinScreen from "../shared/components/Admin_PinScreen";
 
-import { buildSettlement } from "../shared/utils/pay";
+import { calcRowPayWithSeparation } from "../shared/domain/attendance/payroll/engine/payEngine";
 import { safeStr } from "../shared/utils";
 import { SHIFT_TIME } from "../shared/constants";
 
@@ -34,7 +34,7 @@ function addMonths(ym, offset) {
 
 function monthLabel(ym) {
   const [y, m] = ym.split("-");
-  return `${y}년 ${Number(m)}월`;
+  return `${y} ${Number(m)}`;
 }
 
 function getWeekDates(offset = 0) {
@@ -64,10 +64,10 @@ export default function App() {
   const [tab, setTab] = useState("today");
   const [toast, setToast] = useState(null);
 
-  // att 탭 전용 월 선택
+  // att    
   const [attMonth, setAttMonth] = useState(currentYM());
 
-  // sim / settle 탭 공유 정산 월 — 단일 소스
+  // sim / settle       
   const [settlementOffset, setSettlementOffset] = useState(0);
 
   const [weekOffset, setWeekOffset] = useState(0);
@@ -86,14 +86,14 @@ export default function App() {
     };
   }, []);
 
-  /* ===== 정산 월 derived ===== */
-  // sim / settle 탭은 이 값을 공유 — selectedMonth 싱크 버그 제거
+  /* =====   derived ===== */
+  // sim / settle      selectedMonth   
   const settlementMonth = useMemo(
     () => addMonths(currentYM(), settlementOffset),
     [settlementOffset],
   );
 
-  // API에 넘길 month: att 탭은 attMonth, sim/settle 탭은 settlementMonth
+  // API  month: att  attMonth, sim/settle  settlementMonth
   const apiMonth = useMemo(() => {
     if (tab === "att") return attMonth;
     if (tab === "sim" || tab === "settle") return settlementMonth;
@@ -170,7 +170,7 @@ export default function App() {
     refreshAll().catch(() => {});
   }, [tab, isAdmin, refreshAdminToday, refreshAll]);
 
-  // att 탭에서 월 변경 시 재조회
+  // att     
   useEffect(() => {
     if (!isAdmin || tab !== "att") return;
     refreshAll().catch(() => {});
@@ -186,7 +186,7 @@ export default function App() {
         approval_note: "",
         date: row.date,
       });
-      showToast("승인되었습니다");
+      showToast("");
     },
     [approveAttendance, showToast],
   );
@@ -200,7 +200,7 @@ export default function App() {
         approval_note: "",
         date: row.date,
       });
-      showToast("거절 처리되었습니다");
+      showToast(" ");
     },
     [approveAttendance, showToast],
   );
@@ -320,7 +320,7 @@ export default function App() {
       );
     }
 
-    // att 탭
+    // att 
     return (
       <AttTab
         monthAttendance={monthAttendance}
@@ -349,7 +349,7 @@ export default function App() {
       <main className="main-content">
         <MobileTabs tab={tab} setTab={setTab} />
 
-        {/* att 탭 전용 월 선택 바 */}
+        {/* att      */}
         {tab === "att" && (
           <div className="month-toolbar">
             <button
@@ -357,7 +357,7 @@ export default function App() {
               className="ghost-sm"
               onClick={() => setAttMonth(addMonths(attMonth, -1))}
             >
-              ◀
+              
             </button>
 
             <strong>{monthLabel(attMonth)}</strong>
@@ -367,7 +367,7 @@ export default function App() {
               className="ghost-sm"
               onClick={() => setAttMonth(currentYM())}
             >
-              이번 달
+               
             </button>
 
             <button
@@ -375,7 +375,7 @@ export default function App() {
               className="ghost-sm"
               onClick={() => setAttMonth(addMonths(attMonth, 1))}
             >
-              ▶
+              
             </button>
           </div>
         )}

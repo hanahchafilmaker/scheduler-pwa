@@ -1,4 +1,4 @@
-export function buildCheckInRow({
+﻿export function buildCheckInRow({
   employee,
   schedule,
   checkInTime,
@@ -27,7 +27,7 @@ export function buildCheckInRow({
     paid_check_in: checkInTime,
     paid_check_out: null,
 
-    // 🔥 핵심 수정: 자동 승인 금지
+    // ? ? ?: ? ? ?
     approved: isOutOfSchedule ? false : baseApproved,
 
     approval_note: null,
@@ -49,3 +49,4 @@ export function buildCheckInRow({
     approval_reason: null,
   };
 }
+

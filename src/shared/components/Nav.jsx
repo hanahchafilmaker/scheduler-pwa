@@ -5,7 +5,7 @@ export function Sidebar({ tab, setTab, loading, onRefresh }) {
     <aside className="sidebar">
       <div className="sidebar-brand">
         <div className="brand-logo">SHIFT</div>
-        <div className="brand-title">관리자 대시보드</div>
+        <div className="brand-title"> </div>
       </div>
 
       <nav className="sidebar-nav">
@@ -23,7 +23,7 @@ export function Sidebar({ tab, setTab, loading, onRefresh }) {
 
       <div className="sidebar-footer">
         <button className="refresh-btn" onClick={onRefresh} disabled={loading}>
-          {loading ? "불러오는 중..." : "새로고침"}
+          {loading ? " ..." : ""}
         </button>
       </div>
     </aside>
@@ -46,3 +46,4 @@ export function MobileTabs({ tab, setTab }) {
     </div>
   );
 }
+

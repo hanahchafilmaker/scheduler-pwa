@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from "react";
+﻿import React, { useMemo, useState } from "react";
 
 import {
   calcRowPayWithSeparation,
-  calcWorkMinutes,
-  diffMinutes,
-} from "../utils/pay";
+  calcMonthSummary,
+} from "../domain/attendance/payroll/engine/payEngine";
+
 import {
   getApprovalStatusLabel,
   getApprovalReasonLabel,
@@ -21,7 +21,7 @@ import EditModal from "./EditModal";
 import "./AttTab.css";
 
 /* ----------------------------------------------------------------
-   내부 유틸
+    
 ---------------------------------------------------------------- */
 
 function safeArray(value) {
@@ -34,12 +34,12 @@ function timeRange(start, end) {
 
 function formatMinutes(mins) {
   const n = Number(mins || 0);
-  if (!n) return "0분";
+  if (!n) return "0";
   const h = Math.floor(n / 60);
   const m = n % 60;
-  if (h && m) return `${h}시간 ${m}분`;
-  if (h) return `${h}시간`;
-  return `${m}분`;
+  if (h && m) return `${h} ${m}`;
+  if (h) return `${h}`;
+  return `${m}`;
 }
 
 function matchesSearch(row, keyword) {
@@ -59,7 +59,7 @@ function matchesSearch(row, keyword) {
 }
 
 /* ----------------------------------------------------------------
-   서브 컴포넌트
+    
 ---------------------------------------------------------------- */
 
 function StatusBadge({ status }) {
@@ -90,7 +90,7 @@ function SummaryCard({ title, value, sub }) {
 }
 
 /* ----------------------------------------------------------------
-   메인 컴포넌트
+    
 ---------------------------------------------------------------- */
 
 export default function AttTab(props) {
@@ -110,7 +110,7 @@ export default function AttTab(props) {
 
   const attendanceList = safeArray(monthAttendance);
 
-  /* ── 필터 ── */
+  /*    */
   const filteredRows = useMemo(() => {
     return attendanceList.filter((row) => {
       const matchStatus =
@@ -122,7 +122,7 @@ export default function AttTab(props) {
     });
   }, [attendanceList, statusFilter, reasonFilter, search]);
 
-  /* ── 요약 ── */
+  /*    */
   const summary = useMemo(() => {
     const pending = selectPending(attendanceList);
     const rejected = selectRejected(attendanceList);
@@ -176,7 +176,7 @@ export default function AttTab(props) {
     };
   }, [attendanceList]);
 
-  /* ── 핸들러 ── */
+  /*    */
   const handleApprove = async (row, note) => {
     if (!approveAttendance) return;
     await approveAttendance({
@@ -207,40 +207,40 @@ export default function AttTab(props) {
     setEditRow(null);
   };
 
-  /* ── 렌더 ── */
+  /*    */
   return (
     <div className="att-tab">
       <div className="att-topbar">
         <div>
-          <h2 className="att-title">출퇴근 / 정산</h2>
+          <h2 className="att-title"> / </h2>
           <p className="att-subtitle">
-            {selectedMonth || "-"} · 실제시간과 지급시간 분리
+            {selectedMonth || "-"}    
           </p>
         </div>
       </div>
 
       <div className="att-summary-grid">
-        <SummaryCard title="전체 기록" value={summary.total} />
-        <SummaryCard title="승인대기" value={summary.pending} />
+        <SummaryCard title=" " value={summary.total} />
+        <SummaryCard title="" value={summary.pending} />
         <SummaryCard
-          title="지급 근무시간"
+          title=" "
           value={formatMinutes(summary.totalPaidMinutes)}
         />
         <SummaryCard
-          title="실제 근무시간"
+          title=" "
           value={formatMinutes(summary.totalActualMinutes)}
         />
         <SummaryCard
-          title="월 누적 인건비"
+          title="  "
           value={`${Math.round(
             summary.todayLaborCost
-          ).toLocaleString()}원`}
+          ).toLocaleString()}`}
         />
         <SummaryCard
-          title="월 예상 인건비"
+          title="  "
           value={`${Math.round(
             summary.estimatedMonthLaborCost
-          ).toLocaleString()}원`}
+          ).toLocaleString()}`}
         />
       </div>
 
@@ -250,7 +250,7 @@ export default function AttTab(props) {
             className="att-input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름, 날짜, 사유 검색"
+            placeholder=", ,  "
           />
 
           <select
@@ -258,11 +258,11 @@ export default function AttTab(props) {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="all">전체 상태</option>
-            <option value="approved">승인</option>
-            <option value="pending">승인대기</option>
-            <option value="rejected">거절</option>
-            <option value="auto_closed">자동종료</option>
+            <option value="all"> </option>
+            <option value="approved"></option>
+            <option value="pending"></option>
+            <option value="rejected"></option>
+            <option value="auto_closed"></option>
           </select>
 
           <select
@@ -270,10 +270,10 @@ export default function AttTab(props) {
             value={reasonFilter}
             onChange={(e) => setReasonFilter(e.target.value)}
           >
-            <option value="all">전체 사유</option>
-            <option value="out_of_schedule">스케줄 외 출근</option>
-            <option value="substitute">대타</option>
-            <option value="late">지각</option>
+            <option value="all"> </option>
+            <option value="out_of_schedule">  </option>
+            <option value="substitute"></option>
+            <option value="late"></option>
           </select>
         </div>
 
@@ -281,18 +281,18 @@ export default function AttTab(props) {
           <table className="att-table">
             <thead>
               <tr>
-                <th>이름</th>
-                <th>날짜</th>
-                <th>파트</th>
-                <th>예정시간</th>
-                <th>실제시간</th>
-                <th>지급시간</th>
-                <th>상태</th>
-                <th>사유</th>
-                <th>휴게</th>
-                <th>실지급</th>
-                <th>메모</th>
-                <th>처리</th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
               </tr>
             </thead>
 
@@ -300,7 +300,7 @@ export default function AttTab(props) {
               {filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={12} className="att-empty-cell">
-                    조건에 맞는 근태 기록이 없습니다.
+                        .
                   </td>
                 </tr>
               ) : (
@@ -319,9 +319,9 @@ export default function AttTab(props) {
                   const payDisplay = payResult
                     ? `${Math.round(
                         payResult.payrollTotalPay || 0
-                      ).toLocaleString()}원`
+                      ).toLocaleString()}`
                     : isPending(row)
-                    ? "미확정"
+                    ? ""
                     : "-";
 
                   return (
@@ -350,7 +350,7 @@ export default function AttTab(props) {
                       <td>
                         <ReasonBadge reason={row.approval_reason} />
                       </td>
-                      <td>{Number(row.break_min || 0)}분</td>
+                      <td>{Number(row.break_min || 0)}</td>
                       <td>{payDisplay}</td>
                       <td>
                         {row.memo || row.approval_note || "-"}
@@ -362,14 +362,14 @@ export default function AttTab(props) {
                               className="att-btn primary small"
                               onClick={() => setSelectedRow(row)}
                             >
-                              승인
+                              
                             </button>
                           )}
                           <button
                             className="att-btn secondary small"
                             onClick={() => setEditRow(row)}
                           >
-                            수정
+                            
                           </button>
                         </div>
                       </td>

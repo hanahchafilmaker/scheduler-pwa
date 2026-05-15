@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 
 /**
  * EditModal
  *
- * 수정 가능 필드:
+ *   :
  *   check_in, check_out, break_min, memo
  *
  * Props:
- *   row      — attendance row (null이면 닫힘)
- *   onClose  — () => void
- *   onSave   — (payload) => Promise<void>
+ *   row       attendance row (null )
+ *   onClose   () => void
+ *   onSave    (payload) => Promise<void>
  *             payload: { attendance_id, check_in, check_out, break_min, memo }
  */
 export default function EditModal({ row, onClose, onSave }) {
@@ -32,15 +32,15 @@ export default function EditModal({ row, onClose, onSave }) {
   };
 
   const handleSave = async () => {
-    // 기본 유효성 검사
+    //   
     if (form.check_in && form.check_out) {
       if (toMin(form.check_out) <= toMin(form.check_in)) {
-        setError("퇴근 시간이 출근 시간보다 빠릅니다.");
+        setError("    .");
         return;
       }
     }
     if (form.break_min !== "" && Number(form.break_min) < 0) {
-      setError("휴게 시간은 0분 이상이어야 합니다.");
+      setError("  0  .");
       return;
     }
 
@@ -56,7 +56,7 @@ export default function EditModal({ row, onClose, onSave }) {
       });
       onClose();
     } catch (e) {
-      setError("저장 중 오류가 발생했습니다.");
+      setError("   .");
     } finally {
       setLoading(false);
     }
@@ -73,26 +73,26 @@ export default function EditModal({ row, onClose, onSave }) {
       >
         <div className="modal-header">
           <h3 id="edit-modal-title" className="modal-title">
-            근태 수정
+             
           </h3>
           <button
             type="button"
             className="modal-close-btn"
             onClick={onClose}
-            aria-label="닫기"
+            aria-label=""
           >
-            ✕
+            
           </button>
         </div>
 
         <div className="modal-body">
-          {/* 읽기전용 요약 */}
+          {/*   */}
           <div className="modal-info-grid modal-readonly-summary">
-            <InfoRow label="이름"   value={row.name  || "-"} />
-            <InfoRow label="날짜"   value={row.date  || "-"} />
-            <InfoRow label="파트"   value={row.part  || "-"} />
+            <InfoRow label=""   value={row.name  || "-"} />
+            <InfoRow label=""   value={row.date  || "-"} />
+            <InfoRow label=""   value={row.part  || "-"} />
             <InfoRow
-              label="예정"
+              label=""
               value={
                 row.planned_start && row.planned_end
                   ? `${row.planned_start} ~ ${row.planned_end}`
@@ -103,9 +103,9 @@ export default function EditModal({ row, onClose, onSave }) {
 
           <hr className="modal-divider" />
 
-          {/* 편집 가능 필드 */}
+          {/*    */}
           <div className="modal-fields">
-            <Field label="출근 시간" hint="HH:MM">
+            <Field label=" " hint="HH:MM">
               <input
                 type="time"
                 className="modal-input"
@@ -115,7 +115,7 @@ export default function EditModal({ row, onClose, onSave }) {
               />
             </Field>
 
-            <Field label="퇴근 시간" hint="HH:MM">
+            <Field label=" " hint="HH:MM">
               <input
                 type="time"
                 className="modal-input"
@@ -125,7 +125,7 @@ export default function EditModal({ row, onClose, onSave }) {
               />
             </Field>
 
-            <Field label="휴게 시간" hint="분 단위">
+            <Field label=" " hint=" ">
               <input
                 type="number"
                 className="modal-input"
@@ -139,13 +139,13 @@ export default function EditModal({ row, onClose, onSave }) {
               />
             </Field>
 
-            <Field label="메모" fullWidth>
+            <Field label="" fullWidth>
               <textarea
                 className="modal-textarea"
                 value={form.memo}
                 onChange={handleChange("memo")}
                 rows={3}
-                placeholder="관리자 메모"
+                placeholder=" "
                 disabled={loading}
               />
             </Field>
@@ -161,7 +161,7 @@ export default function EditModal({ row, onClose, onSave }) {
             onClick={onClose}
             disabled={loading}
           >
-            취소
+            
           </button>
           <button
             type="button"
@@ -169,7 +169,7 @@ export default function EditModal({ row, onClose, onSave }) {
             onClick={handleSave}
             disabled={loading}
           >
-            {loading ? "저장 중…" : "저장"}
+            {loading ? " " : ""}
           </button>
         </div>
       </div>
@@ -177,7 +177,7 @@ export default function EditModal({ row, onClose, onSave }) {
   );
 }
 
-// ─── 내부 헬퍼 ──────────────────────────────────────────────────────────────
+//    
 
 function makeForm(row) {
   if (!row) return { check_in: "", check_out: "", break_min: "", memo: "" };
@@ -189,7 +189,7 @@ function makeForm(row) {
   };
 }
 
-/** "HH:MM" → 분 정수 */
+/** "HH:MM"    */
 function toMin(t) {
   const m = String(t || "").match(/(\d+):(\d+)/);
   if (!m) return 0;

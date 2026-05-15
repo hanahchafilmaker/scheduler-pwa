@@ -1,7 +1,16 @@
 import React from "react";
 
 export default function PinScreen(props) {
-  const { inputPin = "", setInputPin, pinError = "", loading = false, onLogin } = props;
+  const {
+    mode = "staff", // 👈 추가
+    inputPin = "",
+    setInputPin,
+    pinError = "",
+    loading = false,
+    onLogin,
+  } = props;
+
+  const isAdmin = mode === "admin";
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -19,8 +28,14 @@ export default function PinScreen(props) {
   return (
     <div className="pin-card">
       <div className="pin-brand">SHIFT</div>
-      <h1>직원 로그인</h1>
-      <p>PIN을 입력하고 오늘 근무 상태를 확인하세요.</p>
+
+      <h1>{isAdmin ? "관리자 로그인" : "직원 로그인"}</h1>
+
+      <p>
+        {isAdmin
+          ? "관리자 PIN을 입력하세요."
+          : "PIN을 입력하고 오늘 근무 상태를 확인하세요."}
+      </p>
 
       <form onSubmit={handleSubmit}>
         <input

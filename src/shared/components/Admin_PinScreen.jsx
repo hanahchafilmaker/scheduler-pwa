@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "./Admin_PinScreen.css";
-import { supabase } from "../shared/supabaseClient";
+import { supabase } from "../../lib/supabaseClient";
 
 export default function AdminPinScreen({ onSuccess }) {
   const [inputPin, setInputPin] = useState("");

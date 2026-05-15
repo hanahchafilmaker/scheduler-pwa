@@ -975,21 +975,59 @@ export default function useApi(options = {}) {
     }
   }, [month]);
 
-  const refreshAdminToday = useCallback(async () => {
-    setTodayLoading(true);
-    setError("");
-    try {
-      const data = await fetchAdminToday();
-      setTodaySchedule(data.schedule);
-      setTodayAttendance(data.attendance);
-      if (data.employees) setEmployees(data.employees);
-    } catch (err) {
-      setError(err.message || "오늘 데이터를 불러오지 못했습니다.");
-      throw err;
-    } finally {
-      setTodayLoading(false);
+const refreshAdminToday = useCallback(async () => {
+  setTodayLoading(true);
+  setError("");
+
+  try {
+    const data = await fetchAdminToday();
+
+    // ─────────────────────────────────────────────
+    // 자동 퇴근 처리
+    // 파트 종료 + 10분 지나도 퇴근 안 누르면
+    // check_out = planned_end 로 강제 저장
+    // ─────────────────────────────────────────────
+    const now = new Date();
+
+    for (const row of data.attendance || []) {
+      if (!row.check_in || row.check_out || !row.planned_end) continue;
+
+      const [hh, mm] = String(row.planned_end).split(":").map(Number);
+      if (isNaN(hh) || isNaN(mm)) continue;
+
+      const deadline = new Date();
+      deadline.setHours(hh, mm + 10, 0, 0); // 종료 +10분
+
+      if (now > deadline) {
+        await doUpdateAttendance({
+          attendance_id: row.attendance_id,
+          check_out: row.planned_end,          // 기록은 종료시간으로 보정
+          paid_check_out: row.planned_end,
+          auto_checkout: true,
+          approval_note: [
+            row.approval_note,
+            "자동퇴근(10분 초과 / 종료시간 보정)"
+          ].filter(Boolean).join(" / "),
+        });
+      }
     }
-  }, []);
+
+    // 자동퇴근 후 재조회
+    const refreshed = await fetchAdminToday();
+
+    setTodaySchedule(refreshed.schedule);
+    setTodayAttendance(refreshed.attendance);
+
+    if (refreshed.employees) {
+      setEmployees(refreshed.employees);
+    }
+  } catch (err) {
+    setError(err.message || "오늘 데이터를 불러오지 못했습니다.");
+    throw err;
+  } finally {
+    setTodayLoading(false);
+  }
+}, []);
 
   const refreshStaffToday = useCallback(async () => {
     if (!employeeId) return;

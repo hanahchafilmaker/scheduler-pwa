@@ -292,11 +292,11 @@ export default function App() {
 
     return (
       <AttTab
-        monthAttendance={monthAttendance}
-        approveAttendance={approveAttendance}
-        updateAttendance={updateAttendance}
-        selectedMonth={selectedMonth}
-        currentManagerName="manager"
+      monthAttendance={monthAttendance}
+      approveAttendance={approveAttendance}
+      updateAttendance={updateAttendance}
+      selectedMonth={selectedMonth}
+      currentManagerName={currentManagerName}
       />
     );
   };

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import "./Admin_PinScreen.css";
 
 export default function AdminPinScreen({ onSuccess }) {
   const [inputPin, setInputPin] = useState("");

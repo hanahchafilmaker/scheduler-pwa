@@ -1,19 +1,18 @@
 import React, { useState } from "react";
 import "./Admin_PinScreen.css";
+import { supabase } from "../shared/supabaseClient";
 
 export default function AdminPinScreen({ onSuccess }) {
   const [inputPin, setInputPin] = useState("");
   const [loading, setLoading] = useState(false);
   const [pinError, setPinError] = useState("");
 
-  const ADMIN_PIN = "1234"; // 필요하면 env로 빼도 됨
-
   const handleLogin = async () => {
     setPinError("");
 
-    const normalized = String(inputPin).trim();
+    const pin = String(inputPin).trim();
 
-    if (!normalized) {
+    if (!pin) {
       setPinError("PIN을 입력해주세요.");
       return;
     }
@@ -21,14 +20,31 @@ export default function AdminPinScreen({ onSuccess }) {
     setLoading(true);
 
     try {
-      // 🔐 여기서 서버 붙이면 됨 (지금은 local check)
-      if (normalized !== ADMIN_PIN) {
+      // Supabase에서 PIN + 관리자 권한 검증
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, name, role, active")
+        .eq("pin", pin)
+        .eq("active", true)
+        .single();
+
+      if (error || !data) {
         setPinError("PIN이 올바르지 않습니다.");
         setInputPin("");
         return;
       }
 
-      onSuccess?.();
+      if (data.role !== "admin") {
+        setPinError("관리자 권한이 없습니다.");
+        setInputPin("");
+        return;
+      }
+
+      // 성공 처리
+      onSuccess?.(data);
+    } catch (err) {
+      console.error(err);
+      setPinError("로그인 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -71,7 +87,7 @@ export default function AdminPinScreen({ onSuccess }) {
           </button>
         </form>
 
-        {pinError ? <div className="admin-error">{pinError}</div> : null}
+        {pinError && <div className="admin-error">{pinError}</div>}
       </div>
     </div>
   );

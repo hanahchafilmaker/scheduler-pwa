@@ -4,6 +4,7 @@ import {
   getApprovalReasonLabel,
   getApprovalStatusLabel,
   getPaidWorkMinutes,
+  getScheduledWorkMinutes,
 } from "../hooks/useApi";
 import "./AttTab.css";
 
@@ -173,10 +174,104 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
   );
 }
 
+function EditModal({ row, onClose, onSave }) {
+  const [paidIn, setPaidIn] = useState(row?.paid_check_in || "");
+  const [paidOut, setPaidOut] = useState(row?.paid_check_out || "");
+  const [breakMin, setBreakMin] = useState(String(row?.break_min || 0));
+  const [note, setNote] = useState(row?.approval_note || "");
+
+  if (!row) return null;
+
+  const handleSave = () => {
+    onSave({
+      attendance_id: row.attendance_id,
+      paid_check_in: paidIn,
+      paid_check_out: paidOut,
+      break_min: Number(breakMin) || 0,
+      approval_note: note,
+    });
+    onClose();
+  };
+
+  return (
+    <div className="att-modal-overlay">
+      <div className="att-modal">
+        <div className="att-modal-header">
+          <h3>근태 수정</h3>
+          <button type="button" className="att-icon-btn" onClick={onClose}>닫기</button>
+        </div>
+        <div className="att-modal-body">
+          <div className="att-detail-grid">
+            <div>
+              <strong>직원</strong>
+              <div>{row.name || "-"}</div>
+            </div>
+            <div>
+              <strong>날짜 / 파트</strong>
+              <div>{row.date} · {getPartLabel(row.part)}</div>
+            </div>
+            <div>
+              <strong>실제 출근</strong>
+              <div>{row.check_in || "-"}</div>
+            </div>
+            <div>
+              <strong>실제 퇴근</strong>
+              <div>{row.check_out || "-"}</div>
+            </div>
+          </div>
+
+          <label className="att-label" style={{ marginTop: 12 }}>
+            지급 출근 시간
+            <input
+              className="att-input"
+              type="time"
+              value={paidIn}
+              onChange={(e) => setPaidIn(e.target.value)}
+            />
+          </label>
+          <label className="att-label">
+            지급 퇴근 시간
+            <input
+              className="att-input"
+              type="time"
+              value={paidOut}
+              onChange={(e) => setPaidOut(e.target.value)}
+            />
+          </label>
+          <label className="att-label">
+            휴게 시간 (분)
+            <input
+              className="att-input"
+              type="number"
+              min={0}
+              value={breakMin}
+              onChange={(e) => setBreakMin(e.target.value)}
+            />
+          </label>
+          <label className="att-label">
+            메모
+            <textarea
+              className="att-textarea"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="수정 사유 등"
+            />
+          </label>
+        </div>
+        <div className="att-modal-actions">
+          <button type="button" className="att-btn secondary" onClick={onClose}>취소</button>
+          <button type="button" className="att-btn primary" onClick={handleSave}>저장</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AttTab(props) {
   const {
     monthAttendance = [],
     approveAttendance,
+    updateAttendance,
     selectedMonth = "",
     currentManagerName = "manager",
   } = props;
@@ -185,6 +280,7 @@ export default function AttTab(props) {
   const [reasonFilter, setReasonFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState(null);
+  const [editRow, setEditRow] = useState(null);
 
   const attendanceList = safeArray(monthAttendance);
 
@@ -248,6 +344,11 @@ export default function AttTab(props) {
     });
 
     setSelectedRow(null);
+  };
+
+  const handleEdit = async (payload) => {
+    if (!updateAttendance) return;
+    await updateAttendance(payload);
   };
 
   return (
@@ -320,7 +421,9 @@ export default function AttTab(props) {
                 <th>날짜</th>
                 <th>파트</th>
                 <th>예정시간</th>
+                <th>파트기준</th>
                 <th>실제시간</th>
+                <th>지각</th>
                 <th>지급시간</th>
                 <th>상태</th>
                 <th>사유</th>
@@ -343,11 +446,35 @@ export default function AttTab(props) {
 
                   return (
                     <tr key={row.attendance_id}>
-                      <td>{row.name || "-"}</td>
+                      <td>
+                        {row.name || "-"}
+                        {row.is_substitute && (
+                          <span style={{ fontSize: 10, color: "#f59e0b", marginLeft: 4 }}>대타</span>
+                        )}
+                      </td>
                       <td>{row.date || "-"}</td>
-                      <td>{getPartLabel(row.part)}</td>
+                      <td>
+                        {getPartLabel(row.part)}
+                        {row.original_part && row.original_part !== row.part && (
+                          <span style={{ fontSize: 10, color: "#9ca3af", display: "block" }}>
+                            원래: {getPartLabel(row.original_part)}
+                          </span>
+                        )}
+                      </td>
                       <td>{timeRange(row.planned_start, row.planned_end)}</td>
+                      <td style={{ color: "#6b7280", fontSize: 12 }}>
+                        {formatMinutes(getScheduledWorkMinutes(row))}
+                      </td>
                       <td>{timeRange(row.check_in, row.check_out)}</td>
+                      <td>
+                        {row.late_display_min > 0 ? (
+                          <span style={{ color: "#dc2626", fontSize: 12 }}>
+                            {row.late_display_min}분
+                          </span>
+                        ) : (
+                          <span className="att-muted">-</span>
+                        )}
+                      </td>
                       <td>{timeRange(row.paid_check_in, row.paid_check_out)}</td>
                       <td>
                         <StatusBadge status={row.approval_status} />
@@ -363,17 +490,24 @@ export default function AttTab(props) {
                       <td>{formatMinutes(getPaidWorkMinutes(row))}</td>
                       <td className="att-note-cell">{row.memo || row.approval_note || "-"}</td>
                       <td>
-                        {canApprove ? (
+                        <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
+                          {canApprove && (
+                            <button
+                              type="button"
+                              className="att-btn primary small"
+                              onClick={() => setSelectedRow(row)}
+                            >
+                              승인
+                            </button>
+                          )}
                           <button
                             type="button"
-                            className="att-btn primary small"
-                            onClick={() => setSelectedRow(row)}
+                            className="att-btn secondary small"
+                            onClick={() => setEditRow(row)}
                           >
-                            처리
+                            수정
                           </button>
-                        ) : (
-                          <span className="att-muted">완료</span>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -389,6 +523,12 @@ export default function AttTab(props) {
         onClose={() => setSelectedRow(null)}
         onApprove={handleApprove}
         onReject={handleReject}
+      />
+
+      <EditModal
+        row={editRow}
+        onClose={() => setEditRow(null)}
+        onSave={handleEdit}
       />
     </div>
   );

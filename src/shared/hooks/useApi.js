@@ -93,6 +93,27 @@ function normalizeAttendance(row) {
     auto_checkout: !!row?.auto_checkout,
 
     memo: row?.memo || "",
+
+    // ── 추가 필드 ──────────────────────────────────────
+    // 파트 기준 근무시간 (planned_start ~ planned_end 기준 분)
+    scheduled_work_min: (function () {
+      const s = row?.planned_start;
+      const e = row?.planned_end;
+      if (!s || !e) return 0;
+      const [sh, sm] = s.split(":").map(Number);
+      const [eh, em] = e.split(":").map(Number);
+      if ([sh, sm, eh, em].some(isNaN)) return 0;
+      return Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+    })(),
+
+    // 대타일 때 원래 배정된 파트 (없으면 빈 문자열)
+    original_part: row?.original_part || "",
+
+    // 대타 원래 담당자 이름 (없으면 빈 문자열)
+    substitute_for: row?.substitute_for || "",
+
+    // 실제 지각 표시 분 (grace 5분 제외 후, 음수 방지)
+    late_display_min: Math.max(0, Number(row?.late_min || 0) - 5),
   };
 }
 
@@ -889,6 +910,14 @@ export function getPaidWorkMinutes(row) {
     0,
     diffMinutes(row?.paid_check_in, row?.paid_check_out) - Number(row?.break_min || 0),
   );
+}
+
+/**
+ * 파트 기준 근무시간 (분) — planned_start/end 기준, break 미차감
+ * "이 파트에서 원래 몇 분 일해야 하는가"
+ */
+export function getScheduledWorkMinutes(row) {
+  return Number(row?.scheduled_work_min || 0);
 }
 
 export function getActualWorkMinutes(row) {

@@ -207,6 +207,7 @@ export default function App() {
         name: emp?.name || "",
         planned_start: shift.start || "",
         planned_end: shift.end || "",
+        memo: cellEdit.memo || "",
       };
 
       const refetch = () => refreshAll();
@@ -273,6 +274,7 @@ export default function App() {
           schedule={schedule}
           employees={employees}
           onSaveCell={handleSaveCell}
+          onToast={showToast}
         />
       );
     }
@@ -292,6 +294,7 @@ export default function App() {
       <AttTab
         monthAttendance={monthAttendance}
         approveAttendance={approveAttendance}
+        updateAttendance={updateAttendance}
         selectedMonth={selectedMonth}
         currentManagerName="manager"
       />

@@ -816,128 +816,57 @@ async function doApplyTemplate(startDateStr) {
 }
 
 // ----------------------------------------------------------------
-// 공개 유틸
+// 공개 유틸 — re-export (단일 소스: domain 레이어)
 // ----------------------------------------------------------------
+//
+// ⚠️  아래 함수/상수들은 domain 레이어로 이동 완료.
+//     기존 import를 깨뜨리지 않기 위해 re-export 유지.
+//     새 코드에서는 반드시 아래 경로에서 직접 import할 것.
+//
+//     getAttendanceStatus, ATTENDANCE_STATUS
+//       → "../domain/attendance/getAttendanceStatus"
+//
+//     getApprovalStatusLabel, getApprovalReasonLabel, getPartLabel
+//       → "../domain/attendance/labels"
+//
+//     isPendingAttendance, isApprovedAttendance, isRejectedAttendance
+//       → "../domain/attendance/selectors"  (isPending, isApproved, isRejected)
+//
+//     diffMinutes, getPaidWorkMinutes, getActualWorkMinutes
+//       → "../utils/pay"  (diffMinutes, calcWorkMinutes)
+//
+
+export {
+  ATTENDANCE_STATUS,
+  getAttendanceStatus,
+} from "../domain/attendance/getAttendanceStatus";
+
+export {
+  getApprovalStatusLabel,
+  getApprovalReasonLabel,
+  getPartLabel,
+} from "../domain/attendance/labels";
+
+export {
+  isPending   as isPendingAttendance,
+  isApproved  as isApprovedAttendance,
+  isRejected  as isRejectedAttendance,
+  isWorking   as isWorkingNow,
+} from "../domain/attendance/selectors";
+
+export {
+  diffMinutes,
+  calcWorkMinutes     as getPaidWorkMinutes,
+  calcActualWorkMinutes as getActualWorkMinutes,
+} from "../utils/pay";
 
 /**
- * attendance 상태 상수
- *
- * UI에서 문자열 리터럴 직접 사용 금지 — 반드시 이 상수 사용
- *
- * @example
- * import { getAttendanceStatus, ATTENDANCE_STATUS } from "../shared/hooks/useApi";
- * if (getAttendanceStatus(row) === ATTENDANCE_STATUS.PENDING) { ... }
- */
-export const ATTENDANCE_STATUS = Object.freeze({
-  NONE:     "NONE",     // 출근 기록 없음
-  PENDING:  "PENDING",  // 출근 중, 관리자 승인 대기
-  WORKING:  "WORKING",  // 출근 중, 승인 완료
-  REJECTED: "REJECTED", // 출근 중, 거절됨
-  CLOSED:   "CLOSED",   // 퇴근 완료
-});
-
-/**
- * attendance row → UI 상태 (단일 진실)
- *
- * DB tri-state (approved 컬럼):
- *   null  → PENDING
- *   true  → WORKING or CLOSED
- *   false → REJECTED
- *
- * ❌ UI에서 row.approved, row.approval_status, check_in && !check_out 직접 비교 금지
- * ✅ 반드시 이 함수만 사용
- *
- * @param {object} row - normalizeAttendance() 결과
- * @returns {string} ATTENDANCE_STATUS 상수 중 하나
- */
-export function getAttendanceStatus(row) {
-  if (!row?.check_in) return ATTENDANCE_STATUS.NONE;
-  if (row.check_out)  return ATTENDANCE_STATUS.CLOSED;
-
-  const s = row.approval_status;
-  if (s === "approved") return ATTENDANCE_STATUS.WORKING;
-  if (s === "rejected") return ATTENDANCE_STATUS.REJECTED;
-  return ATTENDANCE_STATUS.PENDING; // null(pending) + fallback
-}
-
-export function getApprovalReasonLabel(reason) {
-  switch (reason) {
-    case "out_of_schedule":
-      return "스케줄 외 출근";
-    case "substitute":
-      return "대타";
-    case "late":
-      return "지각";
-    case "early_leave":
-      return "조기퇴근";
-    case "overtime":
-      return "연장근무";
-    case "next_part_late_extension":
-      return "다음 파트 연장";
-    case "next_part_no_show_extension":
-      return "다음 파트 미출근 연장";
-    default:
-      return reason ? "확인 필요" : "-";
-  }
-}
-
-export function getApprovalStatusLabel(status) {
-  switch (status) {
-    case "approved":
-      return "승인";
-    case "pending":
-      return "승인대기";
-    case "rejected":
-      return "거절";
-    case "auto_closed":
-      return "자동종료";
-    default:
-      return "-";
-  }
-}
-
-export function diffMinutes(start, end) {
-  if (!start || !end) return 0;
-  const [sh, sm] = String(start).split(":").map(Number);
-  const [eh, em] = String(end).split(":").map(Number);
-  if ([sh, sm, eh, em].some(isNaN)) return 0;
-  const diff = eh * 60 + em - (sh * 60 + sm);
-  return diff < 0 ? 0 : diff;
-}
-
-export function getPaidWorkMinutes(row) {
-  return Math.max(
-    0,
-    diffMinutes(row?.paid_check_in, row?.paid_check_out) - Number(row?.break_min || 0),
-  );
-}
-
-/**
- * 파트 기준 근무시간 (분) — planned_start/end 기준, break 미차감
- * "이 파트에서 원래 몇 분 일해야 하는가"
+ * @deprecated pay.js의 calcWorkMinutes 사용
+ * row.scheduled_work_min은 normalizeAttendance에서 계산된 캐시값.
+ * 직접 계산이 필요하면 calcWorkMinutes(row.planned_start, row.planned_end, 0) 사용.
  */
 export function getScheduledWorkMinutes(row) {
   return Number(row?.scheduled_work_min || 0);
-}
-
-export function getActualWorkMinutes(row) {
-  return Math.max(0, diffMinutes(row?.check_in, row?.check_out) - Number(row?.break_min || 0));
-}
-
-export function isPendingAttendance(row) {
-  return row?.approval_status === "pending";
-}
-
-export function isApprovedAttendance(row) {
-  return row?.approval_status === "approved";
-}
-
-export function isRejectedAttendance(row) {
-  return row?.approval_status === "rejected";
-}
-
-export function isWorkingNow(row) {
-  return !!row?.check_in && !row?.check_out;
 }
 
 // ----------------------------------------------------------------

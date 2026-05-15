@@ -302,9 +302,22 @@ export function calcRowPayWithSeparation(row, hourlyWage) {
 }
 
 // ---------------------------------------------------------------------------
-// 구 로직 호환용
+// 구 로직 호환용 (DEPRECATED)
 // ---------------------------------------------------------------------------
-
+//
+// ⚠️  calcRowPay / calcPay 는 deprecated 입니다.
+//
+// 문제:
+//   - paid_check_in/out 기반으로 계산 → 원본 check_in/out과 다를 수 있음
+//   - 야간수당 0.5배 로직이 포함되어 있으나 현행 정책(야간수당 미적용)과 충돌
+//   - calcRowPayWithSeparation 과 동일 row에 사용하면 금액이 달라짐
+//
+// 대체:
+//   calcRowPayWithSeparation(row, wage)  →  pay.js 공식 함수
+//
+// 제거 예정: 모든 호출부가 calcRowPayWithSeparation으로 전환된 후 삭제
+//
+/** @deprecated calcRowPayWithSeparation 사용 */
 export function calcRowPay(row, hourlyWage) {
   if (!row || !isPaySettledRow(row)) return 0;
   const wage    = Number(hourlyWage ?? row.hourly_wage ?? 0) || 0;
@@ -313,6 +326,7 @@ export function calcRowPay(row, hourlyWage) {
   return Math.round((workMin / 60) * wage + (nightMin / 60) * wage * 0.5);
 }
 
+/** @deprecated calcRowPayWithSeparation 사용 */
 export function calcPay(paidCheckIn, paidCheckOut, breakMin, hourlyWage) {
   const wage    = Number(hourlyWage) || 0;
   const workMin = calcWorkMinutes(paidCheckIn, paidCheckOut, breakMin);

@@ -171,6 +171,21 @@
   color: #4338ca;
 }
 
+/* auto_closed 인라인 배지 — 지급시간 셀 안에 표시 */
+.att-badge-auto {
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+  vertical-align: middle;
+  cursor: default;
+}
+
 .att-btn {
   border: 0;
   border-radius: 10px;

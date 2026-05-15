@@ -3,6 +3,7 @@
 import {
   calcRowPayWithSeparation,
   calcMonthSummary,
+  calcWorkMinutes,
 } from "../domain/attendance/payroll/engine/payEngine";
 
 import {
@@ -397,3 +398,4 @@ export default function AttTab(props) {
     </div>
   );
 }
+

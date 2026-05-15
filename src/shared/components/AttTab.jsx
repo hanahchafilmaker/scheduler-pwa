@@ -12,6 +12,56 @@ function safeArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function timeRange(start, end) {
+  const s = start || "-";
+  const e = end || "-";
+  return `${s} ~ ${e}`;
+}
+
+function getPartLabel(part) {
+  switch (String(part || "").toLowerCase()) {
+    case "open":
+      return "오픈";
+    case "middle_a":
+      return "미들A";
+    case "middle_b":
+      return "미들B";
+    case "close":
+      return "마감";
+    case "extra":
+      return "추가";
+    default:
+      return part || "-";
+  }
+}
+
+function formatMinutes(mins) {
+  const n = Number(mins || 0);
+  if (!n) return "0분";
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  if (h) return `${h}시간`;
+  return `${m}분`;
+}
+
+function matchesSearch(row, keyword) {
+  if (!keyword.trim()) return true;
+  const q = keyword.trim().toLowerCase();
+
+  return [
+    row.name,
+    row.employee_id,
+    row.part,
+    row.date,
+    row.approval_status,
+    row.approval_reason,
+    row.memo,
+  ]
+    .filter(Boolean)
+    .some((v) => String(v).toLowerCase().includes(q));
+}
+
 export default function AttTab(props) {
 
   const {

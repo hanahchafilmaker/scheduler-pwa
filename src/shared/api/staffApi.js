@@ -1,4 +1,4 @@
-﻿import { STAFF_API_URL } from "./staffConfig";
+import { STAFF_API_URL } from "./staffConfig";
 
 export async function fetchStaffEmployees() {
   const res = await fetch(`${STAFF_API_URL}?action=all`, { redirect: "follow" });
@@ -43,7 +43,7 @@ export async function checkInStaff({ employee, workType, date, checkIn }) {
     }),
   });
   const json = await res.json();
-  if (json.ok === false) throw new Error(json.error || " ????");
+  if (json.ok === false) throw new Error(json.error || "출근 저장 실패");
   return json;
 }
 
@@ -58,7 +58,6 @@ export async function checkOutStaff({ attendanceId, checkOut }) {
     }),
   });
   const json = await res.json();
-  if (json.ok === false) throw new Error(json.error || "? ????");
+  if (json.ok === false) throw new Error(json.error || "퇴근 저장 실패");
   return json;
 }
-

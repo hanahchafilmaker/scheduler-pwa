@@ -1,10 +1,10 @@
-﻿// src/shared/components/ShiftTab.jsx
+// src/shared/components/ShiftTab.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PARTS, PART_LABEL, SHIFT_TIME } from "../constants";
-import { toISODate } from "../utils";
+import { normalizeDate } from "../utils";
 import "./ShiftTab.css";
 
-const DAY_KO = ["", "", "", "", "", "", ""];
+const DAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 const DAY_COLOR = { 0: "#dc2626", 6: "#2563eb" };
 
 function formatDayLabel(dateStr) {
@@ -18,8 +18,12 @@ function formatDayLabel(dateStr) {
   };
 }
 
+function getEntries(schedule, date) {
+  return schedule.filter((s) => normalizeDate(s.date) === date);
+}
+
 function getEntry(schedule, date, part) {
-  return schedule.find((s) => s.part === part && toISODate(s.date) === date) || null;
+  return schedule.find((s) => s.part === part && normalizeDate(s.date) === date) || null;
 }
 
 function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchorRef, onToast }) {
@@ -50,7 +54,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
     const rect = anchor.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    const popoverH = 320;
+    const popoverH = 320; // 메모 칸 추가 후 예상 높이
     const popoverW = 240;
 
     const spaceBelow = viewportHeight - rect.bottom;
@@ -69,7 +73,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
   const handleSave = () => {
     onSaveCell({ date, part, scheduleId: entry?.schedule_id || "", memo }, selectedId);
     onClose();
-    if (onToast) onToast(selectedId ? "" : " ");
+    if (onToast) onToast(selectedId ? "저장되었습니다" : "배정이 해제되었습니다");
   };
 
   const handleDelete = () => {
@@ -79,7 +83,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
     }
     onSaveCell({ date, part, scheduleId: entry.schedule_id, memo: "" }, "");
     onClose();
-    if (onToast) onToast("");
+    if (onToast) onToast("삭제되었습니다");
   };
 
   const shift = SHIFT_TIME[part] || {};
@@ -122,7 +126,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
         }}
         autoFocus
       >
-        <option value="">  </option>
+        <option value="">— 미배정 —</option>
         {employees
           .filter((e) => e.active !== false)
           .map((e) => (
@@ -135,7 +139,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
       <textarea
         value={memo}
         onChange={(e) => setMemo(e.target.value)}
-        placeholder=" ()"
+        placeholder="메모 (선택)"
         rows={2}
         style={{
           width: "100%",
@@ -157,10 +161,10 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
           style={{ flex: 1 }}
           onClick={handleSave}
         >
-          
+          저장
         </button>
         <button type="button" className="att-btn secondary small" onClick={onClose}>
-          
+          취소
         </button>
         {entry?.schedule_id && (
           <button
@@ -169,7 +173,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
             style={{ color: "#dc2626" }}
             onClick={handleDelete}
           >
-            
+            삭제
           </button>
         )}
       </div>
@@ -178,24 +182,24 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
 }
 
 function ShiftHeader({ weekDates, weekOffset, setWeekOffset }) {
-  const rangeLabel = weekDates.length === 7 ? `${weekDates[0]}  ${weekDates[6]}` : "";
+  const rangeLabel = weekDates.length === 7 ? `${weekDates[0]} – ${weekDates[6]}` : "";
 
   return (
     <div className="shift-tab-header">
       <div className="shift-header-copy">
-        <h2> </h2>
-        <p>    </p>
+        <h2>스케줄 관리</h2>
+        <p>셀을 클릭해 직원을 배정하거나 수정합니다</p>
       </div>
       <div className="shift-header-controls">
         <div className="week-nav modern">
           <button type="button" onClick={() => setWeekOffset(weekOffset - 1)}>
-             
+            이전 주
           </button>
           <button type="button" onClick={() => setWeekOffset(0)}>
-             
+            이번 주
           </button>
           <button type="button" onClick={() => setWeekOffset(weekOffset + 1)}>
-             
+            다음 주
           </button>
         </div>
         <div className="shift-range-pill">{rangeLabel}</div>
@@ -210,6 +214,20 @@ function DesktopShiftTable(props) {
   const [openCell, setOpenCell] = useState(null);
   const cellRefs = useRef({});
 
+  // 날짜별 직원 파트 순서 → 연속 근무 감지
+  const consecutiveMap = useMemo(() => {
+    const map = {};
+    weekDates.forEach((date) => {
+      const dayEntries = PARTS.map((p) => getEntry(schedule, date, p)).filter(Boolean);
+      dayEntries.forEach((entry, idx) => {
+        if (idx > 0 && dayEntries[idx - 1]?.employee_id === entry.employee_id) {
+          map[`${date}_${entry.part}`] = true;
+        }
+      });
+    });
+    return map;
+  }, [schedule, weekDates]);
+
   return (
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
@@ -219,7 +237,7 @@ function DesktopShiftTable(props) {
           <table className="shift-table shift-grid">
             <thead>
               <tr>
-                <th className="part-col"></th>
+                <th className="part-col">파트</th>
                 {weekDates.map((d) => {
                   const meta = formatDayLabel(d);
                   return (
@@ -250,6 +268,7 @@ function DesktopShiftTable(props) {
                     const cellKey = `${date}_${part}`;
                     const entry = getEntry(schedule, date, part);
                     const isOpen = openCell === cellKey;
+                    const isConsecutive = !!consecutiveMap[cellKey];
 
                     return (
                       <td
@@ -259,6 +278,19 @@ function DesktopShiftTable(props) {
                         ref={(el) => (cellRefs.current[cellKey] = { current: el })}
                         onClick={() => setOpenCell(isOpen ? null : cellKey)}
                       >
+                        {isConsecutive && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              width: "100%",
+                              height: 3,
+                              background: "#f59e0b",
+                              borderRadius: "2px 2px 0 0",
+                            }}
+                          />
+                        )}
                         {entry ? (
                           <div className="shift-cell-filled">
                             <span className="cell-name">{PART_LABEL[part]}</span>
@@ -270,7 +302,7 @@ function DesktopShiftTable(props) {
                             )}
                           </div>
                         ) : (
-                          <span className="cell-empty"></span>
+                          <span className="cell-empty">＋</span>
                         )}
 
                         {isOpen && (
@@ -304,6 +336,19 @@ function MobileShiftCards(props) {
   const [openCell, setOpenCell] = useState(null);
   const cardRefs = useRef({});
 
+  const consecutiveMap = useMemo(() => {
+    const map = {};
+    weekDates.forEach((date) => {
+      const dayEntries = PARTS.map((p) => getEntry(schedule, date, p)).filter(Boolean);
+      dayEntries.forEach((entry, idx) => {
+        if (idx > 0 && dayEntries[idx - 1]?.employee_id === entry.employee_id) {
+          map[`${date}_${entry.part}`] = true;
+        }
+      });
+    });
+    return map;
+  }, [schedule, weekDates]);
+
   return (
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
@@ -316,6 +361,7 @@ function MobileShiftCards(props) {
                 const cellKey = `${date}_${part}`;
                 const entry = getEntry(schedule, date, part);
                 const isOpen = openCell === cellKey;
+                const isConsecutive = !!consecutiveMap[cellKey];
 
                 return (
                   <div
@@ -325,6 +371,19 @@ function MobileShiftCards(props) {
                     style={{ position: "relative", overflow: "visible" }}
                     onClick={() => setOpenCell(isOpen ? null : cellKey)}
                   >
+                    {isConsecutive && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: 3,
+                          background: "#f59e0b",
+                          borderRadius: "2px 2px 0 0",
+                        }}
+                      />
+                    )}
                     <div className="shift-part-top">
                       <span className="shift-part-name">{PART_LABEL[part]}</span>
                       <span className="shift-part-time">
@@ -343,7 +402,7 @@ function MobileShiftCards(props) {
                           )}
                         </>
                       ) : (
-                        <span className="shift-part-empty"> </span>
+                        <span className="shift-part-empty">＋ 배정</span>
                       )}
                     </div>
 
@@ -380,7 +439,7 @@ export function ShiftTab({
   onToast,
 }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const todayDate = useMemo(() => toISODate(new Date()), []);
+  const todayDate = useMemo(() => normalizeDate(new Date()), []);
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768);
@@ -405,4 +464,3 @@ export function ShiftTab({
     </div>
   );
 }
-

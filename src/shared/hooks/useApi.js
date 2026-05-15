@@ -745,88 +745,6 @@ async function doDeleteEmployee(body) {
 }
 
 // ----------------------------------------------------------------
-// 정산 마감 API
-// ----------------------------------------------------------------
-
-/**
- * 특정 월의 직원별 급여를 final_pay에 저장(upsert)한다.
- * @param {string} yearMonth  - "YYYY-MM"
- * @param {Array}  attRows    - normalizeAttendance된 해당 월 전체 행
- * @param {Array}  empRows    - normalizeEmployee된 전체 직원 행
- * @param {string} lockedBy   - 마감 처리자 이름
- * @param {Function} calcFn   - calcRowPayWithSeparation (pay.js)
- * @returns {{ ok: boolean, count: number, rows: Array }}
- */
-async function doLockMonthlyPay({ yearMonth, attRows, empRows, lockedBy, calcFn }) {
-  // 직원별로 그룹화
-  const grouped = {};
-  for (const row of attRows) {
-    if (!row.employee_id) continue;
-    if (!grouped[row.employee_id]) grouped[row.employee_id] = [];
-    grouped[row.employee_id].push(row);
-  }
-
-  const empMap = {};
-  for (const e of empRows) {
-    empMap[e.employee_id] = e;
-  }
-
-  const toUpsert = Object.entries(grouped).map(([empId, rows]) => {
-    const emp = empMap[empId] || {};
-    const hourlyWage = emp.hourly_wage || 0;
-
-    // approved 또는 auto_closed 행만 정산 대상
-    const settled = rows.filter(
-      (r) => r.approval_status === "approved" || r.approval_status === "auto_closed",
-    );
-
-    let basePay = 0;
-    let extraPay = 0;
-    let workDays = 0;
-    let totalLateDeductMin = 0;
-    let totalExtraMin = 0;
-    let totalPlannedMin = 0;
-
-    for (const r of settled) {
-      const result = calcFn({ ...r, hourly_wage: hourlyWage });
-      basePay += result.basePay || 0;
-      extraPay += result.extraPay || 0;
-      workDays += 1;
-      totalLateDeductMin += r.late_deduct_min || 0;
-      totalExtraMin += r.extra_work_min || 0;
-      totalPlannedMin += r.scheduled_work_min || 0;
-    }
-
-    return {
-      employee_id: empId,
-      year_month: yearMonth,
-      base_pay: Math.round(basePay),
-      extra_pay: Math.round(extraPay),
-      final_amount: Math.round(basePay + extraPay),
-      work_days: workDays,
-      base_planned_min: totalPlannedMin,
-      late_deduct_min: totalLateDeductMin,
-      extra_min: totalExtraMin,
-      calc_snapshot: settled,
-      locked_at: new Date().toISOString(),
-      locked_by: lockedBy || "manager",
-      status: "locked",
-    };
-  });
-
-  if (!toUpsert.length) return { ok: true, count: 0, rows: [] };
-
-  const { data, error } = await supabase
-    .from("final_pay")
-    .upsert(toUpsert, { onConflict: "employee_id,year_month" })
-    .select();
-
-  assertNoError(error, "lock_monthly_pay");
-
-  return { ok: true, count: toUpsert.length, rows: data || [] };
-}
-
-// ----------------------------------------------------------------
 // 템플릿 API
 // ----------------------------------------------------------------
 
@@ -898,65 +816,128 @@ async function doApplyTemplate(startDateStr) {
 }
 
 // ----------------------------------------------------------------
-// 공개 유틸 — re-export (단일 소스: domain 레이어)
+// 공개 유틸
 // ----------------------------------------------------------------
-//
-// ⚠️  아래 함수/상수들은 domain 레이어로 이동 완료.
-//     기존 import를 깨뜨리지 않기 위해 re-export 유지.
-//     새 코드에서는 반드시 아래 경로에서 직접 import할 것.
-//
-//     getAttendanceStatus, ATTENDANCE_STATUS
-//       → "../domain/attendance/getAttendanceStatus"
-//
-//     getApprovalStatusLabel, getApprovalReasonLabel, getPartLabel
-//       → "../domain/attendance/labels"
-//
-//     isPendingAttendance, isApprovedAttendance, isRejectedAttendance
-//       → "../domain/attendance/selectors"  (isPending, isApproved, isRejected)
-//
-//     diffMinutes, getPaidWorkMinutes, getActualWorkMinutes
-//       → "../utils/pay"  (diffMinutes, calcWorkMinutes)
-//
 
-export {
-  ATTENDANCE_STATUS,
-  getAttendanceStatus,
-} from "../domain/attendance/getAttendanceStatus";
+/**
+ * attendance 상태 상수
+ *
+ * UI에서 문자열 리터럴 직접 사용 금지 — 반드시 이 상수 사용
+ *
+ * @example
+ * import { getAttendanceStatus, ATTENDANCE_STATUS } from "../shared/hooks/useApi";
+ * if (getAttendanceStatus(row) === ATTENDANCE_STATUS.PENDING) { ... }
+ */
+export const ATTENDANCE_STATUS = Object.freeze({
+  NONE:     "NONE",     // 출근 기록 없음
+  PENDING:  "PENDING",  // 출근 중, 관리자 승인 대기
+  WORKING:  "WORKING",  // 출근 중, 승인 완료
+  REJECTED: "REJECTED", // 출근 중, 거절됨
+  CLOSED:   "CLOSED",   // 퇴근 완료
+});
 
-export {
-  getApprovalStatusLabel,
-  getApprovalReasonLabel,
-  getPartLabel,
-} from "../domain/attendance/labels";
+/**
+ * attendance row → UI 상태 (단일 진실)
+ *
+ * DB tri-state (approved 컬럼):
+ *   null  → PENDING
+ *   true  → WORKING or CLOSED
+ *   false → REJECTED
+ *
+ * ❌ UI에서 row.approved, row.approval_status, check_in && !check_out 직접 비교 금지
+ * ✅ 반드시 이 함수만 사용
+ *
+ * @param {object} row - normalizeAttendance() 결과
+ * @returns {string} ATTENDANCE_STATUS 상수 중 하나
+ */
+export function getAttendanceStatus(row) {
+  if (!row?.check_in) return ATTENDANCE_STATUS.NONE;
+  if (row.check_out)  return ATTENDANCE_STATUS.CLOSED;
 
-export {
-  isPending   as isPendingAttendance,
-  isApproved  as isApprovedAttendance,
-  isRejected  as isRejectedAttendance,
-  isWorking   as isWorkingNow,
-} from "../domain/attendance/selectors";
+  const s = row.approval_status;
+  if (s === "approved") return ATTENDANCE_STATUS.WORKING;
+  if (s === "rejected") return ATTENDANCE_STATUS.REJECTED;
+  return ATTENDANCE_STATUS.PENDING; // null(pending) + fallback
+}
+
+export function getApprovalReasonLabel(reason) {
+  switch (reason) {
+    case "out_of_schedule":
+      return "스케줄 외 출근";
+    case "substitute":
+      return "대타";
+    case "late":
+      return "지각";
+    case "early_leave":
+      return "조기퇴근";
+    case "overtime":
+      return "연장근무";
+    case "next_part_late_extension":
+      return "다음 파트 연장";
+    case "next_part_no_show_extension":
+      return "다음 파트 미출근 연장";
+    default:
+      return reason ? "확인 필요" : "-";
+  }
+}
+
+export function getApprovalStatusLabel(status) {
+  switch (status) {
+    case "approved":
+      return "승인";
+    case "pending":
+      return "승인대기";
+    case "rejected":
+      return "거절";
+    case "auto_closed":
+      return "자동종료";
+    default:
+      return "-";
+  }
+}
 
 export function diffMinutes(start, end) {
   if (!start || !end) return 0;
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
+  const [sh, sm] = String(start).split(":").map(Number);
+  const [eh, em] = String(end).split(":").map(Number);
   if ([sh, sm, eh, em].some(isNaN)) return 0;
-  return Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
+  const diff = eh * 60 + em - (sh * 60 + sm);
+  return diff < 0 ? 0 : diff;
 }
+
 export function getPaidWorkMinutes(row) {
-  return diffMinutes(row?.planned_start, row?.planned_end);
-}
-export function getActualWorkMinutes(row) {
-  return diffMinutes(row?.check_in, row?.check_out);
+  return Math.max(
+    0,
+    diffMinutes(row?.paid_check_in, row?.paid_check_out) - Number(row?.break_min || 0),
+  );
 }
 
 /**
- * @deprecated pay.js의 calcWorkMinutes 사용
- * row.scheduled_work_min은 normalizeAttendance에서 계산된 캐시값.
- * 직접 계산이 필요하면 calcWorkMinutes(row.planned_start, row.planned_end, 0) 사용.
+ * 파트 기준 근무시간 (분) — planned_start/end 기준, break 미차감
+ * "이 파트에서 원래 몇 분 일해야 하는가"
  */
 export function getScheduledWorkMinutes(row) {
   return Number(row?.scheduled_work_min || 0);
+}
+
+export function getActualWorkMinutes(row) {
+  return Math.max(0, diffMinutes(row?.check_in, row?.check_out) - Number(row?.break_min || 0));
+}
+
+export function isPendingAttendance(row) {
+  return row?.approval_status === "pending";
+}
+
+export function isApprovedAttendance(row) {
+  return row?.approval_status === "approved";
+}
+
+export function isRejectedAttendance(row) {
+  return row?.approval_status === "rejected";
+}
+
+export function isWorkingNow(row) {
+  return !!row?.check_in && !row?.check_out;
 }
 
 // ----------------------------------------------------------------
@@ -994,59 +975,21 @@ export default function useApi(options = {}) {
     }
   }, [month]);
 
-const refreshAdminToday = useCallback(async () => {
-  setTodayLoading(true);
-  setError("");
-
-  try {
-    const data = await fetchAdminToday();
-
-    // ─────────────────────────────────────────────
-    // 자동 퇴근 처리
-    // 파트 종료 + 10분 지나도 퇴근 안 누르면
-    // check_out = planned_end 로 강제 저장
-    // ─────────────────────────────────────────────
-    const now = new Date();
-
-    for (const row of data.attendance || []) {
-      if (!row.check_in || row.check_out || !row.planned_end) continue;
-
-      const [hh, mm] = String(row.planned_end).split(":").map(Number);
-      if (isNaN(hh) || isNaN(mm)) continue;
-
-      const deadline = new Date();
-      deadline.setHours(hh, mm + 10, 0, 0); // 종료 +10분
-
-      if (now > deadline) {
-        await doUpdateAttendance({
-          attendance_id: row.attendance_id,
-          check_out: row.planned_end,          // 기록은 종료시간으로 보정
-          paid_check_out: row.planned_end,
-          auto_checkout: true,
-          approval_note: [
-            row.approval_note,
-            "자동퇴근(10분 초과 / 종료시간 보정)"
-          ].filter(Boolean).join(" / "),
-        });
-      }
+  const refreshAdminToday = useCallback(async () => {
+    setTodayLoading(true);
+    setError("");
+    try {
+      const data = await fetchAdminToday();
+      setTodaySchedule(data.schedule);
+      setTodayAttendance(data.attendance);
+      if (data.employees) setEmployees(data.employees);
+    } catch (err) {
+      setError(err.message || "오늘 데이터를 불러오지 못했습니다.");
+      throw err;
+    } finally {
+      setTodayLoading(false);
     }
-
-    // 자동퇴근 후 재조회
-    const refreshed = await fetchAdminToday();
-
-    setTodaySchedule(refreshed.schedule);
-    setTodayAttendance(refreshed.attendance);
-
-    if (refreshed.employees) {
-      setEmployees(refreshed.employees);
-    }
-  } catch (err) {
-    setError(err.message || "오늘 데이터를 불러오지 못했습니다.");
-    throw err;
-  } finally {
-    setTodayLoading(false);
-  }
-}, []);
+  }, []);
 
   const refreshStaffToday = useCallback(async () => {
     if (!employeeId) return;
@@ -1213,29 +1156,6 @@ const refreshAdminToday = useCallback(async () => {
     [refreshAll, refreshAdminToday],
   );
 
-  const lockMonthlyPay = useCallback(
-    async ({ yearMonth, lockedBy, calcFn }) => {
-      setLoading(true);
-      setError("");
-      try {
-        const result = await doLockMonthlyPay({
-          yearMonth,
-          attRows: monthAttendance,
-          empRows: employees,
-          lockedBy,
-          calcFn,
-        });
-        return result;
-      } catch (err) {
-        setError(err.message || "정산 마감에 실패했습니다.");
-        throw err;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [monthAttendance, employees],
-  );
-
   const runPolicySweep = useCallback(async () => {
     await refreshAll();
     await refreshAdminToday().catch(() => {});
@@ -1340,8 +1260,6 @@ const refreshAdminToday = useCallback(async () => {
 
     saveTemplate,
     applyTemplate,
-
-    lockMonthlyPay,
 
     runPolicySweep,
     clearCache,

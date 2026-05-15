@@ -6,16 +6,11 @@ import TodayTab from "../shared/components/TodayTab";
 import AttTab from "../shared/components/AttTab";
 import { ShiftTab } from "../shared/components/ShiftTab";
 import { SimTab } from "../shared/components/SimTab";
-import SettleTab from "../shared/components/SettleTab";
 import EmployeeTab from "../shared/components/EmployeeTab";
 import { Toast } from "../shared/components/UI";
-import AdminPinScreen from "../shared/components/Admin_PinScreen";
-
-import { calcRowPayWithSeparation, buildSettlement } from "../shared/domain/attendance/payroll/engine/payEngine";
+import { buildSettlement } from "../shared/utils/pay";
 import { safeStr } from "../shared/utils";
 import { SHIFT_TIME } from "../shared/constants";
-
-/* ---------------- helpers ---------------- */
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -34,7 +29,7 @@ function addMonths(ym, offset) {
 
 function monthLabel(ym) {
   const [y, m] = ym.split("-");
-  return `${y} ${Number(m)}`;
+  return `${y}년 ${Number(m)}월`;
 }
 
 function getWeekDates(offset = 0) {
@@ -52,24 +47,13 @@ function getWeekDates(offset = 0) {
   });
 }
 
-const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift", "emp", "settle"]);
-
-/* ---------------- component ---------------- */
+const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift", "emp"]);
 
 export default function App() {
-  /* ===== PIN STATE ===== */
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  /* ===== UI STATE ===== */
   const [tab, setTab] = useState("today");
   const [toast, setToast] = useState(null);
-
-  // att    
-  const [attMonth, setAttMonth] = useState(currentYM());
-
-  // sim / settle       
   const [settlementOffset, setSettlementOffset] = useState(0);
-
+  const [selectedMonth, setSelectedMonth] = useState(currentYM());
   const [weekOffset, setWeekOffset] = useState(0);
 
   const toastTimerRef = useRef(null);
@@ -86,21 +70,6 @@ export default function App() {
     };
   }, []);
 
-  /* =====   derived ===== */
-  // sim / settle      selectedMonth   
-  const settlementMonth = useMemo(
-    () => addMonths(currentYM(), settlementOffset),
-    [settlementOffset],
-  );
-
-  // API  month: att  attMonth, sim/settle  settlementMonth
-  const apiMonth = useMemo(() => {
-    if (tab === "att") return attMonth;
-    if (tab === "sim" || tab === "settle") return settlementMonth;
-    return currentYM();
-  }, [tab, attMonth, settlementMonth]);
-
-  /* ===== API ===== */
   const {
     loading,
     error,
@@ -112,23 +81,28 @@ export default function App() {
     refreshAll,
     refreshAdminToday,
     approveAttendance,
-    updateAttendance,
     addSchedule,
     updateSchedule,
     deleteSchedule,
     addEmployee,
     updateEmployee,
     deleteEmployee,
-    lockMonthlyPay,
   } = useApi({
-    month: apiMonth,
+    month: selectedMonth,
   });
+
+  // ✅ FIX: AttTab에서 쓰는 updateAttendance alias 생성
+  const updateAttendance = approveAttendance;
 
   useEffect(() => {
     if (error) showToast(error, "err");
   }, [error, showToast]);
 
-  /* ===== derived ===== */
+  const settlementMonth = useMemo(
+    () => addMonths(currentYM(), settlementOffset),
+    [settlementOffset],
+  );
+
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
   const monthRange = useMemo(() => {
@@ -153,30 +127,41 @@ export default function App() {
     [monthAttendance, employees, settlementMonth],
   );
 
-  /* ===== PIN SUCCESS ===== */
-  const handleAdminLogin = useCallback(() => {
-    setIsAdmin(true);
-  }, []);
-
-  /* ===== refresh logic ===== */
   useEffect(() => {
-    if (!isAdmin) return;
-
     if (tab === "today") {
       refreshAdminToday().catch(() => {});
       return;
     }
 
-    refreshAll().catch(() => {});
-  }, [tab, isAdmin, refreshAdminToday, refreshAll]);
+    if (tab === "att") {
+      refreshAll().catch(() => {});
+      return;
+    }
 
-  // att     
+    if (tab === "sim") {
+      if (selectedMonth !== settlementMonth) {
+        setSelectedMonth(settlementMonth);
+      }
+      refreshAll().catch(() => {});
+      return;
+    }
+
+    if (tab === "shift") {
+      refreshAll().catch(() => {});
+      return;
+    }
+
+    if (tab === "emp") {
+      refreshAll().catch(() => {});
+    }
+  }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth]);
+
   useEffect(() => {
-    if (!isAdmin || tab !== "att") return;
-    refreshAll().catch(() => {});
-  }, [attMonth, tab, isAdmin, refreshAll]);
+    if (tab === "att") {
+      refreshAll().catch(() => {});
+    }
+  }, [selectedMonth, tab, refreshAll]);
 
-  /* ===== actions ===== */
   const handleApprove = useCallback(
     async (row) => {
       await approveAttendance({
@@ -186,7 +171,7 @@ export default function App() {
         approval_note: "",
         date: row.date,
       });
-      showToast("");
+      showToast("승인되었습니다");
     },
     [approveAttendance, showToast],
   );
@@ -200,7 +185,7 @@ export default function App() {
         approval_note: "",
         date: row.date,
       });
-      showToast(" ");
+      showToast("거절 처리되었습니다");
     },
     [approveAttendance, showToast],
   );
@@ -308,40 +293,17 @@ export default function App() {
       );
     }
 
-    if (tab === "settle") {
-      return (
-        <SettleTab
-          monthAttendance={monthAttendance}
-          employees={employees}
-          selectedMonth={settlementMonth}
-          lockMonthlyPay={lockMonthlyPay}
-          currentManagerName="manager"
-        />
-      );
-    }
-
-    // att 
     return (
       <AttTab
         monthAttendance={monthAttendance}
         approveAttendance={approveAttendance}
         updateAttendance={updateAttendance}
-        selectedMonth={attMonth}
+        selectedMonth={selectedMonth}
         currentManagerName="manager"
       />
     );
   };
 
-  /* ===== PIN GATE ===== */
-  if (!isAdmin) {
-    return (
-      <AdminPinScreen
-        onSuccess={handleAdminLogin}
-      />
-    );
-  }
-
-  /* ===== MAIN APP ===== */
   return (
     <div className="admin-app">
       <Sidebar tab={tab} setTab={setTab} loading={loading} onRefresh={handleRefresh} />
@@ -349,33 +311,32 @@ export default function App() {
       <main className="main-content">
         <MobileTabs tab={tab} setTab={setTab} />
 
-        {/* att      */}
-        {tab === "att" && (
+        {!TABS_WITHOUT_MONTH_BAR.has(tab) && (
           <div className="month-toolbar">
             <button
               type="button"
               className="ghost-sm"
-              onClick={() => setAttMonth(addMonths(attMonth, -1))}
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, -1))}
             >
-              
+              ◀
             </button>
 
-            <strong>{monthLabel(attMonth)}</strong>
+            <strong>{monthLabel(selectedMonth)}</strong>
 
             <button
               type="button"
               className="ghost-sm"
-              onClick={() => setAttMonth(currentYM())}
+              onClick={() => setSelectedMonth(currentYM())}
             >
-               
+              이번 달
             </button>
 
             <button
               type="button"
               className="ghost-sm"
-              onClick={() => setAttMonth(addMonths(attMonth, 1))}
+              onClick={() => setSelectedMonth(addMonths(selectedMonth, 1))}
             >
-              
+              ▶
             </button>
           </div>
         )}

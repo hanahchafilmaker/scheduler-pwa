@@ -819,15 +819,6 @@ async function doApplyTemplate(startDateStr) {
 // 공개 유틸
 // ----------------------------------------------------------------
 
-/**
- * attendance 상태 상수
- *
- * UI에서 문자열 리터럴 직접 사용 금지 — 반드시 이 상수 사용
- *
- * @example
- * import { getAttendanceStatus, ATTENDANCE_STATUS } from "../shared/hooks/useApi";
- * if (getAttendanceStatus(row) === ATTENDANCE_STATUS.PENDING) { ... }
- */
 export const ATTENDANCE_STATUS = Object.freeze({
   NONE:     "NONE",     // 출근 기록 없음
   PENDING:  "PENDING",  // 출근 중, 관리자 승인 대기
@@ -836,20 +827,6 @@ export const ATTENDANCE_STATUS = Object.freeze({
   CLOSED:   "CLOSED",   // 퇴근 완료
 });
 
-/**
- * attendance row → UI 상태 (단일 진실)
- *
- * DB tri-state (approved 컬럼):
- *   null  → PENDING
- *   true  → WORKING or CLOSED
- *   false → REJECTED
- *
- * ❌ UI에서 row.approved, row.approval_status, check_in && !check_out 직접 비교 금지
- * ✅ 반드시 이 함수만 사용
- *
- * @param {object} row - normalizeAttendance() 결과
- * @returns {string} ATTENDANCE_STATUS 상수 중 하나
- */
 export function getAttendanceStatus(row) {
   if (!row?.check_in) return ATTENDANCE_STATUS.NONE;
   if (row.check_out)  return ATTENDANCE_STATUS.CLOSED;
@@ -912,10 +889,6 @@ export function getPaidWorkMinutes(row) {
   );
 }
 
-/**
- * 파트 기준 근무시간 (분) — planned_start/end 기준, break 미차감
- * "이 파트에서 원래 몇 분 일해야 하는가"
- */
 export function getScheduledWorkMinutes(row) {
   return Number(row?.scheduled_work_min || 0);
 }
@@ -1147,121 +1120,51 @@ export default function useApi(options = {}) {
   );
 
   const applyTemplate = useCallback(
-    async (startDate) => {
-      const data = await doApplyTemplate(startDate);
+    async (startDateStr) => {
+      const data = await doApplyTemplate(startDateStr);
       await refreshAll();
-      await refreshAdminToday().catch(() => {});
       return data;
     },
-    [refreshAll, refreshAdminToday],
+    [refreshAll],
   );
-
-  const runPolicySweep = useCallback(async () => {
-    await refreshAll();
-    await refreshAdminToday().catch(() => {});
-    return { ok: true };
-  }, [refreshAll, refreshAdminToday]);
-
-  const clearCache = useCallback(async () => {
-    return { ok: true };
-  }, []);
 
   useEffect(() => {
-    if (!autoLoad) return;
-    refreshAll();
-  }, [autoLoad, refreshAll]);
-
-  const todayStr = getTodayStr();
-
-  const todayScheduleFromMonth = useMemo(
-    () =>
-      schedule.filter(
-        (row) => row.date === todayStr && (!employeeId || row.employee_id === employeeId),
-      ),
-    [schedule, todayStr, employeeId],
-  );
-
-  const todayAttendanceFromMonth = useMemo(
-    () =>
-      monthAttendance.filter(
-        (row) => row.date === todayStr && (!employeeId || row.employee_id === employeeId),
-      ),
-    [monthAttendance, todayStr, employeeId],
-  );
-
-  const mergedTodaySchedule = todaySchedule.length ? todaySchedule : todayScheduleFromMonth;
-  const mergedTodayAttendance = todayAttendance.length ? todayAttendance : todayAttendanceFromMonth;
-
-  const pendingAttendance = useMemo(
-    () => monthAttendance.filter((row) => row.approval_status === "pending"),
-    [monthAttendance],
-  );
-
-  const workingNow = useMemo(
-    () => mergedTodayAttendance.filter((row) => row.check_in && !row.check_out),
-    [mergedTodayAttendance],
-  );
-
-  const pendingToday = useMemo(
-    () => mergedTodayAttendance.filter((row) => row.approval_status === "pending"),
-    [mergedTodayAttendance],
-  );
-
-  const extensionPending = useMemo(() => [], []);
-  const lateCheckoutPending = useMemo(() => [], []);
-
-  const todayScheduleIdSet = useMemo(
-    () => new Set(mergedTodayAttendance.map((row) => row.schedule_id).filter(Boolean)),
-    [mergedTodayAttendance],
-  );
-
-  const absentToday = useMemo(
-    () => mergedTodaySchedule.filter((row) => !todayScheduleIdSet.has(row.schedule_id)),
-    [mergedTodaySchedule, todayScheduleIdSet],
-  );
+    if (autoLoad) {
+      refreshAll();
+      if (employeeId) {
+        refreshStaffToday();
+      } else {
+        refreshAdminToday();
+      }
+    }
+  }, [month, employeeId, autoLoad, refreshAll, refreshStaffToday, refreshAdminToday]);
 
   return {
     loading,
     todayLoading,
     error,
-
     employees,
     templateSchedule,
     schedule,
     monthAttendance,
-    todaySchedule: mergedTodaySchedule,
-    todayAttendance: mergedTodayAttendance,
-
-    pendingAttendance,
-    pendingToday,
-    workingNow,
-    extensionPending,
-    lateCheckoutPending,
-    absentToday,
-
+    todayAttendance,
+    todaySchedule,
     refreshAll,
     refreshAdminToday,
     refreshStaffToday,
     refreshStaffMonth,
     refreshPendingAttendance,
-
     checkIn,
     checkOut,
     approveAttendance,
     updateAttendance,
-
     addSchedule,
     updateSchedule,
     deleteSchedule,
-
     addEmployee,
     updateEmployee,
     deleteEmployee,
-
     saveTemplate,
     applyTemplate,
-
-    runPolicySweep,
-    clearCache,
   };
 }

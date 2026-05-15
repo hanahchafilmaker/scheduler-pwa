@@ -128,11 +128,12 @@ const EXTENSION_REASONS = new Set([
 /**
  * selectTodayState
  * 순수 함수 — 컴포넌트 외부에서 분류 로직 전체를 처리.
- * useMemo 의존성은 이 함수 하나로 통합.
  */
 function selectTodayState(scheduleList, attendanceList, employeeList) {
   const employeeMap = employeeList.reduce((acc, emp) => {
-    acc[String(emp.employee_id)] = emp;
+    if (emp?.employee_id) {
+      acc[String(emp.employee_id)] = emp;
+    }
     return acc;
   }, {});
 
@@ -141,9 +142,19 @@ function selectTodayState(scheduleList, attendanceList, employeeList) {
   const attentionOpenList = [];
   const normalPending = [];
   const extensionPending = [];
+  
+  // 수정 고안: 이미 정상 출근 기록(근무중이거나 퇴근 완료)이 존재하는 schedule_id 수집
+  const matchedScheduleIds = new Set();
 
   for (const row of attendanceList) {
     const status = getAttendanceStatus(row);
+    
+    if (row.schedule_id) {
+      // WORKING 상태거나 승인 여부와 상관없이 기록(CLOSED 등)이 있다면 출근한 것임
+      if (status === ATTENDANCE_STATUS.WORKING || status === ATTENDANCE_STATUS.CLOSED) {
+        matchedScheduleIds.add(String(row.schedule_id));
+      }
+    }
 
     if (status === ATTENDANCE_STATUS.WORKING) {
       workingNow.push(row);
@@ -151,31 +162,20 @@ function selectTodayState(scheduleList, attendanceList, employeeList) {
     }
 
     if (status === ATTENDANCE_STATUS.PENDING) {
-      // 미퇴근 상태 + 미승인 → 관리자 확인 필요
       attentionOpenList.push(row);
       continue;
     }
 
     if (status === ATTENDANCE_STATUS.CLOSED && row.approval_status === "pending") {
-      // 퇴근 완료 + 미승인 → 승인대기 또는 연장요청
       if (EXTENSION_REASONS.has(row.approval_reason)) {
         extensionPending.push(row);
       } else {
         normalPending.push(row);
       }
     }
-    // CLOSED + approved/rejected, NONE, REJECTED → 표시 불필요
   }
 
   // ── schedule 분류 (미출근) ───────────────────────────────
-  // WORKING 상태 attendance의 schedule_id만 "출근 완료"로 간주
-  const matchedScheduleIds = new Set(
-    attendanceList
-      .filter((row) => getAttendanceStatus(row) === ATTENDANCE_STATUS.WORKING)
-      .map((row) => String(row.schedule_id))
-      .filter(Boolean),
-  );
-
   const lateNoShowList = scheduleList
     .filter((row) => !matchedScheduleIds.has(String(row.schedule_id)))
     .map((row) => {
@@ -193,15 +193,14 @@ function selectTodayState(scheduleList, attendanceList, employeeList) {
 }
 
 export default function TodayTab(props) {
-  const { todaySchedule = [], todayAttendance = [], employees = [], onApprove, onReject } = props;
+  const { todaySchedule, todayAttendance, employees, onApprove, onReject } = props;
 
-  // deps를 props 원본으로 유지 → safeArray는 useMemo 내부에서 호출
-  // (외부에서 safeArray 호출 시 매 렌더마다 새 배열 → useMemo 무효화 반복)
-  // JSX 렌더에서도 사용하므로 컴포넌트 스코프에 선언
-  const scheduleList = safeArray(todaySchedule);
-  const attendanceList = safeArray(todayAttendance);
-  const employeeList = safeArray(employees);
+  // 컴포넌트 최상단에서 safeArray를 감싸 useMemo 내부 및 렌더링 스코프에서 동일 참조 유지
+  const scheduleList = useMemo(() => safeArray(todaySchedule), [todaySchedule]);
+  const attendanceList = useMemo(() => safeArray(todayAttendance), [todayAttendance]);
+  const employeeList = useMemo(() => safeArray(employees), [employees]);
 
+  // 외부 순수 함수 호출 및 올바른 의존성 배열 매핑 (eslint 경고 없음)
   const {
     workingNow,
     attentionOpenList,
@@ -210,8 +209,7 @@ export default function TodayTab(props) {
     lateNoShowList,
   } = useMemo(
     () => selectTodayState(scheduleList, attendanceList, employeeList),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [todaySchedule, todayAttendance, employees],
+    [scheduleList, attendanceList, employeeList]
   );
 
   return (
@@ -221,9 +219,9 @@ export default function TodayTab(props) {
           {workingNow.length === 0 ? (
             <EmptyState text="현재 정상 근무 중인 직원이 없습니다." />
           ) : (
-            workingNow.map((row) => (
+            workingNow.map((row, idx) => (
               <PersonRow
-                key={row.attendance_id}
+                key={row.attendance_id || `working-${idx}`}
                 title={`${row.name || "-"} · ${getPartLabel(row.part)}`}
                 subtitle={`실제 ${timeRange(row.check_in, row.check_out || "")}`}
                 extra={`지급 ${timeRange(row.paid_check_in, row.paid_check_out || "")}`}
@@ -237,11 +235,11 @@ export default function TodayTab(props) {
           {attentionOpenList.length === 0 ? (
             <EmptyState text="즉시 확인이 필요한 열린 기록이 없습니다." />
           ) : (
-            attentionOpenList.map((row) => {
+            attentionOpenList.map((row, idx) => {
               const matchedSchedule = hasMatchingSchedule(row, scheduleList);
 
               return (
-                <div className="today-approval-item" key={row.attendance_id}>
+                <div className="today-approval-item" key={row.attendance_id || `attention-${idx}`}>
                   <PersonRow
                     title={`${row.name || "-"} · ${getPartLabel(row.part)}`}
                     subtitle={`실제 ${timeRange(row.check_in, row.check_out || "")}`}
@@ -301,8 +299,8 @@ export default function TodayTab(props) {
           {normalPending.length === 0 ? (
             <EmptyState text="현재 승인대기 건이 없습니다." />
           ) : (
-            normalPending.map((row) => (
-              <div className="today-approval-item" key={row.attendance_id}>
+            normalPending.map((row, idx) => (
+              <div className="today-approval-item" key={row.attendance_id || `pending-${idx}`}>
                 <PersonRow
                   title={`${row.name || "-"} · ${getPartLabel(row.part)}`}
                   subtitle={`예정 ${timeRange(row.planned_start, row.planned_end)}`}
@@ -349,8 +347,8 @@ export default function TodayTab(props) {
           {extensionPending.length === 0 ? (
             <EmptyState text="자동 연장 요청이 없습니다." />
           ) : (
-            extensionPending.map((row) => (
-              <div className="today-approval-item" key={row.attendance_id}>
+            extensionPending.map((row, idx) => (
+              <div className="today-approval-item" key={row.attendance_id || `extension-${idx}`}>
                 <PersonRow
                   title={`${row.name || "-"} · ${getPartLabel(row.part)}`}
                   subtitle={`원래 퇴근 ${row.planned_end || "-"}`}
@@ -399,9 +397,9 @@ export default function TodayTab(props) {
           {lateNoShowList.length === 0 ? (
             <EmptyState text="오늘 미출근 예정자는 없습니다." />
           ) : (
-            lateNoShowList.map((row) => (
+            lateNoShowList.map((row, idx) => (
               <PersonRow
-                key={row.schedule_id}
+                key={row.schedule_id || `noshow-${idx}`}
                 title={`${row.employee_name} · ${getPartLabel(row.part)}`}
                 subtitle={`예정 ${timeRange(row.planned_start, row.planned_end)}`}
                 extra={`스케줄 ID ${row.schedule_id || "-"}`}
@@ -415,13 +413,13 @@ export default function TodayTab(props) {
           {scheduleList.length === 0 ? (
             <EmptyState text="오늘 등록된 스케줄이 없습니다." />
           ) : (
-            scheduleList.map((row) => {
+            scheduleList.map((row, idx) => {
               const matchedAttendance = findMatchingAttendance(row, attendanceList);
               const checkedIn = !!matchedAttendance;
 
               return (
                 <PersonRow
-                  key={row.schedule_id}
+                  key={row.schedule_id || `summary-${idx}`}
                   title={`${row.name || "-"} · ${getPartLabel(row.part)}`}
                   subtitle={timeRange(row.planned_start, row.planned_end)}
                   extra={

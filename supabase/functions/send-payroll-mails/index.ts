@@ -5,6 +5,8 @@
 //   supabase secrets set RESEND_API_KEY=re_xxxxxxxxxxxx
 //   supabase secrets set FROM_EMAIL=payroll@yourdomain.com
 
+export const config = { auth: false };
+
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;

@@ -1,3 +1,4 @@
+import "./PayslipModal.css";   // ← 이 줄 추가
 import { fmtKRW, formatTime } from "../utils";
 
 const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];

@@ -56,8 +56,22 @@ export default defineConfig({
       },
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/react")) return "react-vendor";
-          if (id.includes("node_modules")) return "vendor";
+          // react 계열은 정확한 경로로 먼저 분리 (순환 참조 방지)
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/") ||
+            id.includes("node_modules/scheduler/")
+          ) {
+            return "react-vendor";
+          }
+          // supabase는 크기가 크므로 별도 청크로 분리
+          if (id.includes("node_modules/@supabase/")) {
+            return "supabase-vendor";
+          }
+          // 나머지 node_modules
+          if (id.includes("node_modules/")) {
+            return "vendor";
+          }
         },
       },
     },

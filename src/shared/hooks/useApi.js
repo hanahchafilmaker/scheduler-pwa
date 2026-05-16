@@ -23,6 +23,7 @@ function normalizeEmployee(row) {
     name: row?.name || "",
     pin: row?.pin || "",
     phone: row?.phone || "",
+    email: row?.email || "",
     hourly_wage: Number(row?.hourly_wage || 0),
     active: row?.active !== false,
     role: row?.role || "staff",
@@ -706,6 +707,7 @@ async function doAddEmployee(body) {
     name: body.name || "",
     pin: body.pin || "",
     phone: body.phone || "",
+    email: body.email || "",
     hourly_wage: Number(body.hourly_wage) || 0,
     role: body.role || "staff",
     active: body.active !== false,
@@ -722,6 +724,7 @@ async function doUpdateEmployee(body) {
   if (body.name !== undefined) updates.name = body.name;
   if (body.pin !== undefined) updates.pin = body.pin;
   if (body.phone !== undefined) updates.phone = body.phone;
+  if (body.email !== undefined) updates.email = body.email;
   if (body.hourly_wage !== undefined) updates.hourly_wage = Number(body.hourly_wage);
   if (body.role !== undefined) updates.role = body.role;
   if (body.active !== undefined) updates.active = body.active !== false;

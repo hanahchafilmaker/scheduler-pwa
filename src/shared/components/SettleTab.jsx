@@ -1,7 +1,7 @@
 ﻿// src/shared/components/SettleTab.jsx
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
-import { calcRowPayWithSeparation } from "../domain/attendance/payroll/engine/payEngine";
+import { calcRowPayWithSeparation } from "../domain/attendance/payroll/engine/payEngineV2.js";
 import { getApprovalStatusLabel } from "../domain/attendance/labels";
 import { PayrollAdminPanel } from "./PayrollAdminPanel";
 

@@ -1,29 +1,45 @@
-﻿// src/shared/utils/timeUtils.js
+// src/shared/domain/attendance/payroll/time/timeUtils.js
 
-function toParsedMin(t) {
-  if (!t) return null;
-  const m = String(t).match(/(\d+):(\d+)/);
-  if (!m) return null;
-  return Number(m[1]) * 60 + Number(m[2]);
-}
+/**
+ * 두 시간의 차이를 분(Minutes) 단위로 계산합니다.
+ * @param {Date|string} timeA - 시작 시간 또는 날짜 객체/ISO 문자열
+ * @param {Date|string} timeB - 종료 시간 또는 날짜 객체/ISO 문자열
+ * @returns {number} 두 시간의 차이 (분 단위 정수, 음수 없음)
+ */
+export function diffMinutes(timeA, timeB) {
+  if (!timeA || !timeB) return 0;
 
-export function toMin(t) {
-  const parsed = toParsedMin(t);
-  return parsed === null ? 0 : parsed;
+  // 1. "09:00" 같은 HH:mm 형식의 문자열인 경우 처리
+  if (typeof timeA === 'string' && timeA.includes(':') && !timeA.includes('-') && !timeA.includes('T')) {
+    const [h1, m1] = timeA.split(':').map(Number);
+    const [h2, m2] = timeB.split(':').map(Number);
+    
+    const totalMin1 = h1 * 60 + m1;
+    const totalMin2 = h2 * 60 + m2;
+    
+    return Math.abs(totalMin1 - totalMin2);
+  }
+
+  // 2. 일반 Date 객체 또는 ISO 날짜 문자열인 경우 처리
+  const dateA = new Date(timeA);
+  const dateB = new Date(timeB);
+
+  if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+    console.warn("diffMinutes: 유효하지 않은 날짜 형식입니다.", { timeA, timeB });
+    return 0;
+  }
+
+  const diffInMs = Math.abs(dateA - dateB);
+  return Math.floor(diffInMs / (1000 * 60));
 }
 
 /**
- * 당일 출퇴근 전용 분 차이 계산 (종료 시간 - 시작 시간)
- * 퇴근이 출근보다 빠르면 오류 데이터로 간주하여 0 분 반환
+ * 분 단위를 시간과 분으로 분리합니다. (예: 135분 -> { hours: 2, minutes: 15 })
+ * @param {number} totalMinutes 
+ * @returns {{hours: number, minutes: number}}
  */
-export function diffMinutes(start, end) {
-  if (!start || !end) return 0;
-
-  const s = toParsedMin(start);
-  const e = toParsedMin(end);
-
-  if (s === null || e === null) return 0;
-  if (e < s) return 0; // 당일 원칙이므로 역전되면 0분 처리 (안전장치)
-
-  return e - s;
+export function convertMinutesToHoursAndMinutes(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return { hours, minutes };
 }

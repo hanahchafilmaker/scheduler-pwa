@@ -8,7 +8,7 @@ import {
   calcEarlyLeaveDeduct,
   calcExtraEarly,
   calcExtraLate,
-} from "./payCalculator";
+} from "../calculator/payCalculator";
 
 export function calcRowPayWithSeparation(row, hourlyWage) {
   const ZERO = {

@@ -213,19 +213,6 @@ function DesktopShiftTable(props) {
   const [openCell, setOpenCell] = useState(null);
   const cellRefs = useRef({});
 
-  // 연속 근무(오픈-미들, 미들-마감 등) 감지 메모이제이션
-  const consecutiveMap = useMemo(() => {
-    const map = {};
-    weekDates.forEach((date) => {
-      const dayEntries = PARTS.map((p) => getEntry(schedule, date, p)).filter(Boolean);
-      dayEntries.forEach((entry, idx) => {
-        if (idx > 0 && dayEntries[idx - 1]?.employee_id === entry.employee_id) {
-          map[`${date}_${entry.part}`] = true;
-        }
-      });
-    });
-    return map;
-  }, [schedule, weekDates]);
 
   return (
     <>
@@ -267,7 +254,6 @@ function DesktopShiftTable(props) {
                     const cellKey = `${date}_${part}`;
                     const entry = getEntry(schedule, date, part);
                     const isOpen = openCell === cellKey;
-                    const isConsecutive = !!consecutiveMap[cellKey];
 
                     return (
                       <td
@@ -277,19 +263,6 @@ function DesktopShiftTable(props) {
                         ref={(el) => (cellRefs.current[cellKey] = { current: el })}
                         onClick={() => setOpenCell(isOpen ? null : cellKey)}
                       >
-                        {isConsecutive && (
-                          <div
-                            style={{
-                              position: "absolute",
-                              top: 0,
-                              left: 0,
-                              width: "100%",
-                              height: 3,
-                              background: "#f59e0b",
-                              borderRadius: "2px 2px 0 0",
-                            }}
-                          />
-                        )}
                         {entry ? (
                           <div className="shift-cell-filled">
                             <span className="cell-name">{PART_LABEL[part]}</span>
@@ -337,19 +310,6 @@ function MobileShiftCards(props) {
   const [openCell, setOpenCell] = useState(null);
   const cardRefs = useRef({});
 
-  const consecutiveMap = useMemo(() => {
-    const map = {};
-    weekDates.forEach((date) => {
-      const dayEntries = PARTS.map((p) => getEntry(schedule, date, p)).filter(Boolean);
-      dayEntries.forEach((entry, idx) => {
-        if (idx > 0 && dayEntries[idx - 1]?.employee_id === entry.employee_id) {
-          map[`${date}_${entry.part}`] = true;
-        }
-      });
-    });
-    return map;
-  }, [schedule, weekDates]);
-
   return (
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
@@ -369,7 +329,6 @@ function MobileShiftCards(props) {
                   const cellKey = `${date}_${part}`;
                   const entry = getEntry(schedule, date, part);
                   const isOpen = openCell === cellKey;
-                  const isConsecutive = !!consecutiveMap[cellKey];
 
                   return (
                     <div
@@ -379,19 +338,6 @@ function MobileShiftCards(props) {
                       style={{ position: "relative", overflow: "visible" }}
                       onClick={() => setOpenCell(isOpen ? null : cellKey)}
                     >
-                      {isConsecutive && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: "100%",
-                            height: 3,
-                            background: "#f59e0b",
-                            borderRadius: "2px 2px 0 0",
-                          }}
-                        />
-                      )}
                       <div className="shift-part-top">
                         <span className="shift-part-name">{PART_LABEL[part]}</span>
                         <span className="shift-part-time">

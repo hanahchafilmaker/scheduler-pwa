@@ -1,39 +1,74 @@
 // supabase/functions/send-payroll-mails/index.ts
-// Deploy: supabase functions deploy send-payroll-mails
-
-export const config = { auth: false };
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/smtp/mod.ts";
 
-const SMTP_USER = Deno.env.get("SMTP_USER")!;
-const SMTP_PASS = Deno.env.get("SMTP_PASS")!;
+export const config = { auth: false };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Max-Age": "86400",
 };
 
 serve(async (req) => {
+  // =========================
   // CORS preflight
+  // =========================
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, {
+      status: 200,
+      headers: corsHeaders,
+    });
   }
 
   if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405, headers: corsHeaders });
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: corsHeaders,
+    });
   }
 
   try {
-    const { employees } = await req.json();
+    // =========================
+    // ENV 안전 처리 (중요)
+    // =========================
+    const SMTP_USER = Deno.env.get("SMTP_USER");
+    const SMTP_PASS = Deno.env.get("SMTP_PASS");
 
-    if (!Array.isArray(employees) || employees.length === 0) {
-      return Response.json(
-        { error: "employees array required" },
-        { status: 400, headers: corsHeaders }
+    if (!SMTP_USER || !SMTP_PASS) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Missing SMTP credentials (SMTP_USER / SMTP_PASS)",
+        }),
+        {
+          status: 500,
+          headers: corsHeaders,
+        }
       );
     }
 
+    // =========================
+    // Request body
+    // =========================
+    const { employees } = await req.json();
+
+    if (!Array.isArray(employees) || employees.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "employees array required" }),
+        {
+          status: 400,
+          headers: corsHeaders,
+        }
+      );
+    }
+
+    // =========================
+    // SMTP Client
+    // =========================
     const client = new SMTPClient({
       connection: {
         hostname: "smtp.gmail.com",
@@ -48,6 +83,9 @@ serve(async (req) => {
 
     const results = [];
 
+    // =========================
+    // Send loop
+    // =========================
     for (const emp of employees) {
       const { employee_id, name, email, month, pdfBase64 } = emp;
 
@@ -55,7 +93,7 @@ serve(async (req) => {
         results.push({
           employee_id,
           ok: false,
-          reason: "missing or invalid email",
+          reason: "invalid email",
         });
         continue;
       }
@@ -70,8 +108,32 @@ serve(async (req) => {
       }
 
       try {
-        const filename = `payroll_${name || employee_id}_${month}.pdf`;
+        const safeName = name || employee_id;
 
+        const filename = `payroll_${safeName}_${month}.pdf`;
+
+        // =========================
+        // PDF base64 안전 처리
+        // =========================
+        const cleanBase64 =
+          pdfBase64?.includes("base64,")
+            ? pdfBase64.split("base64,")[1]
+            : pdfBase64;
+
+        const attachments = cleanBase64
+          ? [
+              {
+                filename,
+                content: Uint8Array.from(atob(cleanBase64), (c) =>
+                  c.charCodeAt(0)
+                ),
+              },
+            ]
+          : undefined;
+
+        // =========================
+        // HTML
+        // =========================
         const html = `
           <div style="font-family:sans-serif;line-height:1.7;color:#333;max-width:480px">
             <p style="font-size:11px;color:#999;letter-spacing:1px">DUNKIN'</p>
@@ -87,21 +149,15 @@ serve(async (req) => {
           </div>
         `;
 
-        const attachments = pdfBase64
-          ? [
-              {
-                filename,
-                content: pdfBase64,
-              },
-            ]
-          : undefined;
-
+        // =========================
+        // Send mail
+        // =========================
         await client.send({
-          from: SMTP_USER,
+          from: `DUNKIN Payroll <${SMTP_USER}>`,
           to: email,
           subject: `[급여명세서] ${month} 근무분`,
-          content: html,
           html,
+          content: html,
           attachments,
         });
 
@@ -125,27 +181,36 @@ serve(async (req) => {
 
     await client.close();
 
+    // =========================
+    // Response
+    // =========================
     const successCount = results.filter((r) => r.ok).length;
     const failCount = results.length - successCount;
 
-    return Response.json(
-      {
+    return new Response(
+      JSON.stringify({
         success: true,
         successCount,
         failCount,
         results,
-      },
-      { headers: corsHeaders }
+      }),
+      {
+        status: 200,
+        headers: corsHeaders,
+      }
     );
   } catch (error) {
     console.error("[send-payroll-mails]", error);
 
-    return Response.json(
-      {
+    return new Response(
+      JSON.stringify({
         success: false,
         error: String(error?.message ?? error),
-      },
-      { status: 500, headers: corsHeaders }
+      }),
+      {
+        status: 500,
+        headers: corsHeaders,
+      }
     );
   }
 });

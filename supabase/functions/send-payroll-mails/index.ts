@@ -1,7 +1,7 @@
 // supabase/functions/send-payroll-mails/index.ts
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/smtp/mod.ts";
+import { SmtpClient } from "https://deno.land/x/smtp@v0.8.0/mod.ts";
 
 export const config = { auth: false };
 
@@ -66,21 +66,6 @@ serve(async (req) => {
       );
     }
 
-    // =========================
-    // SMTP Client
-    // =========================
-    const client = new SMTPClient({
-      connection: {
-        hostname: "smtp.gmail.com",
-        port: 465,
-        tls: true,
-        auth: {
-          username: SMTP_USER,
-          password: SMTP_PASS,
-        },
-      },
-    });
-
     const results = [];
 
     // =========================
@@ -109,7 +94,6 @@ serve(async (req) => {
 
       try {
         const safeName = name || employee_id;
-
         const filename = `payroll_${safeName}_${month}.pdf`;
 
         // =========================
@@ -119,17 +103,6 @@ serve(async (req) => {
           pdfBase64?.includes("base64,")
             ? pdfBase64.split("base64,")[1]
             : pdfBase64;
-
-        const attachments = cleanBase64
-          ? [
-              {
-                filename,
-                content: Uint8Array.from(atob(cleanBase64), (c) =>
-                  c.charCodeAt(0)
-                ),
-              },
-            ]
-          : undefined;
 
         // =========================
         // HTML
@@ -150,16 +123,43 @@ serve(async (req) => {
         `;
 
         // =========================
+        // SMTP Client (메일마다 새로 연결 - v0.8.0 안정 방식)
+        // =========================
+        const client = new SmtpClient();
+
+        await client.connectTLS({
+          hostname: "smtp.gmail.com",
+          port: 465,
+          username: SMTP_USER,
+          password: SMTP_PASS,
+        });
+
+        // =========================
         // Send mail
         // =========================
-        await client.send({
+        const sendOptions: Record<string, unknown> = {
           from: `DUNKIN Payroll <${SMTP_USER}>`,
           to: email,
           subject: `[급여명세서] ${month} 근무분`,
+          content: "급여명세서가 첨부되어 있습니다.",
           html,
-          content: html,
-          attachments,
-        });
+        };
+
+        // PDF 첨부 (있는 경우)
+        if (cleanBase64) {
+          sendOptions.attachments = [
+            {
+              filename,
+              content: Uint8Array.from(atob(cleanBase64), (c) =>
+                c.charCodeAt(0)
+              ),
+              contentType: "application/pdf",
+            },
+          ];
+        }
+
+        await client.send(sendOptions);
+        await client.close();
 
         results.push({
           employee_id,
@@ -178,8 +178,6 @@ serve(async (req) => {
       // Gmail rate limit 방지
       await new Promise((r) => setTimeout(r, 300));
     }
-
-    await client.close();
 
     // =========================
     // Response

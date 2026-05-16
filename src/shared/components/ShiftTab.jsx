@@ -213,6 +213,15 @@ function DesktopShiftTable(props) {
   const [openCell, setOpenCell] = useState(null);
   const cellRefs = useRef({});
 
+  const currentPart = useMemo(() => {
+    const now = new Date();
+    const hhmm = now.getHours() * 60 + now.getMinutes();
+    return PARTS.find((p) => {
+      const [sh, sm] = SHIFT_TIME[p].start.split(":").map(Number);
+      const [eh, em] = SHIFT_TIME[p].end.split(":").map(Number);
+      return hhmm >= sh * 60 + sm && hhmm < eh * 60 + em;
+    }) ?? null;
+  }, []);
 
   return (
     <>
@@ -242,7 +251,7 @@ function DesktopShiftTable(props) {
 
             <tbody>
               {PARTS.map((part) => (
-                <tr key={part}>
+                <tr key={part} className={currentPart === part ? "current-part" : ""}>
                   <td className="part-label-cell">
                     <strong>{PART_LABEL[part]}</strong>
                     <div style={{ fontSize: 11, color: "#9ca3af" }}>
@@ -254,11 +263,16 @@ function DesktopShiftTable(props) {
                     const cellKey = `${date}_${part}`;
                     const entry = getEntry(schedule, date, part);
                     const isOpen = openCell === cellKey;
+                    const isCurrentCell = currentPart === part && date === todayDate;
 
                     return (
                       <td
                         key={cellKey}
-                        className={`shift-cell editable ${isOpen ? "active" : ""}`}
+                        className={[
+                          "shift-cell editable",
+                          isOpen ? "active" : "",
+                          isCurrentCell ? "current-part-cell" : "",
+                        ].filter(Boolean).join(" ")}
                         style={{ position: "relative" }}
                         ref={(el) => (cellRefs.current[cellKey] = { current: el })}
                         onClick={() => setOpenCell(isOpen ? null : cellKey)}
@@ -310,6 +324,16 @@ function MobileShiftCards(props) {
   const [openCell, setOpenCell] = useState(null);
   const cardRefs = useRef({});
 
+  const currentPart = useMemo(() => {
+    const now = new Date();
+    const hhmm = now.getHours() * 60 + now.getMinutes();
+    return PARTS.find((p) => {
+      const [sh, sm] = SHIFT_TIME[p].start.split(":").map(Number);
+      const [eh, em] = SHIFT_TIME[p].end.split(":").map(Number);
+      return hhmm >= sh * 60 + sm && hhmm < eh * 60 + em;
+    }) ?? null;
+  }, []);
+
   return (
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
@@ -334,7 +358,11 @@ function MobileShiftCards(props) {
                     <div
                       key={cellKey}
                       ref={(el) => (cardRefs.current[cellKey] = { current: el })}
-                      className={`shift-part-card editable ${isOpen ? "active" : ""}`}
+                      className={[
+                        "shift-part-card editable",
+                        isOpen ? "active" : "",
+                        currentPart === part && date === todayDate ? "current-part" : "",
+                      ].filter(Boolean).join(" ")}
                       style={{ position: "relative", overflow: "visible" }}
                       onClick={() => setOpenCell(isOpen ? null : cellKey)}
                     >

@@ -745,6 +745,105 @@ async function doDeleteEmployee(body) {
 }
 
 // ----------------------------------------------------------------
+// 정산 마감 API
+// ----------------------------------------------------------------
+
+async function doLockMonthlyPay({ yearMonth, lockedBy, calcFn }) {
+  if (!yearMonth) throw new Error("yearMonth가 필요합니다.");
+
+  // 이미 마감됐는지 확인
+  const { data: existing, error: checkError } = await supabase
+    .from("final_pay")
+    .select("id")
+    .eq("year_month", yearMonth)
+    .limit(1);
+
+  assertNoError(checkError, "final_pay check");
+
+  if (existing && existing.length > 0) {
+    throw new Error(`${yearMonth} 은(는) 이미 마감된 월입니다.`);
+  }
+
+  // attendance 조회
+  const { start, end } = monthRange(yearMonth);
+  const { data: attData, error: attError } = await supabase
+    .from("attendance")
+    .select("*")
+    .gte("work_date", start)
+    .lt("work_date", end);
+
+  assertNoError(attError, "final_pay attendance");
+
+  const rows = (attData || []).map(normalizeAttendance);
+
+  // employees 조회
+  const { data: empData, error: empError } = await supabase
+    .from("employees")
+    .select("*");
+
+  assertNoError(empError, "final_pay employees");
+
+  const empMap = {};
+  for (const e of (empData || [])) {
+    empMap[String(e.id || e.employee_id)] = e;
+  }
+
+  // 직원별 집계
+  const grouped = {};
+  for (const r of rows) {
+    if (!r.employee_id) continue;
+    if (!grouped[r.employee_id]) grouped[r.employee_id] = [];
+    grouped[r.employee_id].push(r);
+  }
+
+  const lockedAt = new Date().toISOString();
+  const toInsert = [];
+
+  for (const [empId, empRows] of Object.entries(grouped)) {
+    const emp = empMap[empId] || {};
+    const hourlyWage = Number(emp.hourly_wage || 0);
+
+    let basePay = 0;
+    let extraPay = 0;
+    let lateDeductMin = 0;
+    let workDays = 0;
+
+    for (const r of empRows) {
+      if (r.approval_status !== "approved" && r.approval_status !== "auto_closed") continue;
+      workDays++;
+      lateDeductMin += Number(r.late_deduct_min || 0);
+      const res = calcFn({ ...r, hourly_wage: hourlyWage });
+      basePay += res.basePay || 0;
+      extraPay += res.extraPay || 0;
+    }
+
+    toInsert.push({
+      year_month:      yearMonth,
+      employee_id:     empId,
+      work_days:       workDays,
+      base_pay:        Math.round(basePay),
+      extra_pay:       Math.round(extraPay),
+      late_deduct_min: lateDeductMin,
+      final_amount:    Math.round(basePay + extraPay),
+      locked_by:       lockedBy || "manager",
+      locked_at:       lockedAt,
+    });
+  }
+
+  if (toInsert.length === 0) {
+    throw new Error("정산할 승인 데이터가 없습니다.");
+  }
+
+  const { error: insertError } = await supabase
+    .from("final_pay")
+    .insert(toInsert);
+
+  assertNoError(insertError, "final_pay insert");
+
+  return { ok: true, count: toInsert.length };
+}
+
+// ----------------------------------------------------------------
 // 템플릿 API
 // ----------------------------------------------------------------
 
@@ -1128,7 +1227,15 @@ export default function useApi(options = {}) {
     [refreshAll],
   );
 
-  useEffect(() => {
+  const lockMonthlyPay = useCallback(
+    async (payload) => {
+      const data = await doLockMonthlyPay(payload);
+      return data;
+    },
+    [],
+  );
+
+    useEffect(() => {
     if (autoLoad) {
       refreshAll();
       if (employeeId) {
@@ -1166,5 +1273,6 @@ export default function useApi(options = {}) {
     deleteEmployee,
     saveTemplate,
     applyTemplate,
+    lockMonthlyPay,
   };
 }

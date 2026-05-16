@@ -11,6 +11,7 @@ import { Toast } from "../shared/components/UI";
 import { buildSettlement } from "../shared/utils/pay";
 import { safeStr } from "../shared/utils";
 import { SHIFT_TIME } from "../shared/constants";
+import SettleTab from "../shared/components/SettleTab";
 import { PayrollAdminPanel } from "../shared/components/PayrollAdminPanel";
 
 function pad2(n) {
@@ -82,6 +83,7 @@ export default function App() {
     refreshAll,
     refreshAdminToday,
     approveAttendance,
+    lockMonthlyPay,
     addSchedule,
     updateSchedule,
     deleteSchedule,
@@ -290,6 +292,28 @@ export default function App() {
           addEmployee={addEmployee}
           updateEmployee={updateEmployee}
           deleteEmployee={deleteEmployee}
+        />
+      );
+    }
+
+    if (tab === "settle") {
+      return (
+        <SettleTab
+          monthAttendance={monthAttendance}
+          employees={employees}
+          selectedMonth={selectedMonth}
+          lockMonthlyPay={lockMonthlyPay}
+          currentManagerName="manager"
+        />
+      );
+    }
+
+    if (tab === "payroll") {
+      return (
+        <PayrollAdminPanel
+          employees={employees}
+          attendance={monthAttendance}
+          activeMonth={selectedMonth}
         />
       );
     }

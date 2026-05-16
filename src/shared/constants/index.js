@@ -77,7 +77,9 @@ export const NAV_ITEMS = [
   { id: "att", label: "출퇴근 기록", icon: "⏱️" },
   { id: "shift", label: "스케줄 조회", icon: "📅" },
   { id: "sim", label: "급여 정산", icon: "💴" },
-  { id: "emp", label: "직원 관리", icon: "👥" }, // ← Phase 1 추가
+  { id: "emp", label: "직원 관리", icon: "👥" },
+  { id: "settle", label: "월 정산 마감", icon: "🔒" },
+  { id: "payroll", label: "급여 명세서", icon: "📄" },
 ];
 
 /* ================= 페이지 타이틀 ================= */
@@ -88,7 +90,9 @@ export function getPageTitle(tab) {
     att: { title: "출퇴근 기록", sub: "실제 근무 기록 확인 및 승인" },
     shift: { title: "스케줄 조회", sub: "Google Sheets 기준 원본 스케줄 확인" },
     sim: { title: "급여 정산", sub: "실제 출퇴근 기준 인건비 계산" },
-    emp: { title: "직원 관리", sub: "직원 등록, 수정, 활성화 관리" }, // ← Phase 1 추가
+    emp: { title: "직원 관리", sub: "직원 등록, 수정, 활성화 관리" },
+    settle: { title: "월 정산 마감", sub: "월별 급여 확정 및 final_pay 저장" },
+    payroll: { title: "급여 명세서", sub: "직원별 임금명세서 발급 및 이메일 발송" },
   }[tab];
 }
 

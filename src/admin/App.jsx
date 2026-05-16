@@ -11,6 +11,7 @@ import { Toast } from "../shared/components/UI";
 import { buildSettlement } from "../shared/utils/pay";
 import { safeStr } from "../shared/utils";
 import { SHIFT_TIME } from "../shared/constants";
+import { PayrollAdminPanel } from "../shared/components/PayrollAdminPanel";
 
 function pad2(n) {
   return String(n).padStart(2, "0");

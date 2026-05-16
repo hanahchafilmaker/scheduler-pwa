@@ -1,107 +1,106 @@
 
-# 🧭 Attendance System Full Architecture (FE + BE + DB + Ops)
+
+# 🧭 Attendance System Full Architecture (Production Final)
 
 ---
 
 # 1. 전체 구조 (End-to-End)
 
-```id="arch_overall"
+```id="arch_final"
 ┌──────────────────────────────┐
-│          Frontend (PWA)       │
-│  React / TodayTab / Hooks     │
+│        Frontend (PWA)        │
+│ React / Hooks / Today UI     │
+│  - Render Only               │
 └──────────────┬───────────────┘
-               │ REST / API
+               │ HTTPS (REST / RPC)
                ▼
 ┌──────────────────────────────┐
-│        API Gateway Layer      │
-│  Auth / RateLimit / Logging   │
-└──────────────┬───────────────┘
-               ▼
-┌──────────────────────────────┐
-│        Backend Service        │
-│  Attendance Domain Service    │
-│  Schedule Service             │
-│  Approval Service             │
+│        API Layer              │
+│ Edge Functions / Server API  │
+│  - Auth Verification         │
+│  - Input Validation          │
+│  - Idempotency Check         │
 └──────────────┬───────────────┘
                ▼
 ┌──────────────────────────────┐
-│           Database            │
-│ PostgreSQL (core source)      │
+│     Domain Engine Layer       │
+│ Attendance / Schedule / Pay   │
+│ Status Engine (Single Source) │
 └──────────────┬───────────────┘
                ▼
 ┌──────────────────────────────┐
-│     Event / Trigger Layer     │
-│  DB Trigger / Event Queue     │
-│  (audit, sync, recalculation) │
+│      Event / Queue Layer      │
+│ Event Trigger / Job Queue     │
+│ - approval 생성              │
+│ - payroll 계산              │
+│ - audit log                 │
+└──────────────┬───────────────┘
+               ▼
+┌──────────────────────────────┐
+│        Database Layer         │
+│ PostgreSQL (Source of Truth)  │
+│ + RLS Policies               │
+└──────────────┬───────────────┘
+               ▼
+┌──────────────────────────────┐
+│   Reconciliation / Worker     │
+│ Cron Job / Repair System      │
+│ - 상태 정합성 복구           │
+│ - 누락 이벤트 재처리         │
 └──────────────────────────────┘
 ```
 
 ---
 
-# 2. 핵심 도메인 구조 (Backend)
+# 2. 도메인 구조
 
-## 📦 3대 핵심 도메인
-
-```id="domain_model"
+```id="domain_final"
 1. Attendance Domain
 2. Schedule Domain
 3. Approval Domain
+4. Payroll Domain
 ```
 
 ---
 
-## 2.1 Attendance Domain
+# 2.1 Attendance Domain
 
-### 역할
-
-* 출근/퇴근 기록 생성
-* 상태 계산 기반 데이터 제공
-
-### 핵심 테이블
-
-```sql id="att_table"
+```sql id="attendance_final"
 attendance
-- attendance_id
+- id
 - employee_id
 - schedule_id (nullable)
 - check_in
 - check_out
-- paid_check_in
-- paid_check_out
-- approval_status
-- approval_reason
 - created_at
 ```
 
----
-
-### 상태는 DB가 아니라 “계산값”
-
-> ⚠️ 절대 DB에 status 저장하지 않음 (중요)
+👉 ❌ 상태 컬럼 없음
+👉 ❌ 지급 관련 필드 없음
 
 ---
 
-## 2.2 Schedule Domain
+# 2.2 Schedule Domain
 
-```sql id="schedule_table"
+```sql id="schedule_final"
 schedule
-- schedule_id
+- id
 - employee_id
 - date
-- part
+- shift_type
 - planned_start
 - planned_end
 ```
 
 ---
 
-## 2.3 Approval Domain
+# 2.3 Approval Domain
 
-```sql id="approval_table"
+```sql id="approval_final"
 approval
-- approval_id
+- id
 - attendance_id
-- status (pending/approved/rejected)
+- status (pending / approved / rejected)
 - reason
 - note
 - processed_by
@@ -110,57 +109,57 @@ approval
 
 ---
 
-# 3. 상태 엔진 (Backend Core Logic)
+# 2.4 Payroll Domain
 
-## 🔥 핵심 규칙: Status Engine = Backend에서 정의
+```sql id="payroll_final"
+payroll
+- id
+- employee_id
+- attendance_id
+- base_pay
+- deduction
+- final_pay
+- calculated_at
+```
 
-```id="status_engine"
-getAttendanceStatus(attendance)
+---
+
+# 3. Status Engine (Single Source)
+
+```id="status_engine_final"
+getAttendanceStatus(attendance, schedule, approval)
 ```
 
 ---
 
 ## 상태 정의
 
-```ts id="status_def"
+```ts id="status_final"
 WORKING
 → check_in exists AND check_out null
 
-CLOSED
+COMPLETED
 → check_out exists
 
-PENDING
-→ CLOSED + approval pending
+PENDING_APPROVAL
+→ completed + approval = pending
+
+APPROVED
+→ approval = approved
 
 REJECTED
-→ approval rejected
+→ approval = rejected
 ```
 
 ---
 
 # 4. API 구조
 
-## 4.1 Today Dashboard API
-
-```http id="api_today"
-GET /api/today
-```
-
-### Response
-
-```json id="today_response"
-{
-  "attendance": [],
-  "schedule": [],
-  "employees": []
-}
-```
-
 ---
 
-## 4.2 Attendance APIs
+## 4.1 Attendance API
 
-```http id="att_api"
+```http id="api_att_final"
 POST /attendance/check-in
 POST /attendance/check-out
 GET  /attendance/today
@@ -168,9 +167,9 @@ GET  /attendance/today
 
 ---
 
-## 4.3 Approval APIs
+## 4.2 Approval API
 
-```http id="approval_api"
+```http id="api_app_final"
 POST /approval/approve
 POST /approval/reject
 GET  /approval/pending
@@ -178,192 +177,141 @@ GET  /approval/pending
 
 ---
 
-# 5. Backend Processing Flow
+## 4.3 Payroll API
 
-## 🧠 핵심 흐름
+```http id="api_pay_final"
+GET /payroll/today
+POST /payroll/recalculate
+```
 
-```id="backend_flow"
+---
+
+# 5. Backend Flow
+
+```id="flow_final"
 CHECK IN
   ↓
-Attendance 생성 (WORKING)
+DB INSERT
 
 CHECK OUT
   ↓
-Attendance 업데이트 (CLOSED)
+DB UPDATE
 
-Trigger Event
+EVENT TRIGGER
+  ↓
+Status Engine 실행
   ↓
 Approval 생성 (if needed)
-
-Frontend Query
   ↓
-selectTodayState (FE or BE optional)
+Payroll Queue 실행
 ```
 
 ---
 
-# 6. Event / Trigger Layer (중요)
+# 6. Event System
 
-## 목적
-
-* 데이터 자동 보정
-* 승인 상태 자동 생성
-* 이상 데이터 감지
-
----
-
-## DB Trigger or Queue Event
-
-```id="event_layer"
-attendance.updated
+```id="event_final"
 attendance.created
-schedule.missing_match
+attendance.updated
+approval.created
+payroll.requested
 ```
 
 ---
 
-## 예시
+## Event Rule
 
-```ts id="event_example"
-if (check_out exists && approval_status null) {
-  create approval(pending)
+```ts id="event_rule_final"
+if (attendance.updated) {
+  runStatusEngine()
+  enqueueApproval()
+  enqueuePayroll()
 }
 ```
 
 ---
 
-# 7. Frontend vs Backend 책임 분리
+# 7. Frontend 책임
 
-## ❌ 잘못된 구조
+```id="fe_final"
+✔ API 호출
+✔ UI 렌더링
+✔ 로컬 캐시
 
-* FE가 상태 계산
-* FE가 매칭 판단
-* FE가 business rule 처리
-
----
-
-## ✅ 올바른 구조
-
-| Layer    | 책임              |
-| -------- | --------------- |
-| Backend  | truth + rules   |
-| API      | normalized data |
-| Frontend | render only     |
+❌ 상태 계산
+❌ 근무 판정
+❌ 급여 로직
+```
 
 ---
 
-# 8. 데이터 흐름 (Full Cycle)
+# 8. 데이터 흐름
 
-```id="full_flow"
+```id="data_flow_final"
 1. USER ACTION
    check-in / check-out
 
-2. BACKEND
-   attendance update
+2. API Layer
+   validate + idempotency check
 
-3. EVENT LAYER
-   approval 생성 / 상태 변화
+3. Domain Engine
+   status + rule computation
 
-4. API
-   normalized response
+4. Event System
+   approval + payroll trigger
 
-5. FRONTEND
-   selectTodayState()
+5. DB
+   source of truth
 
-6. UI
-   TodayTab render
+6. Worker
+   reconciliation + repair
+
+7. Frontend
+   render only
 ```
 
 ---
 
-# 9. 운영 안정 구조 (핵심)
+# 9. 운영 안정 구조
 
-## 3단 안정 구조
-
-```id="stability"
-[1] Raw Data Layer (DB)
-[2] Domain Logic Layer (Backend)
-[3] Presentation Layer (Frontend)
+```id="stability_final"
+[1] DB (Source of Truth)
+[2] Domain Engine (Single Rule Source)
+[3] Event System (Async Processing)
+[4] Worker (Repair / Sync)
+[5] Frontend (Render Only)
 ```
 
 ---
 
-## 절대 원칙
+# 10. Reconciliation System
 
-> “상태 판단은 Backend or Shared Engine 하나만 존재”
-
----
-
-# 10. 디버깅 구조 (5분 컷 설계)
-
-## 문제 발생 시 3단계
-
-### 1️⃣ Backend 확인
-
-```sql
-SELECT * FROM attendance WHERE id=?
+```id="recon_final"
+cron: every 10~30 min
 ```
 
 ---
 
-### 2️⃣ Status Engine 확인
+## 역할
 
-```ts
-getAttendanceStatus(row)
+* 누락 approval 생성
+* payroll mismatch 복구
+* status 재계산
+
+---
+
+# 🧾 최종 핵심 요약
+
+```txt
+✔ 상태는 오직 Domain Engine 하나만 관리
+✔ DB는 저장만 담당
+✔ Event는 비동기 처리
+✔ Worker는 항상 복구 책임
+✔ Frontend는 렌더링만 수행
 ```
 
 ---
 
-### 3️⃣ FE state 확인
+# 🔥 한 줄 결론
 
-```ts
-selectTodayState()
-```
-
----
-
-## 장애 유형 매핑
-
-| 증상       | 원인                       |
-| -------- | ------------------------ |
-| 승인 버튼 이상 | approval_status mismatch |
-| 근무 중 오류  | check_in/out 불일치         |
-| 미출근 오류   | schedule-matching 실패     |
-| UI 상태 꼬임 | FE raw logic 존재          |
-
----
-
-# 11. 확장 구조 (운영 레벨)
-
-## 추천 확장
-
-### 1. Redis cache
-
-* 오늘 attendance pre-aggregation
-
-### 2. Event Queue (Kafka / RabbitMQ)
-
-* 상태 변화 이벤트 처리
-
-### 3. Audit Log
-
-```id="audit"
-attendance_change_log
-approval_log
-```
-
----
-
-### 4. Status Service 분리 (Advanced)
-
-```id="status_service"
-attendance-status-service
-→ getAttendanceStatus() 중앙화
-```
-
----
-
-# 🧾 한 줄 요약
-
-> 이 시스템의 핵심은 “Backend가 진짜 상태를 정의하고, Frontend는 그 결과만 렌더링하는 구조”이다.
-
+> 이 구조는 “실시간 + 이벤트 기반 + 복구 가능한 급여/근태 시스템”의 운영 안정형 아키텍처다.

@@ -14,6 +14,9 @@ import { SHIFT_TIME } from "../shared/constants";
 import SettleTab from "../shared/components/SettleTab";
 import { PayrollAdminPanel } from "../shared/components/PayrollAdminPanel";
 
+// 1. 실제 파일 위치인 src/shared/components/ 경로를 정확히 반영한 상대 경로 수정
+import AdminPinScreen from "../shared/components/Admin_PinScreen.jsx"; 
+
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
@@ -52,6 +55,12 @@ function getWeekDates(offset = 0) {
 const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift", "emp"]);
 
 export default function App() {
+  // 인증된 관리자 상태 관리 (sessionStorage로 브라우저 탭 닫기 전까지 로그인 유지)
+  const [adminUser, setAdminUser] = useState(() => {
+    const saved = sessionStorage.getItem("admin_session");
+    return saved ? JSON.parse(saved) : null;
+  });
+
   const [tab, setTab] = useState("today");
   const [toast, setToast] = useState(null);
   const [settlementOffset, setSettlementOffset] = useState(0);
@@ -59,12 +68,55 @@ export default function App() {
   const [weekOffset, setWeekOffset] = useState(0);
 
   const toastTimerRef = useRef(null);
+  // 자동 로그아웃 타이머를 가리킬 Ref 추가
+  const logoutTimerRef = useRef(null); 
 
   const showToast = useCallback((msg, type = "ok") => {
     setToast({ msg, type });
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setToast(null), 2400);
   }, []);
+
+  // 로그아웃 처리 핸들러
+  const handleLogout = useCallback(() => {
+    setAdminUser(null);
+    sessionStorage.removeItem("admin_session");
+    if (logoutTimerRef.current) window.clearTimeout(logoutTimerRef.current);
+    showToast("보안을 위해 자동 로그아웃되었습니다.", "err");
+  }, [showToast]);
+
+  // 인증 성공 콜백 핸들러 (role이 admin인 계정만 최종 승인)
+  const handleLoginSuccess = (adminData) => {
+    if (adminData?.role === "admin") {
+      setAdminUser(adminData);
+      sessionStorage.setItem("admin_session", JSON.stringify(adminData));
+      showToast(`${adminData.name} 관리자님, 환영합니다!`, "ok");
+    } else {
+      showToast("관리자 권한이 없는 계정입니다.", "err");
+    }
+  };
+
+  // 10분 이상 아무런 입력이나 움직임이 없을 때 작동하는 자동 로그아웃 타이머
+  useEffect(() => {
+    if (!adminUser) return;
+
+    const resetTimer = () => {
+      if (logoutTimerRef.current) window.clearTimeout(logoutTimerRef.current);
+      logoutTimerRef.current = window.setTimeout(() => {
+        handleLogout();
+      }, 10 * 60 * 1000); 
+    };
+
+    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, resetTimer));
+    
+    resetTimer();
+
+    return () => {
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
+      if (logoutTimerRef.current) window.clearTimeout(logoutTimerRef.current);
+    };
+  }, [adminUser, handleLogout]);
 
   useEffect(() => {
     return () => {
@@ -94,7 +146,6 @@ export default function App() {
     month: selectedMonth,
   });
 
-  // ✅ FIX: AttTab에서 쓰는 updateAttendance alias 생성
   const updateAttendance = approveAttendance;
 
   useEffect(() => {
@@ -131,6 +182,8 @@ export default function App() {
   );
 
   useEffect(() => {
+    if (!adminUser) return;
+
     if (tab === "today") {
       refreshAdminToday().catch(() => {});
       return;
@@ -162,26 +215,28 @@ export default function App() {
     if (tab === "settle") {
       refreshAll().catch(() => {});
     }
-  }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth]);
+  }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth, adminUser]);
 
   useEffect(() => {
+    if (!adminUser) return;
+    
     if (tab === "att" || tab === "settle") {
       refreshAll().catch(() => {});
     }
-  }, [selectedMonth, tab, refreshAll]);
+  }, [selectedMonth, tab, refreshAll, adminUser]);
 
   const handleApprove = useCallback(
     async (row) => {
       await approveAttendance({
         attendance_id: row.attendance_id,
         approved: true,
-        approved_by: "manager",
+        approved_by: adminUser?.name || "manager", 
         approval_note: "",
         date: row.date,
       });
       showToast("승인되었습니다");
     },
-    [approveAttendance, showToast],
+    [approveAttendance, showToast, adminUser],
   );
 
   const handleReject = useCallback(
@@ -189,13 +244,13 @@ export default function App() {
       await approveAttendance({
         attendance_id: row.attendance_id,
         approved: false,
-        approved_by: "manager",
+        approved_by: adminUser?.name || "manager",
         approval_note: "",
         date: row.date,
       });
       showToast("거절 처리되었습니다");
     },
-    [approveAttendance, showToast],
+    [approveAttendance, showToast, adminUser],
   );
 
   const handleRefresh = useCallback(() => {
@@ -308,7 +363,7 @@ export default function App() {
           employees={employees}
           selectedMonth={selectedMonth}
           lockMonthlyPay={lockMonthlyPay}
-          currentManagerName="manager"
+          currentManagerName={adminUser?.name || "manager"} 
         />
       );
     }
@@ -319,10 +374,15 @@ export default function App() {
         approveAttendance={approveAttendance}
         updateAttendance={updateAttendance}
         selectedMonth={selectedMonth}
-        currentManagerName="manager"
+        currentManagerName={adminUser?.name || "manager"} 
       />
     );
   };
+
+  // 관리자 인증 세션이 없을 경우 PIN 화면 반환
+  if (!adminUser) {
+    return <AdminPinScreen onSuccess={handleLoginSuccess} />;
+  }
 
   return (
     <div className="admin-app">

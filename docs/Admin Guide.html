@@ -3,163 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍩 던킨 매장 관리자님을 위한 쉬운 설명서</title>
+    <title>🍩 던킨 사장님 마스터 가이드</title>
     <style>
         :root {
-            --main-blue: #3498db;
-            --sub-blue: #ebf5fb;
-            --point-orange: #f39c12;
-            --text-color: #333;
+            --admin-blue: #3498db;
+            --admin-dark: #2c3e50;
+            --bg-light: #f4f7f9;
+            --white: #ffffff;
+            --accent-orange: #f39c12;
         }
         body {
-            font-family: 'Nanum Gothic', 'Malgun Gothic', sans-serif;
-            background-color: #f9f9f9;
-            color: var(--text-color);
-            line-height: 1.8;
+            font-family: 'Pretendard', 'Nanum Gothic', sans-serif;
+            background-color: var(--bg-light);
+            color: #333;
             margin: 0;
             padding: 20px;
+            display: flex;
+            justify-content: center;
         }
         .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+            background: var(--white);
             border-radius: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            border: 5px solid var(--main-blue);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border: 6px solid var(--admin-blue);
         }
         .header {
-            text-align: center;
-            background-color: var(--main-blue);
+            background: var(--admin-blue);
             color: white;
-            padding: 30px;
-            border-radius: 20px;
-            margin-bottom: 30px;
+            text-align: center;
+            padding: 40px 20px;
         }
-        .header h1 { margin: 0; font-size: 28px; }
-        .header p { margin-top: 10px; font-size: 18px; }
+        .header h1 { margin: 0; font-size: 30px; }
+        .header p { margin-top: 10px; opacity: 0.9; font-size: 18px; }
 
-        .address-box {
-            background: var(--sub-blue);
+        .tab-menu {
+            display: flex;
+            background: #eee;
+            border-bottom: 2px solid var(--admin-blue);
+        }
+        .tab-btn {
+            flex: 1;
             padding: 20px;
-            border-radius: 15px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: #666;
+            transition: 0.3s;
+            border-right: 1px solid #ddd;
+        }
+        .tab-btn:last-child { border-right: none; }
+        .tab-btn.active {
+            background: var(--admin-blue);
+            color: white;
+        }
+        .tab-btn:hover:not(.active) { background: #e0e0e0; }
+
+        .tab-content {
+            padding: 40px;
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .url-info {
+            background: #ebf5fb;
+            padding: 15px;
+            border-radius: 10px;
             text-align: center;
             margin-bottom: 30px;
-            border: 2px dashed var(--main-blue);
+            border: 2px dashed var(--admin-blue);
         }
-        .address-box b { color: var(--main-blue); font-size: 20px; }
-        .address-box a { color: #e67e22; font-weight: bold; text-decoration: none; font-size: 18px; }
+        .url-info a { color: var(--admin-blue); font-weight: bold; text-decoration: none; }
 
-        h2 {
-            color: var(--main-blue);
-            font-size: 22px;
-            border-bottom: 3px solid var(--main-blue);
-            padding-bottom: 10px;
-            margin-top: 40px;
-        }
+        h2 { color: var(--admin-dark); border-bottom: 3px solid var(--admin-blue); display: inline-block; margin-bottom: 25px; }
         .card {
-            background: #fff;
+            background: #fcfcfc;
             border: 2px solid #eee;
-            border-radius: 15px;
-            padding: 20px;
+            border-radius: 20px;
+            padding: 25px;
             margin-bottom: 20px;
         }
-        .step {
-            display: flex;
-            margin-bottom: 15px;
-            align-items: center;
+        .step { display: flex; margin-bottom: 20px; align-items: center; }
+        .num {
+            background: var(--admin-blue); color: white; width: 30px; height: 30px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; margin-right: 15px; flex-shrink: 0;
         }
-        .number {
-            background: var(--main-blue);
-            color: white;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-right: 15px;
-            flex-shrink: 0;
+        .highlight { background-color: #fff3cd; padding: 2px 5px; font-weight: bold; }
+        .warning {
+            background-color: #fff5f5; border: 2px solid #ffcccc;
+            padding: 20px; border-radius: 15px; color: #c0392b; font-weight: bold;
+            margin-top: 30px;
         }
-        .highlight {
-            background-color: #fff3cd;
-            padding: 2px 5px;
-            font-weight: bold;
-            color: #856404;
+        .pay-table {
+            width: 100%; border-collapse: collapse; margin: 20px 0;
         }
-        .important {
-            background-color: #ffebeb;
-            border: 2px solid #ffcccc;
-            padding: 15px;
-            border-radius: 15px;
-            color: #c0392b;
-            font-weight: bold;
-            margin-top: 20px;
+        .pay-table th, .pay-table td {
+            border: 1px solid #ddd; padding: 12px; text-align: center;
         }
-        footer { text-align: center; margin-top: 50px; color: #bbb; font-size: 14px; }
+        .pay-table th { background: #f8f9fa; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h1>⚙️ 던킨 매장 대장님 설명서</h1>
-        <p>직원들 시간을 관리하고 월급을 주는 방법!</p>
+        <h1 style="font-size: 30px;">⚙️ 던킨 사장님 마스터 가이드</h1>
+        <p>직원 관리부터 월급 정산까지 한 번에 끝내세요!</p>
     </div>
 
-    <div class="address-box">
-        <b>🌐 인터넷 주소 (접속하세요!)</b><br>
-        관리자용: <a href="https://dunkin-admin.vercel.app/">여기 클릭</a><br>
-        직원용: <a href="https://dunkin-admin.vercel.app/staff">여기 클릭</a>
+    <div class="url-info">
+        <b>🌐 인터넷 주소:</b> 
+        관리자용 <a href="https://dunkin-admin.vercel.app/" target="_blank">여기 클릭</a> | 
+        직원용 <a href="https://dunkin-admin.vercel.app/staff" target="_blank">여기 클릭</a>
     </div>
 
-    <section>
-        <h2>1. 📝 직원 등록하기 (새 친구 맞이)</h2>
-        <div class="card">
-            <div class="step"><div class="number">1</div><div>[직원 관리] 메뉴로 갑니다.</div></div>
-            <div class="step"><div class="number">2</div><div>새 직원의 <span class="highlight">이름, 전화번호, 시급(1시간에 얼마 줄지)</span>을 입력합니다.</div></div>
-            <div class="step"><div class="number">3</div><div>직원이 로그인할 수 있게 아이디와 비밀번호를 알려줍니다.</div></div>
-        </div>
-    </section>
-
-    <section>
-        <h2>2. 📅 근무표 짜기 (언제 일할까?)</h2>
-        <div class="card">
-            <div class="step"><div class="number">1</div><div>[스케줄] 메뉴에서 달력을 봅니다.</div></div>
-            <div class="step"><div class="number">2</div><div>일할 날짜를 누르고 <span class="highlight">누가, 몇 시부터 몇 시까지</span> 일할지 정합니다.</div></div>
-            <div class="step"><div class="number">3</div><div>저장을 누르면 모든 직원이 포스기에서 확인할 수 있어요!</div></div>
-        </div>
-    </section>
-
-    <section>
-        <h2>3. ✅ 출퇴근 확인 및 승인 (맞게 일했나?)</h2>
-        <div class="card">
-            <p>직원이 버튼을 누르면 관리자님께 <span class="highlight">'확인해 주세요!'</span>라는 요청이 옵니다.</p>
-            <div class="step"><div class="number">1</div><div>[근태/출퇴근] 메뉴에서 <span style="color:orange">주황색(대기중)</span> 기록을 찾습니다.</div></div>
-            <div class="step"><div class="number">2</div><div><b>[승인] 버튼:</b> "맞게 일했네! 돈 줘도 돼." $\rightarrow$ <span class="highlight">월급에 포함됨</span></div></div>
-            <div class="step"><div class="number">3</div><div><b>[거절] 버튼:</b> "이 기록은 잘못됐어. 인정 못 해!" $\rightarrow$ <span class="highlight">월급에서 빠짐</span></div></div>
-        </div>
-    </section>
-
-    <section>
-        <h2>4. 💰 월급 계산 및 명세서 (돈 주기)</h2>
-        <div class="card">
-            <div class="step"><div class="number">1</div><div>[정산] 메뉴에서 이번 달을 선택합니다.</div></div>
-            <div class="step"><div class="number">2</div><div>컴퓨터가 자동으로 <span class="highlight">기본 월급 + 추가 근무 수당</span>을 계산해서 합계를 보여줍니다.</div></div>
-            <div class="step"><div class="number">3</div><div>금액이 맞다면 [정산 완료]를 누르고, <span class="highlight">임금 명세서(월급 표)</span>를 출력해서 직원에게 줍니다.</div></div>
-        </div>
-    </section>
-
-    <div class="important">
-        🚨 꼭 기억하세요!<br>
-        직원이 퇴근 버튼을 안 눌러서 기록이 뻥 뚫려 있다면, 관리자님이 직접 [수정] 버튼을 눌러 시간을 맞춰주신 뒤 '승인'을 눌러야 월급이 나갑니다!
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="openTab(event, 'tab1')">👤 직원 등록</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab2')">📅 스케줄 짜기</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab3')">✅ 승인/거절</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab4')">💰 월급 정산</button>
+        <button class="tab-btn" onclick="openTab(event, 'tab5')">📏 계산 규칙</button>
     </div>
 
-    <footer>
-        © 2024 던킨 매장 관리 시스템 - 쉽고 정확하게!
+    <!-- 탭 1: 직원 등록 -->
+    <div id="tab1" class="tab-content active">
+        <h2>👤 새 직원 등록하기</h2>
+        <div class="card">
+            <div class="step"><div class="num">1</div><div>[직원 관리] 메뉴로 들어갑니다.</div></div>
+            <div class="step"><div class="num">2</div><div>직원의 <span class="highlight">이름, 전화번호, 1시간당 시급</span>을 정확히 입력합니다.</div></div>
+            <div class="step"><div class="num">3</div><div>로그인할 아이디와 비밀번호를 만들어 직원에게 알려줍니다.</div></div>
+            <div class="step"><div class="num">4</div><div>이제 직원이 포스기에서 로그인하여 사용할 수 있습니다!</div></div>
+        </div>
+    </div>
+
+    <!-- 탭 2: 스케줄 등록 -->
+    <div id="tab2" class="tab-content">
+        <h2>📅 근무표 짜기 (스케줄)</h2>
+        <div class="card">
+            <div class="step"><div class="num">1</div><div>[스케줄] 메뉴의 달력에서 일할 날짜를 선택합니다.</div></div>
+            <div class="step"><div class="num">2</div><div><span class="highlight">누가, 몇 시부터 몇 시까지, 어떤 파트</span>에서 일할지 정합니다.</div></div>
+            <div class="step"><div class="num">3</div><div>[저장]을 누르면 포스기에 즉시 반영되어 직원이 확인할 수 있습니다.</div></div>
+            <div class="step"><div class="num">4</div><div>시간을 바꾸고 싶을 땐 언제든 다시 수정하고 저장하세요!</div></div>
+        </div>
+    </div>
+
+    <!-- 탭 3: 승인/거절 -->
+    <div id="tab3" class="tab-content">
+        <h2>✅ 출퇴근 확인 및 승인</h2>
+        <div class="card">
+            <p>직원이 버튼을 누르면 <b>"사장님, 확인해 주세요!"</b>라고 요청이 옵니다.</p>
+            <div class="step"><div class="num">1</div><div>[근태/출퇴근] 메뉴에서 <span style="color:orange; font-weight:bold;">주황색(대기중)</span> 기록을 찾습니다.</div></div>
+            <div class="step"><div class="num">2</div><div><b>[승인] 버튼:</b> "맞게 일했구나!"라고 누르면 <span class="highlight">월급에 포함됩니다.</span></div></div>
+            <div class="step"><div class="num">3</div><div><b>[거절] 버튼:</b> "이 기록은 잘못됐어!"라고 누르면 <span class="highlight">월급에서 빠집니다.</span></div></div>
+            <div class="warning">
+                🚨 주의: '승인'을 누르지 않은 기록은 절대 월급으로 계산되지 않습니다. 정산 전에 모두 확인하세요!
+            </div>
+        </div>
+    </div>
+
+    <!-- 탭 4: 월급 정산 -->
+    <div id="tab4" class="tab-content">
+        <h2>💰 월급 계산 및 명세서</h2>
+        <div class="card">
+            <div class="step"><div class="num">1</div><div>[정산] 메뉴에서 월급을 줄 '달(Month)'을 선택합니다.</div></div>
+            <div class="step"><div class="num">2</div><div>컴퓨터가 <span class="highlight">기본 월급 + 추가 근무 수당</span>을 자동으로 계산해 합계를 보여줍니다.</div></div>
+            <div class="step"><div class="num">3</div><div>금액이 맞다면 [정산 완료]를 눌러 금액을 확정합니다.</div></div>
+            <div class="step"><div class="num">4</div><div>[명세서 출력] 버튼을 눌러 직원에게 월급 표를 전달합니다.</div></div>
+        </div>
+    </div>
+
+    <!-- 탭 5: 계산 규칙 -->
+    <div id="tab5" class="tab-content">
+        <h2>📏 우리 매장 임금 계산 규칙</h2>
+        <div class="card">
+            <p>컴퓨터가 월급을 계산할 때 사용하는 아주 공평한 규칙입니다.</p>
+            <table class="pay-table">
+                <thead>
+                    <tr><th>구분</th><th>규칙</th><th>결과</th></tr>
+                </thead>
+                <tbody style="font-size: 15px;">
+                    <tr><td><b>지각</b></td><td>계획보다 5분 넘게 늦으면?</td><td>늦은 만큼 깎여요</td></tr>
+                    <tr><td><b>조퇴</b></td><td>끝나기 5분 전보다 빨리 가면?</td><td>빨리 간 만큼 깎여요</td></tr>
+                    <tr><td><b>일찍 출근</b></td><td>계획보다 일찍 와서 버튼 누르면?</td><td>최대 10분까지 돈을 더 줘요</td></tr>
+                    <tr><td><b>연장 근무</b></td><td>끝난 뒤에도 더 일하고 버튼 누르면?</td><td>일한 만큼 모두 돈을 더 줘요</td></tr>
+                </tbody>
+            </table>
+            <div class="warning" style="color: #666; border-color: #ccc; background-color: #f9f9f9;">
+                💡 팁: 모든 계산은 스케줄표가 아니라, 직원이 누른 <b>'출퇴근 버튼 시간'</b>을 기준으로 합니다.
+            </div>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 30px; color: #aaa; font-size: 13px;">
+        © 2024 Dunkin Admin System - 쉽고 정확한 매장 관리
     </footer>
 </div>
+
+<script>
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].classList.remove("active");
+        }
+        tablinks = document.getElementsByClassName("tab-btn");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+</script>
 
 </body>
 </html>

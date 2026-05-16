@@ -3,103 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍩 던킨 알바생을 위한 쉬운 설명서</title>
+    <title>🍩 던킨 알바생 꿀팁 가이드</title>
     <style>
         :root {
             --main-pink: #e0638c;
             --sub-orange: #fca311;
             --bg-light: #fffcf9;
-            --text-color: #444;
+            --white: #ffffff;
         }
         body {
-            font-family: 'Nanum Gothic', 'Malgun Gothic', sans-serif;
+            font-family: 'Pretendard', 'Nanum Gothic', sans-serif;
             background-color: var(--bg-light);
-            color: var(--text-color);
-            line-height: 1.8;
+            color: #444;
             margin: 0;
             padding: 20px;
+            display: flex;
+            justify-content: center;
         }
         .container {
             max-width: 600px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
+            width: 100%;
+            background: var(--white);
             border-radius: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            border: 5px solid var(--sub-orange);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border: 6px solid var(--sub-orange);
         }
         .header {
-            text-align: center;
             background: linear-gradient(to right, var(--main-pink), var(--sub-orange));
             color: white;
-            padding: 30px;
-            border-radius: 20px;
-            margin-bottom: 30px;
+            text-align: center;
+            padding: 40px 20px;
         }
-        .header h1 { margin: 0; font-size: 24px; }
+        .header h1 { margin: 0; font-size: 26px; }
         .header p { margin-top: 10px; font-size: 16px; }
+
+        .tab-menu {
+            display: flex;
+            background: #fff5eb;
+            border-bottom: 2px solid var(--sub-orange);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            color: #888;
+            transition: 0.3s;
+            border-right: 1px solid #ffe4cc;
+        }
+        .tab-btn:last-child { border-right: none; }
+        .tab-btn.active {
+            background: var(--sub-orange);
+            color: white;
+        }
+
+        .tab-content {
+            padding: 30px;
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         h2 {
             color: #e67e22;
             font-size: 20px;
             border-left: 6px solid var(--sub-orange);
-            padding-left: 10px;
-            margin-top: 30px;
+            padding-left: 12px;
+            margin-bottom: 20px;
         }
         .card {
             background: #fffaf5;
             border: 2px solid #ffe4cc;
-            border-radius: 15px;
+            border-radius: 20px;
             padding: 20px;
             margin-bottom: 20px;
         }
-        .step {
-            display: flex;
-            margin-bottom: 15px;
-            align-items: center;
-        }
-        .number {
-            background: var(--sub-orange);
-            color: white;
-            width: 25px;
-            height: 25px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-right: 12px;
-            flex-shrink: 0;
+        .step { display: flex; margin-bottom: 15px; align-items: center; }
+        .num {
+            background: var(--sub-orange); color: white; width: 25px; height: 25px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; margin-right: 12px; flex-shrink: 0;
         }
         .benefit {
-            background-color: #f0fff4;
-            border: 1px solid #c6f6d5;
-            padding: 15px;
-            border-radius: 12px;
-            color: #2f855a;
-            font-weight: bold;
-            margin-top: 15px;
+            background-color: #f0fff4; border: 1px solid #c6f6d5;
+            padding: 15px; border-radius: 12px; color: #2f855a;
+            font-weight: bold; margin-top: 15px;
         }
         .penalty {
-            background-color: #fff5f5;
-            border: 2px solid #ffcccc;
-            padding: 15px;
-            border-radius: 12px;
-            color: #c53030;
-            font-weight: bold;
-            margin-top: 15px;
-            text-align: center;
+            background-color: #fff5f5; border: 2px solid #ffcccc;
+            padding: 15px; border-radius: 12px; color: #c53030;
+            font-weight: bold; margin-top: 15px; text-align: center;
         }
-        footer { text-align: center; margin-top: 40px; color: #bbb; font-size: 12px; }
+        footer { text-align: center; padding: 30px; color: #ccc; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h1>🍩 던킨 알바생 가이드</h1>
-        <p>버튼을 잘 눌러야 내 월급이 지켜져요!</p>
+        <h1>🍩 던킨 알바생 꿀팁 가이드</h1>
+        <p>버튼 한 번으로 내 월급을 지켜요!</p>
     </div>
 
-    <section>
-        <h2>1
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="openTab(event, 'st1')">🔑 입장방법</button>
+        <button class="tab-btn" onclick="openTab(event, 'st2')">⏱️ 버튼의 비밀</button>
+        <button class="tab-btn" onclick="openTab(event, 'st3')">⚠️ 조심할 점</button>
+        <button class="tab-btn" onclick="openTab(event, 'st4')">📅 시간 변경</button>
+    </div>
+
+    <!-- 탭 1: 입장방법 -->
+    <div id="st1" class="tab-content active">
+        <h2>🔑 어떻게 들어가나요?</h2>
+        <div class="card">
+            <div class="step"><div class="num">1</div><div>포스기 화면에 있는 <span style="color:var(--main-pink); font-weight:bold;">[스케줄러 아이콘]</span>을 찾으세요.</div></div>
+            <div class="step"><div class="num">2</div><div>아이콘을 꾹 누르면 로그인 화면이 나옵니다.</div></div>
+            <div class="step"><div class="num">3</div><div>내 <span class="highlight">아이디</span>와 <span class="highlight">비밀번호</span>를 쓰고 로그인하면 끝!</div></div>
+        </div>
+    </div>
+
+    <!-- 탭 2: 버튼의 비밀 -->
+    <div id="st2" class="tab-content">
+        <h2>⏱️ 출퇴근 버튼의 비밀</h2>
+        <div class="card">
+            <p>이 컴퓨터는 <b>"버튼을 누른 시간"</b>을 기록해서 월급을 줘요!</p>
+            <div class="step"><div class="num">1</div><div><b>출근 버튼:</b> "저 지금 왔어요!"라고 알려주는 거예요.</div></div>
+            <div class="step"><div class="num">2</div><div><b>퇴근 버튼:</b> "저 이제 가요!"라고 알려주는 거예요.</div></div>
+            
+            <div class="benefit">
+                🌟 <b style="color: #27ae60;">돈 더 받는 꿀팁!</b><br>
+                정해진 시간보다 최대 10분 일찍 와서 버튼을 누르면, 그 시간만큼 월급을 더 받을 수 있어요!
+            </div>
+        </div>
+    </div>
+
+    <!-- 탭 3: 조심할 점 -->
+    <div id="st3" class="tab-content">
+        <h2>⚠️ 이것만은 꼭 지켜주세요!</h2>
+        <div class="card">
+            <div class="step"><div class="num">!</div><div><b>지각 주의:</b> 5분까지는 괜찮지만, <span style="color:red; font-weight:bold;">6분부터는 늦은 만큼 월급에서 깎여요!</span></div></div>
+            
+            <div class="penalty">
+                🚫 퇴근 버튼 안 누르면 어떻게 되나요?<br>
+                사장님이 내가 언제 갔는지 몰라서 <span style="text-decoration: underline;">월급 계산이 아주 늦어지거나</span>,<br>계속 까먹으면 <span style="text-decoration: underline;">패널티(경고)</span>를 받을 수 있어요!
+            </div>
+        </div>
+    </section>
+
+    <!-- 탭 4: 시간 변경 -->
+    <div id="st4" class="tab-content">
+        <h2>📅 시간이 바뀌었을 때는?</h2>
+        <div class="card">
+            <p>갑자기 대타를 뛰게 됐거나, 근무 시간이 바뀌었나요?</p>
+            <div class="step"><div class="num">1</div><div>달력에서 해당 날짜의 <span style="color:var(--sub-orange); font-weight:bold;">[요청]</span> 버튼을 누르세요.</div></div>
+            <div class="step"><div class="num">2</div><div>이렇게 하면 사장님이 확인하고 [승인]을 눌러주실 거예요. <span class="highlight">그래야 내 월급에 쏙 들어갑니다!</span></div></div>
+            <p style="font-size: 13px; color: #888; text-align: center; margin-top: 20px;">
+                * 사장님께 "요청 보냈어요!"라고 말씀드리면 더 빨라요!
+            </p>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 30px; color: #ccc; font-size: 12px;">
+        © 2024 Dunkin POS System - 정직한 클릭이 정직한 월급을 만듭니다!
+    </footer>
+</div>
+
+<script>
+    function openTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].classList.remove("active");
+        }
+        tablinks = document.getElementsByClassName("tab-btn");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+</script>
+
+</body>
+</html>

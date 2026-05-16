@@ -3,195 +3,267 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍩 던킨 알바생 꿀팁 가이드</title>
+    <title>Dunkin POS Attendance SOP</title>
     <style>
         :root {
-            --main-pink: #e0638c;
-            --sub-orange: #fca311;
-            --bg-light: #fffcf9;
-            --white: #ffffff;
+            --corp-navy: #1a2a6c;
+            --corp-slate: #4b6584;
+            --corp-grey: #f4f7f9;
+            --danger-red: #d32f2f;
+            --success-green: #2e7d32;
+            --border-color: #ced4da;
+            --text-main: #222;
         }
         body {
-            font-family: 'Pretendard', 'Nanum Gothic', sans-serif;
-            background-color: var(--bg-light);
-            color: #444;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #ccc;
             margin: 0;
             padding: 20px;
             display: flex;
             justify-content: center;
         }
-        .container {
-            max-width: 600px;
+        .document {
+            background-color: var(--white);
             width: 100%;
-            background: var(--white);
-            border-radius: 30px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
-            overflow: hidden;
-            border: 6px solid var(--sub-orange);
+            max-width: 700px;
+            background-color: white;
+            border: 1px solid #999;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            padding: 40px;
+            box-sizing: border-box;
         }
         .header {
-            background: linear-gradient(to right, var(--main-pink), var(--sub-orange));
-            color: white;
             text-align: center;
-            padding: 40px 20px;
+            border-bottom: 3px solid var(--corp-navy);
+            margin-bottom: 30px;
+            padding-bottom: 20px;
         }
-        .header h1 { margin: 0; font-size: 26px; }
-        .header p { margin-top: 10px; font-size: 16px; }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: var(--corp-navy);
+            letter-spacing: -1px;
+            text-transform: uppercase;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 16px;
+            color: var(--corp-slate);
+            font-weight: 500;
+        }
 
-        .tab-menu {
-            display: flex;
-            background: #fff5eb;
-            border-bottom: 2px solid var(--sub-orange);
+        .section {
+            margin-bottom: 35px;
         }
-        .tab-btn {
-            flex: 1;
-            padding: 15px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-size: 14px;
+        .section-title {
+            font-size: 18px;
             font-weight: bold;
-            color: #888;
-            transition: 0.3s;
-            border-right: 1px solid #ffe4cc;
-        }
-        .tab-btn:last-child { border-right: none; }
-        .tab-btn.active {
-            background: var(--sub-orange);
-            color: white;
+            color: var(--corp-navy);
+            background: var(--corp-grey);
+            padding: 10px 15px;
+            border-left: 5px solid var(--corp-navy);
+            margin-bottom: 15px;
         }
 
-        .tab-content {
-            padding: 30px;
-            display: none;
-            animation: fadeIn 0.5s;
+        /* 단계별 절차 스타일 */
+        .procedure {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-left: 10px;
         }
-        .tab-content.active { display: block; }
+        .proc-item {
+            display: flex;
+            align-items: center;
+            font-size: 16px;
+            color: var(--text-main);
+        }
+        .proc-num {
+            font-weight: bold;
+            color: var(--corp-navy);
+            margin-right: 15px;
+            font-size: 14px;
+            width: 20px;
+        }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        /* 버튼 가이드 */
+        .button-guide {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
         }
-
-        h2 {
-            color: #e67e22;
-            font-size: 20px;
-            border-left: 6px solid var(--sub-orange);
-            padding-left: 12px;
-            margin-bottom: 20px;
-        }
-        .card {
-            background: #fffaf5;
-            border: 2px solid #ffe4cc;
-            border-radius: 20px;
+        .btn-box {
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
             padding: 20px;
-            margin-bottom: 20px;
+            text-align: center;
         }
-        .step { display: flex; margin-bottom: 15px; align-items: center; }
-        .num {
-            background: var(--sub-orange); color: white; width: 25px; height: 25px;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-weight: bold; margin-right: 12px; flex-shrink: 0;
+        .btn-box.in { border-color: var(--success-green); background-color: #f8fff8; }
+        .btn-box.out { border-color: var(--danger-red); background-color: #fffafa; }
+        .btn-label {
+            font-size: 14px;
+            color: #666;
+            display: block;
+            margin-bottom: 10px;
         }
-        .benefit {
-            background-color: #f0fff4; border: 1px solid #c6f6d5;
-            padding: 15px; border-radius: 12px; color: #2f855a;
-            font-weight: bold; margin-top: 15px;
+        .btn-text {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-main);
         }
-        .penalty {
-            background-color: #fff5f5; border: 2px solid #ffcccc;
-            padding: 15px; border-radius: 12px; color: #c53030;
-            font-weight: bold; margin-top: 15px; text-align: center;
+
+        /* 임금 규칙 테이블 */
+        .rule-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 15px;
         }
-        footer { text-align: center; padding: 30px; color: #ccc; font-size: 12px; }
+        .rule-table th, .rule-table td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+        }
+        .rule-table th {
+            background-color: var(--corp-grey);
+            color: var(--corp-navy);
+            font-weight: bold;
+            text-align: center;
+        }
+        .val-red { color: var(--danger-red); font-weight: bold; }
+        .val-blue { color: var(--corp-navy); font-weight: bold; }
+
+        /* 초강력 경고 섹션 */
+        .critical-warning {
+            background-color: #fef2f2;
+            border: 2px solid var(--danger-red);
+            padding: 20px;
+            border-radius: 0;
+            color: #b91c1c;
+            font-weight: bold;
+            text-align: center;
+            font-size: 17px;
+            line-height: 1.6;
+        }
+
+        .footer-info {
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--corp-grey);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 15px;
+            color: var(--corp-slate);
+            border: 1px solid var(--border-color);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #999;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="document">
     <div class="header">
-        <h1>🍩 던킨 알바생 꿀팁 가이드</h1>
-        <p>버튼 한 번으로 내 월급을 지켜요!</p>
-    </div>
+        <h1>근태 기록 및 임금 산정 지침</h1>
+        <p>Dunkin POS Attendance Standard Operating Procedure</p>
+    </header>
 
-    <div class="tab-menu">
-        <button class="tab-btn active" onclick="openTab(event, 'st1')">🔑 입장방법</button>
-        <button class="tab-btn" onclick="openTab(event, 'st2')">⏱️ 버튼의 비밀</button>
-        <button class="tab-btn" onclick="openTab(event, 'st3')">⚠️ 조심할 점</button>
-        <button class="tab-btn" onclick="openTab(event, 'st4')">📅 시간 변경</button>
-    </div>
-
-    <!-- 탭 1: 입장방법 -->
-    <div id="st1" class="tab-content active">
-        <h2>🔑 어떻게 들어가나요?</h2>
-        <div class="card">
-            <div class="step"><div class="num">1</div><div>포스기 화면에 있는 <span style="color:var(--main-pink); font-weight:bold;">[스케줄러 아이콘]</span>을 찾으세요.</div></div>
-            <div class="step"><div class="num">2</div><div>아이콘을 꾹 누르면 로그인 화면이 나옵니다.</div></div>
-            <div class="step"><div class="num">3</div><div>내 <span class="highlight">아이디</span>와 <span class="highlight">비밀번호</span>를 쓰고 로그인하면 끝!</div></div>
-        </div>
-    </div>
-
-    <!-- 탭 2: 버튼의 비밀 -->
-    <div id="st2" class="tab-content">
-        <h2>⏱️ 출퇴근 버튼의 비밀</h2>
-        <div class="card">
-            <p>이 컴퓨터는 <b>"버튼을 누른 시간"</b>을 기록해서 월급을 줘요!</p>
-            <div class="step"><div class="num">1</div><div><b>출근 버튼:</b> "저 지금 왔어요!"라고 알려주는 거예요.</div></div>
-            <div class="step"><div class="num">2</div><div><b>퇴근 버튼:</b> "저 이제 가요!"라고 알려주는 거예요.</div></div>
-            
-            <div class="benefit">
-                🌟 <b style="color: #27ae60;">돈 더 받는 꿀팁!</b><br>
-                정해진 시간보다 최대 10분 일찍 와서 버튼을 누르면, 그 시간만큼 월급을 더 받을 수 있어요!
+    <!-- 1. 접속 절차 -->
+    <div class="section">
+        <div class="section-title">01. 시스템 접속 절차</div>
+        <div class="procedure">
+            <div class="proc-item">
+                <span class="proc-num">01</span>
+                <span>포스기 메인 화면의 <b>[스케줄러]</b> 아이콘을 실행합니다.</span>
+            </div>
+            <div class="proc-item">
+                <span class="proc-num">02</span>
+                <span>본인에게 부여된 <b>비밀번호 4자리</b>를 입력합니다. (아이디 입력 없음)</span>
+            </div>
+            <div class="proc-item">
+                <span class="proc-num">03</span>
+                <span>로그인 완료 후 즉시 본인의 근무 상태를 확인합니다.</span>
             </div>
         </div>
     </div>
 
-    <!-- 탭 3: 조심할 점 -->
-    <div id="st3" class="tab-content">
-        <h2>⚠️ 이것만은 꼭 지켜주세요!</h2>
-        <div class="card">
-            <div class="step"><div class="num">!</div><div><b>지각 주의:</b> 5분까지는 괜찮지만, <span style="color:red; font-weight:bold;">6분부터는 늦은 만큼 월급에서 깎여요!</span></div></div>
-            
-            <div class="penalty">
-                🚫 퇴근 버튼 안 누르면 어떻게 되나요?<br>
-                사장님이 내가 언제 갔는지 몰라서 <span style="text-decoration: underline;">월급 계산이 아주 늦어지거나</span>,<br>계속 까먹으면 <span style="text-decoration: underline;">패널티(경고)</span>를 받을 수 있어요!
+    <!-- 2. 출퇴근 기록 -->
+    <div class="section">
+        <div class="section-title">02. 출퇴근 기록 의무</div>
+        <p style="font-size: 15px; color: #555; margin-bottom: 15px;">
+            모든 임금은 스케줄표가 아닌 <b>실제 버튼 클릭 시간</b>을 기준으로 산정됩니다.
+        </p>
+        <div class="button-guide">
+            <div class="btn-box in">
+                <span class="btn-label">출근 시</span>
+                <span class="btn-text">🟢 [출근] 버튼 클릭</span>
             </div>
-        </div>
-    </section>
-
-    <!-- 탭 4: 시간 변경 -->
-    <div id="st4" class="tab-content">
-        <h2>📅 시간이 바뀌었을 때는?</h2>
-        <div class="card">
-            <p>갑자기 대타를 뛰게 됐거나, 근무 시간이 바뀌었나요?</p>
-            <div class="step"><div class="num">1</div><div>달력에서 해당 날짜의 <span style="color:var(--sub-orange); font-weight:bold;">[요청]</span> 버튼을 누르세요.</div></div>
-            <div class="step"><div class="num">2</div><div>이렇게 하면 사장님이 확인하고 [승인]을 눌러주실 거예요. <span class="highlight">그래야 내 월급에 쏙 들어갑니다!</span></div></div>
-            <p style="font-size: 13px; color: #888; text-align: center; margin-top: 20px;">
-                * 사장님께 "요청 보냈어요!"라고 말씀드리면 더 빨라요!
-            </p>
+            <div class="btn-box out">
+                <span class="btn-label">퇴근 시</span>
+                <span class="btn-text">🔴 [퇴근] 버튼 클릭</span>
+            </div>
         </div>
     </div>
 
-    <footer style="text-align: center; padding: 30px; color: #ccc; font-size: 12px;">
-        © 2024 Dunkin POS System - 정직한 클릭이 정직한 월급을 만듭니다!
+    <!-- 3. 임금 산정 규칙 -->
+    <div class="section">
+        <div class="section-title">03. 임금 산정 및 공제 규칙</div>
+        <table class="rule-table">
+            <thead>
+                <tr>
+                    <th>구분</th>
+                    <th>기준 및 처리 결과</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><b>지각</b></td>
+                    <td>계획 시간보다 <span class="val-red">1분이라도 늦을 시, 늦은 분만큼 전액 공제</span></td>
+                </tr>
+                <tr>
+                    <td><b>조기 출근</b></td>
+                    <td>계획 시간 전 출근 시, <span class="val-blue">최대 5분까지만</span> 근무 시간 인정</td>
+                </tr>
+                <tr>
+                    <td><b>추가 근무</b></td>
+                    <td>기록은 자동 생성되나, <span class="val-blue">관리자 승인 후</span>에만 임금 지급</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 4. 치명적 주의사항 -->
+    <div class="section">
+        <div class="section-title">04. 미이행 시 패널티</div>
+        <div class="critical-warning">
+            [퇴근 버튼 누락 시 주의사항]<br>
+            퇴근 버튼을 누르지 않고 귀가할 경우,<br>
+            <span style="text-decoration: underline; font-size: 20px;">해당 일의 모든 연장 근무 수당은 인정되지 않습니다.</span><br>
+            또한, 임금 정산이 지연되며 반복 시 근태 패널티가 부여됩니다.
+        </div>
+    </div>
+
+    <!-- 5. 명세서 확인 -->
+    <div class="section">
+        <div class="section-title">05. 임금 명세서 확인</div>
+        <div class="footer-info">
+            최종 정산 완료 후, 등록된 <b>개인 이메일</b>로 <br>
+            상세 임금 명세서(PDF)가 발송됩니다.
+        </div>
+    </div>
+
+    <footer>
+        © 2024 Dunkin POS System. All Rights Reserved.
     </footer>
 </div>
-
-<script>
-    function openTab(evt, tabName) {
-        var i, tabcontent, tablinks;
-        tabcontent = document.getElementsByClassName("tab-content");
-        for (i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].classList.remove("active");
-        }
-        tablinks = document.getElementsByClassName("tab-btn");
-        for (i = 0; i < tablinks.length; i++) {
-            tablinks[i].classList.remove("active");
-        }
-        document.getElementById(tabName).classList.add("active");
-        evt.currentTarget.classList.add("active");
-    }
-</script>
 
 </body>
 </html>

@@ -3,228 +3,185 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🍩 던킨 사장님 마스터 가이드</title>
+    <title>Dunkin Admin - 엄격한 정산 관리 매뉴얼</title>
     <style>
         :root {
-            --admin-blue: #3498db;
             --admin-dark: #2c3e50;
-            --bg-light: #f4f7f9;
+            --admin-blue: #3498db;
+            --accent-red: #e74c3c;
+            --bg-gray: #f8f9fa;
             --white: #ffffff;
-            --accent-orange: #f39c12;
+            --border-color: #dee2e6;
         }
         body {
-            font-family: 'Pretendard', 'Nanum Gothic', sans-serif;
-            background-color: var(--bg-light);
-            color: #333;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            margin: 0; background-color: var(--bg-gray); color: #333; line-height: 1.6;
         }
-        .container {
-            max-width: 900px;
-            width: 100%;
-            background: var(--white);
-            border-radius: 30px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
-            overflow: hidden;
-            border: 6px solid var(--admin-blue);
-        }
+        .container { max-width: 1100px; margin: 40px auto; padding: 0 20px; }
+        
         .header {
-            background: var(--admin-blue);
-            color: white;
+            background: linear-gradient(135deg, var(--admin-dark), #4b6584);
+            color: white; padding: 50px; border-radius: 20px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); margin-bottom: 40px;
+        }
+        .header h1 { margin: 0; font-size: 32px; }
+        .header p { margin-top: 15px; opacity: 0.8; font-size: 18px; }
+
+        .url-section {
+            display: flex; justify-content: center; gap: 20px; margin-bottom: 40px;
+        }
+        .url-card {
+            background: white; padding: 15px 25px; border-radius: 12px;
+            border: 1px solid var(--border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             text-align: center;
-            padding: 40px 20px;
         }
-        .header h1 { margin: 0; font-size: 30px; }
-        .header p { margin-top: 10px; opacity: 0.9; font-size: 18px; }
+        .url-box { font-family: monospace; color: var(--admin-blue); font-weight: bold; }
 
-        .tab-menu {
-            display: flex;
-            background: #eee;
-            border-bottom: 2px solid var(--admin-blue);
+        .main-layout { display: flex; gap: 30px; }
+        .sidebar {
+            width: 240px; background: white; border-radius: 20px; padding: 20px;
+            border: 1px solid var(--border-color); height: fit-content;
+            position: sticky; top: 20px;
         }
-        .tab-btn {
-            flex: 1;
-            padding: 20px;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            color: #666;
-            transition: 0.3s;
-            border-right: 1px solid #ddd;
+        .nav-link {
+            display: block; padding: 12px 15px; margin-bottom: 8px;
+            text-decoration: none; color: #666; border-radius: 10px;
+            transition: 0.3s; font-weight: 500;
         }
-        .tab-btn:last-child { border-right: none; }
-        .tab-btn.active {
-            background: var(--admin-blue);
-            color: white;
-        }
-        .tab-btn:hover:not(.active) { background: #e0e0e0; }
+        .nav-link:hover { background: var(--bg-gray); color: var(--admin-blue); }
+        .nav-link.active { background: var(--admin-blue); color: white; }
 
-        .tab-content {
-            padding: 40px;
-            display: none;
-            animation: fadeIn 0.5s;
+        .content-area { flex: 1; }
+        section {
+            background: white; padding: 30px; border-radius: 20px;
+            margin-bottom: 30px; border: 1px solid var(--border-color);
         }
-        .tab-content.active { display: block; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        h2 {
+            font-size: 24px; color: var(--admin-dark);
+            border-left: 6px solid var(--admin-blue); padding-left: 15px; margin-bottom: 25px;
         }
-
-        .url-info {
-            background: #ebf5fb;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 30px;
-            border: 2px dashed var(--admin-blue);
+        
+        .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
+        .feature-item {
+            background: #fdfdfd; border: 1px solid #eee; padding: 15px;
+            border-radius: 12px; font-size: 14px;
         }
-        .url-info a { color: var(--admin-blue); font-weight: bold; text-decoration: none; }
-
-        h2 { color: var(--admin-dark); border-bottom: 3px solid var(--admin-blue); display: inline-block; margin-bottom: 25px; }
-        .card {
-            background: #fcfcfc;
-            border: 2px solid #eee;
-            border-radius: 20px;
-            padding: 25px;
-            margin-bottom: 20px;
-        }
-        .step { display: flex; margin-bottom: 20px; align-items: center; }
-        .num {
-            background: var(--admin-blue); color: white; width: 30px; height: 30px;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-weight: bold; margin-right: 15px; flex-shrink: 0;
-        }
-        .highlight { background-color: #fff3cd; padding: 2px 5px; font-weight: bold; }
-        .warning {
+        .feature-item b { color: var(--admin-blue); display: block; margin-bottom: 5px; }
+        
+        .rule-box {
             background-color: #fff5f5; border: 2px solid #ffcccc;
-            padding: 20px; border-radius: 15px; color: #c0392b; font-weight: bold;
-            margin-top: 30px;
+            padding: 20px; margin-bottom: 30px; border-radius: 12px;
+            font-weight: 600; color: #c0392b;
         }
         .pay-table {
             width: 100%; border-collapse: collapse; margin: 20px 0;
         }
         .pay-table th, .pay-table td {
-            border: 1px solid #ddd; padding: 12px; text-align: center;
+            border: 1px solid var(--border-color); padding: 12px; text-align: center;
         }
         .pay-table th { background: #f8f9fa; }
+
+        footer { text-align: center; padding: 40px 0; color: #aaa; font-size: 13px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1 style="font-size: 30px;">⚙️ 던킨 사장님 마스터 가이드</h1>
-        <p>직원 관리부터 월급 정산까지 한 번에 끝내세요!</p>
-    </div>
-
-    <div class="url-info">
-        <b>🌐 인터넷 주소:</b> 
-        관리자용 <a href="https://dunkin-admin.vercel.app/" target="_blank">여기 클릭</a> | 
-        직원용 <a href="https://dunkin-admin.vercel.app/staff" target="_blank">여기 클릭</a>
-    </div>
-
-    <div class="tab-menu">
-        <button class="tab-btn active" onclick="openTab(event, 'tab1')">👤 직원 등록</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab2')">📅 스케줄 짜기</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab3')">✅ 승인/거절</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab4')">💰 월급 정산</button>
-        <button class="tab-btn" onclick="openTab(event, 'tab5')">📏 계산 규칙</button>
-    </div>
-
-    <!-- 탭 1: 직원 등록 -->
-    <div id="tab1" class="tab-content active">
-        <h2>👤 새 직원 등록하기</h2>
-        <div class="card">
-            <div class="step"><div class="num">1</div><div>[직원 관리] 메뉴로 들어갑니다.</div></div>
-            <div class="step"><div class="num">2</div><div>직원의 <span class="highlight">이름, 전화번호, 1시간당 시급</span>을 정확히 입력합니다.</div></div>
-            <div class="step"><div class="num">3</div><div>로그인할 아이디와 비밀번호를 만들어 직원에게 알려줍니다.</div></div>
-            <div class="step"><div class="num">4</div><div>이제 직원이 포스기에서 로그인하여 사용할 수 있습니다!</div></div>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ Dunkin Admin - 엄격 정산 시스템</h1>
+            <p>1분의 오차 없이 정확하게 계산되는 임금 관리 매뉴얼</p>
         </div>
-    </div>
 
-    <!-- 탭 2: 스케줄 등록 -->
-    <div id="tab2" class="tab-content">
-        <h2>📅 근무표 짜기 (스케줄)</h2>
-        <div class="card">
-            <div class="step"><div class="num">1</div><div>[스케줄] 메뉴의 달력에서 일할 날짜를 선택합니다.</div></div>
-            <div class="step"><div class="num">2</div><div><span class="highlight">누가, 몇 시부터 몇 시까지, 어떤 파트</span>에서 일할지 정합니다.</div></div>
-            <div class="step"><div class="num">3</div><div>[저장]을 누르면 포스기에 즉시 반영되어 직원이 확인할 수 있습니다.</div></div>
-            <div class="step"><div class="num">4</div><div>시간을 바꾸고 싶을 땐 언제든 다시 수정하고 저장하세요!</div></div>
+        <div class="url-section">
+            <div class="url-card"><b>관리자 접속:</b> <span class="url-box">https://dunkin-admin.vercel.app/</span></div>
+            <div class="url-card"><b>직원 접속:</b> <span class="url-box">https://dunkin-admin.vercel.app/staff</span></div>
         </div>
-    </div>
 
-    <!-- 탭 3: 승인/거절 -->
-    <div id="tab3" class="tab-content">
-        <h2>✅ 출퇴근 확인 및 승인</h2>
-        <div class="card">
-            <p>직원이 버튼을 누르면 <b>"사장님, 확인해 주세요!"</b>라고 요청이 옵니다.</p>
-            <div class="step"><div class="num">1</div><div>[근태/출퇴근] 메뉴에서 <span style="color:orange; font-weight:bold;">주황색(대기중)</span> 기록을 찾습니다.</div></div>
-            <div class="step"><div class="num">2</div><div><b>[승인] 버튼:</b> "맞게 일했구나!"라고 누르면 <span class="highlight">월급에 포함됩니다.</span></div></div>
-            <div class="step"><div class="num">3</div><div><b>[거절] 버튼:</b> "이 기록은 잘못됐어!"라고 누르면 <span class="highlight">월급에서 빠집니다.</span></div></div>
-            <div class="warning">
-                🚨 주의: '승인'을 누르지 않은 기록은 절대 월급으로 계산되지 않습니다. 정산 전에 모두 확인하세요!
+        <div class="main-layout">
+            <nav class="sidebar">
+                <h3 style="margin-top:0">📌 퀵 메뉴</h3>
+                <a href="#login" class="nav-link active">🔐 로그인 방법</a>
+                <a href="#attendance" class="nav-link">📊 근태 현황</a>
+                <a href="#schedule" class="nav-link">📅 근무 계획</a>
+                <a href="#employee" class="nav-link">👥 직원 관리</a>
+                <a href="#approval" class="nav-link">✅ 승인 처리</a>
+                <a href="#settlement" class="nav-link">💰 급여 정산</a>
+            </nav>
+
+            <div class="content-area">
+                <section id="login">
+                    <h2>🔐 로그인 방법</h2>
+                    <p>관리자 계정으로 접속하여 모든 권한을 사용하세요.</p>
+                    <div class="feature-item">
+                        제공된 관리자 URL 접속 후 ID/PW를 입력하면 즉시 메인 대시보드로 연결됩니다.
+                    </div>
+                </section>
+
+                <section id="attendance">
+                    <h2>📊 근태 현황 (Attendance Tab)</h2>
+                    <p>실시간 근무 상태를 확인하고 잘못된 기록을 바로잡는 곳입니다.</p>
+                    <div class="feature-grid">
+                        <div class="feature-item"><b>실시간 모니터링</b>현재 근무 중(WORKING)인 직원과 퇴근(CLOSED)한 직원을 구분합니다.</div>
+                        <div class="feature-item"><b>정확한 시간 확인</b>초 단위까지 기록된 출퇴근 시간을 확인하여 정산 기준을 잡습니다.</div>
+                        <div class="feature-item"><b>즉시 보정</b>퇴근 버튼을 누르지 않은 직원의 시간을 [수정] 버튼으로 직접 맞춰줍니다.</div>
+                        <div class="feature-item"><b>대타 확인</b>원래 누가 오기로 했고, 실제로 누가 왔는지 비교합니다.</div>
+                    </div>
+                </section>
+
+                <section id="schedule">
+                    <h2>📅 근무 계획 (Schedule Tab)</h2>
+                    <p>미래의 근무 표를 짭니다. 이 계획은 정산의 기준점이 됩니다.</p>
+                    <div class="feature-grid">
+                        <div class="feature-item"><b>스케줄 배정</b>날짜, 시간, 파트별로 직원을 배치합니다.</div>
+                        <div class="feature-item"><b>계획 수정</b>시간 변경 시 즉시 수정하여 직원이 포스기에서 확인하게 합니다.</div>
+                    </div>
+                </section>
+
+                <section id="employee">
+                    <h2>👥 직원 관리 (Employee Tab)</h2>
+                    <div class="feature-grid">
+                        <div class="feature-item"><b>기본 정보 등록</b>이름, 연락처와 함께 <b>정산의 기준이 될 이메일 주소</b>를 정확히 입력합니다.</div>
+                        <div class="feature-item"><b>시급 설정</b>직원별로 다른 시급을 설정하여 자동 계산이 가능하게 합니다.</div>
+                    </div>
+                </section>
+
+                <section id="approval">
+                    <h2>✅ 승인 처리 (Approval Tab)</h2>
+                    <div class="rule-box">
+                        핵심 룰: "관리자가 [승인]하지 않은 추가 근무는 임금으로 지급하지 않습니다."
+                    </div>
+                    <div class="feature-grid">
+                        <div class="feature-item"><b>승인 대상</b>스케줄 외 출근, 대타 근무, 연장 근무 기록이 이곳에 모입니다.</div>
+                        <div class="feature-item"><b>검토 및 결정</b>실제 근무가 확인되면 [승인], 인정 불가하면 [거절] 처리합니다.</div>
+                    </div>
+                </section>
+
+                <section id="settlement">
+                    <h2>💰 급여 정산 (Settlement Tab)</h2>
+                    <p>가장 엄격하게 계산되는 최종 단계입니다.</p>
+                    <table class="pay-table">
+                        <thead>
+                            <tr><th>항목</th><th>계산 규칙</th><th>결과</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>지각</td><td>계획 시간보다 1분이라도 늦으면?</td><td>늦은 만큼 전부 공제</td></tr>
+                            <tr><td>조기출근</td><td>계획보다 일찍 와서 버튼 누르면?</td><td>최대 5분까지만 인정</td></tr>
+                            <tr><td>추가근무</td><td>계획보다 더 일하고 버튼 누르면?</td><td>관리자 승인 후 지급</td></tr>
+                            <tr><td>퇴근 누락</td><td>퇴근 버튼을 안 누르고 간 경우?</td><td>연장근무 인정 불가</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="feature-grid">
+                        <div class="feature-item"><b>정산 확정</b>[정산 완료] 버튼을 누르면 해당 월의 금액이 고정됩니다.</div>
+                        <div class="feature-item"><b>명세서 발송</b>PDF 명세서를 생성하여 직원의 이메일로 즉시 발송합니다.</div>
+                    </div>
+                </section>
             </div>
         </div>
+
+        <footer style="text-align: center; padding: 40px 0; color: #aaa; font-size: 13px;">
+            &copy; 2024 Dunkin Admin System. Precision in Payroll.
+        </footer>
     </div>
-
-    <!-- 탭 4: 월급 정산 -->
-    <div id="tab4" class="tab-content">
-        <h2>💰 월급 계산 및 명세서</h2>
-        <div class="card">
-            <div class="step"><div class="num">1</div><div>[정산] 메뉴에서 월급을 줄 '달(Month)'을 선택합니다.</div></div>
-            <div class="step"><div class="num">2</div><div>컴퓨터가 <span class="highlight">기본 월급 + 추가 근무 수당</span>을 자동으로 계산해 합계를 보여줍니다.</div></div>
-            <div class="step"><div class="num">3</div><div>금액이 맞다면 [정산 완료]를 눌러 금액을 확정합니다.</div></div>
-            <div class="step"><div class="num">4</div><div>[명세서 출력] 버튼을 눌러 직원에게 월급 표를 전달합니다.</div></div>
-        </div>
-    </div>
-
-    <!-- 탭 5: 계산 규칙 -->
-    <div id="tab5" class="tab-content">
-        <h2>📏 우리 매장 임금 계산 규칙</h2>
-        <div class="card">
-            <p>컴퓨터가 월급을 계산할 때 사용하는 아주 공평한 규칙입니다.</p>
-            <table class="pay-table">
-                <thead>
-                    <tr><th>구분</th><th>규칙</th><th>결과</th></tr>
-                </thead>
-                <tbody style="font-size: 15px;">
-                    <tr><td><b>지각</b></td><td>계획보다 5분 넘게 늦으면?</td><td>늦은 만큼 깎여요</td></tr>
-                    <tr><td><b>조퇴</b></td><td>끝나기 5분 전보다 빨리 가면?</td><td>빨리 간 만큼 깎여요</td></tr>
-                    <tr><td><b>일찍 출근</b></td><td>계획보다 일찍 와서 버튼 누르면?</td><td>최대 10분까지 돈을 더 줘요</td></tr>
-                    <tr><td><b>연장 근무</b></td><td>끝난 뒤에도 더 일하고 버튼 누르면?</td><td>일한 만큼 모두 돈을 더 줘요</td></tr>
-                </tbody>
-            </table>
-            <div class="warning" style="color: #666; border-color: #ccc; background-color: #f9f9f9;">
-                💡 팁: 모든 계산은 스케줄표가 아니라, 직원이 누른 <b>'출퇴근 버튼 시간'</b>을 기준으로 합니다.
-            </div>
-        </div>
-    </div>
-
-    <footer style="text-align: center; padding: 30px; color: #aaa; font-size: 13px;">
-        © 2024 Dunkin Admin System - 쉽고 정확한 매장 관리
-    </footer>
-</div>
-
-<script>
-    function openTab(evt, tabName) {
-        var i, tabcontent, tablinks;
-        tabcontent = document.getElementsByClassName("tab-content");
-        for (i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].classList.remove("active");
-        }
-        tablinks = document.getElementsByClassName("tab-btn");
-        for (i = 0; i < tablinks.length; i++) {
-            tablinks[i].classList.remove("active");
-        }
-        document.getElementById(tabName).classList.add("active");
-        evt.currentTarget.classList.add("active");
-    }
-</script>
 
 </body>
 </html>

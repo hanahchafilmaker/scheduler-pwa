@@ -69,7 +69,7 @@ async function sendAllMails(
         ...(cleanBase64 && {
           attachments: [{
             filename,
-            content: Buffer.from(cleanBase64, "base64"),
+            content: Uint8Array.from(atob(cleanBase64), (c) => c.charCodeAt(0)),
             contentType: "application/pdf",
           }],
         }),

@@ -1,7 +1,0 @@
-﻿
-Filename      LineNumber Line                                             
---------      ---------- ----                                             
-config.js              1 import { supabase } from "../../lib/supabase.js";
-SettleTab.jsx          5 import { supabase } from "../../lib/supabase.js";
-
-

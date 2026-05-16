@@ -17,7 +17,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "auto",
+      // ✨ 'auto' 설정 덕분에 Vite가 빌드 시 HTML에 서비스 워커 등록 스크립트를 알아서 심어줍니다.
+      injectRegister: "auto", 
       workbox: {
         globPatterns: ["**/*.{js,css,html}"],
       },
@@ -46,7 +47,7 @@ export default defineConfig({
     },
   },
 
-  // ✨ 프로덕션 빌드 시 console.log 및 debugger 구문을 자동으로 삭제합니다.
+  // ✨ 프로덕션 빌드 시 브라우저 콘솔의 console.log 및 debugger 구문을 자동으로 삭제합니다 (보안 조치).
   esbuild: {
     drop: ["console", "debugger"],
   },
@@ -54,6 +55,8 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
+    // ✨ 800kB 대의 외부 라이브러리(vendor) 뭉치 때문에 뜨던 노란색 용량 경고창을 안 뜨게 숨겨줍니다.
+    chunkSizeWarningLimit: 1500, 
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, "index.html"),
@@ -61,7 +64,7 @@ export default defineConfig({
       },
       output: {
         manualChunks(id) {
-          // 1. React 계열 핵심 라이브러리 분리 (기존 유지)
+          // React 계열 핵심 라이브러리 분리
           if (
             id.includes("node_modules/react/") ||
             id.includes("node_modules/react-dom/") ||
@@ -70,32 +73,12 @@ export default defineConfig({
             return "react-vendor";
           }
 
-          // 2. Supabase 데이터베이스 라이브러리 분리 (기존 유지)
+          // Supabase 데이터베이스 라이브러리 분리
           if (id.includes("node_modules/@supabase/")) {
             return "supabase-vendor";
           }
 
-          // 3. ✨ UI / 아이콘 / 애니메이션 라이브러리 추가 분리
-          // 프로젝트에서 많이 쓰이는 무거운 UI 패키지들을 ui-vendor로 묶어 쪼갭니다.
-          if (
-            id.includes("node_modules/lucide-react/") ||
-            id.includes("node_modules/@radix-ui/") ||
-            id.includes("node_modules/framer-motion/") ||
-            id.includes("node_modules/recharts/") // 만약 차트를 쓰신다면 포함
-          ) {
-            return "ui-vendor";
-          }
-
-          // 4. ✨ 날짜 및 대형 유틸리티 라이브러리 추가 분리
-          if (
-            id.includes("node_modules/date-fns/") ||
-            id.includes("node_modules/lodash/") ||
-            id.includes("node_modules/axios/")
-          ) {
-            return "util-vendor";
-          }
-
-          // 5. 나머지 잔잔한 외부 모듈들 (기존 유지)
+          // 그 외 대형 외부 모듈들
           if (id.includes("node_modules/")) {
             return "vendor";
           }

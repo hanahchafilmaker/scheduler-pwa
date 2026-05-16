@@ -61,19 +61,22 @@ async function sendAllMails(
         </div>
       `;
 
-      const mailOptions = {
+      const mailOptions: Record<string, unknown> = {
         from: `DUNKIN Payroll <${SMTP_USER}>`,
         to: email,
         subject: `[급여명세서] ${month} 근무분`,
         html,
-        ...(cleanBase64 && {
-          attachments: [{
-            filename,
-            content: Uint8Array.from(atob(cleanBase64), (c) => c.charCodeAt(0)),
-            contentType: "application/pdf",
-          }],
-        }),
       };
+
+      // PDF 첨부 - base64 인코딩 문자열로 직접 전달 (Buffer 없이)
+      if (cleanBase64) {
+        mailOptions.attachments = [{
+          filename,
+          encoding: "base64",
+          content: cleanBase64,
+          contentType: "application/pdf",
+        }];
+      }
 
       await transporter.sendMail(mailOptions);
       console.log(`[ok] sent to ${email}`);
@@ -81,13 +84,11 @@ async function sendAllMails(
       console.error(`[fail] ${email}:`, String(err));
     }
 
-    // Gmail rate limit 방지
     await new Promise((r) => setTimeout(r, 300));
   }
 }
 
 serve(async (req) => {
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -116,7 +117,6 @@ serve(async (req) => {
       );
     }
 
-    // 응답 먼저 반환하고 메일은 백그라운드에서 처리
     EdgeRuntime.waitUntil(sendAllMails(employees, SMTP_USER, SMTP_PASS));
 
     return new Response(

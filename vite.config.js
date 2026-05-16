@@ -46,6 +46,11 @@ export default defineConfig({
     },
   },
 
+  // ✨ 프로덕션 빌드 시 console.log 및 debugger 구문을 자동으로 삭제합니다.
+  esbuild: {
+    drop: ["console", "debugger"],
+  },
+
   build: {
     outDir: "dist",
     emptyOutDir: true,

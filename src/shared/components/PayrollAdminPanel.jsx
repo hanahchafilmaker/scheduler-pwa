@@ -9,7 +9,7 @@
  *   activeMonth  – "2026-05" 형태 문자열
  *
  * 의존 라이브러리 (설치 필요):
- *   npm install jspdf jszip file-saver
+ *   npm install jspdf jszip file-saver html2canvas
  *
  * 의존 내부 모듈:
  *   ../utils                                        → fmtKRW
@@ -112,210 +112,154 @@ function buildSettledEmps(employees, attendance, activeMonth) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// PDF 생성 (한 명)
+// PDF 생성 (한 명) — html2canvas 방식으로 한글 깨짐 해결
 // ─────────────────────────────────────────────────────────────────
 
 async function createPdfBlob(emp, monthRange) {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const W = 210;
-  let y = 0;
-
-  // ── 헤더 배경
-  doc.setFillColor(17, 17, 17);
-  doc.rect(0, 0, W, 44, "F");
-
-  // ── DUNKIN' 브랜드
-  doc.setFontSize(7);
-  doc.setTextColor(136, 136, 136);
-  doc.text("DUNKIN'", 20, 10);
-
-  // ── 임금명세서 타이틀
-  doc.setFontSize(18);
-  doc.setTextColor(255, 255, 255);
-  doc.text("임금명세서", 20, 22);
-
-  // ── 기간
-  doc.setFontSize(9);
-  doc.setTextColor(153, 153, 153);
-  doc.text(`${monthRange.label} 근무분`, 20, 30);
-
-  // ── 실수령액 (우측) — 3.3% 차감 후
-  const grossPay   = emp.payrollTotalPay;
-  const taxPreview = Math.round(grossPay * 0.033);
-  const netPreview = grossPay - taxPreview;
-  doc.setFontSize(8);
-  doc.setTextColor(136, 136, 136);
-  doc.text("실수령액", W - 20, 18, { align: "right" });
-  doc.setFontSize(16);
-  doc.setTextColor(255, 255, 255);
-  doc.text(fmtKRW(netPreview), W - 20, 28, { align: "right" });
-
-  y = 52;
-
-  // ── 기본정보 밴드
-  doc.setFillColor(247, 247, 247);
-  doc.rect(0, 44, W, 26, "F");
-  doc.setDrawColor(235, 235, 235);
-  doc.line(0, 70, W, 70);
-
-  const infoItems = [
-    ["성명", emp.name],
-    ["근무일수", `${(emp.days || []).length}일`],
-    ["사업장", "송도 랜드마크시티점"],
-    ["지급일", monthRange.payDateLabel],
-  ];
-
-  infoItems.forEach(([label, value], i) => {
-    const x = 20 + (i % 2) * 85;
-    const iy = 53 + Math.floor(i / 2) * 9;
-    doc.setFontSize(7);
-    doc.setTextColor(136, 136, 136);
-    doc.text(label, x, iy);
-    doc.setFontSize(8.5);
-    doc.setTextColor(17, 17, 17);
-    doc.text(String(value), x + 22, iy);
-  });
-
-  y = 78;
-
-  // ── 지급/공제 2단
-  const col = (W - 40) / 2;
-
-  // 지급
-  doc.setFontSize(7);
-  doc.setTextColor(170, 170, 170);
-  doc.text("지급내역", 20, y);
-  y += 7;
-
-  [
-    ["기본급", emp.payrollBasePay],
-    ["시간 외 추가수당", emp.payrollExtraPay],
-  ].forEach(([label, val]) => {
-    doc.setFontSize(9);
-    doc.setTextColor(85, 85, 85);
-    doc.text(label, 20, y);
-    doc.setTextColor(17, 17, 17);
-    doc.text(fmtKRW(val), 20 + col - 5, y, { align: "right" });
-    y += 7;
-  });
-
-  doc.setDrawColor(235, 235, 235);
-  doc.line(20, y, 20 + col - 5, y);
-  y += 4;
-  doc.setFontSize(9.5);
-  doc.setTextColor(17, 17, 17);
-  doc.text("지급합계", 20, y);
-  doc.setFont(undefined, "bold");
-  doc.text(fmtKRW(emp.payrollTotalPay), 20 + col - 5, y, { align: "right" });
-  doc.setFont(undefined, "normal");
-
-  // 공제 (우측 컬럼)
-  const withholdingTax = Math.round(emp.payrollTotalPay * 0.033);
-  const netPay = emp.payrollTotalPay - withholdingTax;
-  const cx = 20 + col + 10;
-  let cy = 78;
-  doc.setFontSize(7);
-  doc.setTextColor(170, 170, 170);
-  doc.text("공제내역", cx, cy);
-  cy += 7;
-  doc.setFontSize(9);
-  doc.setTextColor(209, 63, 63);
-  doc.text("원천징수세 (3.3%)", cx, cy);
-  doc.text(`−${fmtKRW(withholdingTax)}`, cx + col - 5, cy, { align: "right" });
-  cy += 7;
-  doc.setDrawColor(235, 235, 235);
-  doc.line(cx, cy, cx + col - 5, cy);
-  cy += 4;
-  doc.setFontSize(9.5);
-  doc.setTextColor(17, 17, 17);
-  doc.text("공제합계", cx, cy);
-  doc.setTextColor(209, 63, 63);
-  doc.text(`−${fmtKRW(withholdingTax)}`, cx + col - 5, cy, { align: "right" });
-  doc.setTextColor(17, 17, 17);
-
-  y += 16;
-
-  // ── 구분선
-  doc.setDrawColor(235, 235, 235);
-  doc.line(0, y, W, y);
-  y += 8;
-
-  // ── 근무 상세 테이블
-  doc.setFontSize(7);
-  doc.setTextColor(170, 170, 170);
-  doc.text("근무 상세", 20, y);
-  y += 6;
-
-  const headers = ["날짜", "출근", "퇴근", "기본 근무시간", "기본급", "추가수당"];
-  const colWidths = [28, 22, 22, 38, 34, 26];
-  let cx2 = 20;
-
-  doc.setFontSize(7);
-  doc.setTextColor(170, 170, 170);
-  headers.forEach((h, i) => {
-    doc.text(h, cx2, y, { align: i >= 4 ? "right" : "left" });
-    cx2 += colWidths[i];
-  });
-  y += 2;
-  doc.setDrawColor(235, 235, 235);
-  doc.line(20, y, W - 20, y);
-  y += 5;
-
+  const grossPay = emp.payrollTotalPay;
+  const tax = Math.round(grossPay * 0.033);
+  const net = grossPay - tax;
   const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
 
-  (emp.days || []).forEach((d) => {
-    if (y > 270) { doc.addPage(); y = 20; }
-    const dayKr = DAY_KR[new Date(d.date).getDay()];
-    const baseMin = Number(d.payrollBasePlannedMin || 0);
-    const h = Math.floor(baseMin / 60);
-    const m2 = baseMin % 60;
-    const durationLabel = m2 === 0 ? `${h}시간` : `${h}시간 ${m2}분`;
+  const container = document.createElement("div");
+  container.style.cssText = `
+    position: fixed; left: -9999px; top: 0;
+    width: 794px; background: white; padding: 40px;
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    box-sizing: border-box;
+  `;
 
-    const cells = [
-      `${d.date.slice(5)} (${dayKr})`,
-      d.planned_start ? d.planned_start.slice(0, 5) : "-",
-      d.planned_end   ? d.planned_end.slice(0, 5)   : "-",
-      durationLabel,
-      fmtKRW(Math.round(d.payrollBasePay  || 0)),
-      d.payrollExtraPay > 0 ? `+${fmtKRW(Math.round(d.payrollExtraPay))}` : "—",
-    ];
+  container.innerHTML = `
+    <div style="background:#111;color:#fff;padding:24px 32px;margin-bottom:24px">
+      <div style="font-size:11px;color:#888;margin-bottom:8px">DUNKIN'</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end">
+        <div>
+          <div style="font-size:22px;font-weight:500">${monthRange.label} 임금명세서</div>
+          <div style="font-size:13px;color:#999;margin-top:4px">${monthRange.label} 근무분</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;color:#999">실수령액</div>
+          <div style="font-size:20px;font-weight:600">${fmtKRW(net)}</div>
+        </div>
+      </div>
+    </div>
 
-    cx2 = 20;
-    doc.setFontSize(8);
-    cells.forEach((cell, i) => {
-      doc.setTextColor(i >= 4 ? 17 : 85, i >= 4 ? 17 : 85, i >= 4 ? 17 : 85);
-      doc.text(cell, i >= 4 ? cx2 + colWidths[i] : cx2, y, { align: i >= 4 ? "right" : "left" });
-      cx2 += colWidths[i];
-    });
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;background:#f7f7f7">
+      <tr>
+        <td style="padding:10px 16px;font-size:12px;color:#888">성명</td>
+        <td style="padding:10px 16px;font-size:13px">${emp.name}</td>
+        <td style="padding:10px 16px;font-size:12px;color:#888">근무일수</td>
+        <td style="padding:10px 16px;font-size:13px">${(emp.days || []).length}일</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:12px;color:#888">사업장</td>
+        <td style="padding:10px 16px;font-size:13px">송도 랜드마크시티점</td>
+        <td style="padding:10px 16px;font-size:12px;color:#888">지급일</td>
+        <td style="padding:10px 16px;font-size:13px">${monthRange.payDateLabel}</td>
+      </tr>
+    </table>
 
-    doc.setDrawColor(245, 245, 245);
-    doc.line(20, y + 2, W - 20, y + 2);
-    y += 7;
-  });
+    <div style="display:flex;gap:24px;margin-bottom:24px">
+      <div style="flex:1;border:1px solid #eee;padding:16px">
+        <div style="font-size:11px;color:#aaa;margin-bottom:8px">지급내역</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;color:#555">기본급</span>
+          <span style="font-size:13px">${fmtKRW(emp.payrollBasePay)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;color:#555">시간 외 추가수당</span>
+          <span style="font-size:13px">${fmtKRW(emp.payrollExtraPay)}</span>
+        </div>
+        <div style="border-top:1px solid #eee;padding-top:8px;display:flex;justify-content:space-between">
+          <span style="font-size:14px;font-weight:600">지급합계</span>
+          <span style="font-size:14px;font-weight:600">${fmtKRW(emp.payrollTotalPay)}</span>
+        </div>
+      </div>
+      <div style="flex:1;border:1px solid #eee;padding:16px">
+        <div style="font-size:11px;color:#aaa;margin-bottom:8px">공제내역</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;color:#d13f3f">원천징수세 (3.3%)</span>
+          <span style="font-size:13px;color:#d13f3f">−${fmtKRW(tax)}</span>
+        </div>
+        <div style="border-top:1px solid #eee;padding-top:8px;display:flex;justify-content:space-between">
+          <span style="font-size:14px;font-weight:600">공제합계</span>
+          <span style="font-size:14px;font-weight:600;color:#d13f3f">−${fmtKRW(tax)}</span>
+        </div>
+      </div>
+    </div>
 
-  y += 4;
+    <div style="margin-bottom:8px;font-size:11px;color:#aaa">근무 상세</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="background:#f7f7f7">
+          <th style="padding:8px;text-align:left;color:#aaa;font-weight:400">날짜</th>
+          <th style="padding:8px;text-align:left;color:#aaa;font-weight:400">출근</th>
+          <th style="padding:8px;text-align:left;color:#aaa;font-weight:400">퇴근</th>
+          <th style="padding:8px;text-align:left;color:#aaa;font-weight:400">기본 근무시간</th>
+          <th style="padding:8px;text-align:right;color:#aaa;font-weight:400">기본급</th>
+          <th style="padding:8px;text-align:right;color:#aaa;font-weight:400">추가수당</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(emp.days || []).map((d) => {
+          const dayKr = DAY_KR[new Date(d.date).getDay()];
+          const baseMin = Number(d.payrollBasePlannedMin || 0);
+          const h = Math.floor(baseMin / 60);
+          const m2 = baseMin % 60;
+          const dur = m2 === 0 ? `${h}시간` : `${h}시간 ${m2}분`;
+          return `<tr style="border-bottom:1px solid #f5f5f5">
+            <td style="padding:7px 8px">${d.date.slice(5)} (${dayKr})</td>
+            <td style="padding:7px 8px">${d.planned_start?.slice(0, 5) || "-"}</td>
+            <td style="padding:7px 8px">${d.planned_end?.slice(0, 5) || "-"}</td>
+            <td style="padding:7px 8px">${dur}</td>
+            <td style="padding:7px 8px;text-align:right">${fmtKRW(Math.round(d.payrollBasePay || 0))}</td>
+            <td style="padding:7px 8px;text-align:right">${d.payrollExtraPay > 0 ? `+${fmtKRW(Math.round(d.payrollExtraPay))}` : "—"}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
 
-  // ── 최종 수령액
-  doc.setFillColor(247, 247, 247);
-  doc.rect(0, y - 2, W, 18, "F");
-  doc.setFontSize(8.5);
-  doc.setTextColor(85, 85, 85);
-  doc.text(`지급합계 ${fmtKRW(emp.payrollTotalPay)}  −  원천징수 ${fmtKRW(withholdingTax)}  =  실수령액`, 20, y + 6);
-  doc.setFontSize(11);
-  doc.setTextColor(17, 17, 17);
-  doc.setFont(undefined, "bold");
-  doc.text(fmtKRW(netPay), W - 20, y + 6, { align: "right" });
-  doc.setFont(undefined, "normal");
+    <div style="background:#f7f7f7;padding:16px 20px;margin-top:16px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;color:#555">
+        지급합계 ${fmtKRW(emp.payrollTotalPay)} − 원천징수 ${fmtKRW(tax)} = 실수령액
+      </span>
+      <span style="font-size:16px;font-weight:700">${fmtKRW(net)}</span>
+    </div>
 
-  y += 22;
+    <div style="margin-top:20px;font-size:12px;color:#aaa">
+      던킨 송도 랜드마크시티점은 위 금액을 ${monthRange.label} 근무분 급여로 ${monthRange.payDateLabel} 지급함을 확인합니다.
+    </div>
+  `;
 
-  // ── 푸터 텍스트
-  doc.setFontSize(8);
-  doc.setTextColor(170, 170, 170);
-  const footerText = `던킨 송도 랜드마크시티점은 위 금액을 ${monthRange.label} 근무분 급여로 ${monthRange.payDateLabel} 지급함을 확인합니다.`;
-  doc.text(footerText, 20, y, { maxWidth: W - 40 });
+  document.body.appendChild(container);
 
-  return doc.output("blob");
+  try {
+    const html2canvas = (await import("html2canvas")).default;
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+
+    const imgData = canvas.toDataURL("image/jpeg", 0.95);
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const imgH = (canvas.height * pageW) / canvas.width;
+
+    if (imgH <= pageH) {
+      doc.addImage(imgData, "JPEG", 0, 0, pageW, imgH);
+    } else {
+      // 페이지 넘침 처리
+      let position = 0;
+      doc.addImage(imgData, "JPEG", 0, position, pageW, imgH);
+      while (position + imgH > pageH) {
+        position -= pageH;
+        doc.addPage();
+        doc.addImage(imgData, "JPEG", 0, position, pageW, imgH);
+      }
+    }
+
+    return doc.output("blob");
+  } finally {
+    document.body.removeChild(container);
+  }
 }
 
 /** Blob → base64 문자열 */

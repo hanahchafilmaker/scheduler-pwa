@@ -121,20 +121,19 @@ async function createPdfBlob(emp, monthRange) {
   const net = grossPay - tax;
   const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
 
-  // html2canvas는 position:fixed 요소를 제대로 캡처 못하는 경우가 있어
-  // overflow:hidden wrapper 안에 absolute로 배치합니다.
   const wrapper = document.createElement("div");
   wrapper.style.cssText = `
     position: absolute; left: -9999px; top: 0;
-    width: 794px; height: 0; overflow: hidden;
-    pointer-events: none;
+    width: 794px; overflow: visible;
+    pointer-events: none; z-index: -1;
   `;
 
   const container = document.createElement("div");
+  // 외부 폰트(Noto Sans KR 등) 로드 실패 시 깨지므로 윈도우/맥 기본 한글 폰트만 사용
   container.style.cssText = `
     position: relative;
     width: 794px; background: white; padding: 40px;
-    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Apple Gothic', sans-serif;
     box-sizing: border-box;
   `;
 
@@ -247,6 +246,9 @@ async function createPdfBlob(emp, monthRange) {
   wrapper.style.height = container.scrollHeight + "px";
 
   try {
+    // 시스템 폰트 로드 완료 대기
+    await document.fonts.ready;
+
     const html2canvas = (await import("html2canvas")).default;
     const canvas = await html2canvas(container, {
       scale: 2,

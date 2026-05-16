@@ -12,6 +12,8 @@ function validateForm(form) {
   if (form.pin.trim().length < 4) return "PIN은 4자리 이상이어야 합니다.";
   if (form.hourly_wage !== "" && isNaN(Number(form.hourly_wage)))
     return "시급은 숫자로 입력해주세요.";
+  if (form.email && !/\S+@\S+\.\S+/.test(form.email))
+    return "이메일 형식이 올바르지 않습니다.";
   return null;
 }
 
@@ -21,7 +23,10 @@ export default function EmployeeTab({
   updateEmployee,
   deleteEmployee,
 }) {
-  const [form, setForm] = useState(EMPTY_EMP_FORM);
+  const [form, setForm] = useState({
+    ...EMPTY_EMP_FORM,
+    email: "",
+  });
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState("");
@@ -49,7 +54,7 @@ export default function EmployeeTab({
     return employeeList.filter((emp) => {
       const matchSearch =
         !q ||
-        [emp.name, emp.phone, emp.employee_id, emp.pin]
+        [emp.name, emp.phone, emp.employee_id, emp.pin, emp.email]
           .filter(Boolean)
           .some((v) => String(v).toLowerCase().includes(q));
       const matchFilter =
@@ -60,7 +65,10 @@ export default function EmployeeTab({
 
   /* ── 폼 핸들러 ── */
   const resetForm = () => {
-    setForm(EMPTY_EMP_FORM);
+    setForm({
+      ...EMPTY_EMP_FORM,
+      email: "",
+    });
     setEditingId("");
     setError("");
   };
@@ -72,6 +80,7 @@ export default function EmployeeTab({
     setForm({
       name: emp.name || "",
       phone: emp.phone || "",
+      email: emp.email || "",
       hourly_wage: String(emp.hourly_wage || ""),
       pin: emp.pin || "",
       role: emp.role || "staff",
@@ -95,6 +104,7 @@ export default function EmployeeTab({
       const payload = {
         name: form.name.trim(),
         phone: form.phone.trim(),
+        email: form.email.trim(),
         hourly_wage: Number(form.hourly_wage || 0),
         pin: form.pin.trim(),
         role: form.role || "staff",
@@ -193,7 +203,6 @@ export default function EmployeeTab({
               gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
             }}
           >
-            {/* 이름 */}
             <label>
               <div style={{ marginBottom: 6, fontWeight: 700 }}>
                 이름 <span style={{ color: "#dc2626" }}>*</span>
@@ -206,7 +215,6 @@ export default function EmployeeTab({
               />
             </label>
 
-            {/* 전화번호 */}
             <label>
               <div style={{ marginBottom: 6, fontWeight: 700 }}>전화번호</div>
               <input
@@ -217,7 +225,17 @@ export default function EmployeeTab({
               />
             </label>
 
-            {/* 시급 */}
+            <label>
+              <div style={{ marginBottom: 6, fontWeight: 700 }}>이메일</div>
+              <input
+                className="input"
+                type="email"
+                value={form.email}
+                onChange={(e) => handleChange("email", e.target.value)}
+                placeholder="name@example.com"
+              />
+            </label>
+
             <label>
               <div style={{ marginBottom: 6, fontWeight: 700 }}>시급</div>
               <input
@@ -230,7 +248,6 @@ export default function EmployeeTab({
               />
             </label>
 
-            {/* PIN */}
             <label>
               <div style={{ marginBottom: 6, fontWeight: 700 }}>
                 PIN <span style={{ color: "#dc2626" }}>*</span>
@@ -244,7 +261,6 @@ export default function EmployeeTab({
               />
             </label>
 
-            {/* 역할 */}
             <label>
               <div style={{ marginBottom: 6, fontWeight: 700 }}>역할</div>
               <select
@@ -259,7 +275,6 @@ export default function EmployeeTab({
             </label>
           </div>
 
-          {/* 활성 여부 */}
           <label
             style={{
               display: "inline-flex",
@@ -279,14 +294,12 @@ export default function EmployeeTab({
             활성 직원으로 등록
           </label>
 
-          {/* 에러 */}
           {error && (
             <div style={{ marginTop: 10, color: "#dc2626", fontSize: 13, fontWeight: 600 }}>
               ⚠️ {error}
             </div>
           )}
 
-          {/* 버튼 */}
           <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
             <button type="submit" className="att-btn primary" disabled={saving}>
               {saving ? "저장 중..." : editingId ? "✓ 수정 완료" : "+ 직원 추가"}
@@ -314,7 +327,7 @@ export default function EmployeeTab({
         >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h3 style={{ margin: 0 }}>직원 목록</h3>
-            {/* 인라인 필터 탭 */}
+
             <div style={{ display: "flex", gap: 4 }}>
               {[
                 { key: "all", label: "전체" },
@@ -349,7 +362,7 @@ export default function EmployeeTab({
             style={{ maxWidth: 240 }}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름, 전화번호, PIN 검색"
+            placeholder="이름, 전화번호, 이메일 검색"
           />
         </div>
 
@@ -359,6 +372,7 @@ export default function EmployeeTab({
               <tr>
                 <th>이름</th>
                 <th>전화번호</th>
+                <th>이메일</th>
                 <th>시급</th>
                 <th>PIN</th>
                 <th>역할</th>
@@ -369,7 +383,7 @@ export default function EmployeeTab({
             <tbody>
               {filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="att-empty-cell">
+                  <td colSpan={8} className="att-empty-cell">
                     {search ? "검색 결과가 없습니다." : "등록된 직원이 없습니다."}
                   </td>
                 </tr>
@@ -403,6 +417,7 @@ export default function EmployeeTab({
                         )}
                       </td>
                       <td>{emp.phone || "-"}</td>
+                      <td>{emp.email || "-"}</td>
                       <td>{Number(emp.hourly_wage || 0).toLocaleString()}원</td>
                       <td>
                         <code style={{ fontSize: 13, letterSpacing: 2 }}>{emp.pin || "-"}</code>

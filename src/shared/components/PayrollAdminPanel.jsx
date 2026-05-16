@@ -139,13 +139,16 @@ async function createPdfBlob(emp, monthRange) {
   doc.setTextColor(153, 153, 153);
   doc.text(`${monthRange.label} 근무분`, 20, 30);
 
-  // ── 실수령액 (우측)
+  // ── 실수령액 (우측) — 3.3% 차감 후
+  const grossPay   = emp.payrollTotalPay;
+  const taxPreview = Math.round(grossPay * 0.033);
+  const netPreview = grossPay - taxPreview;
   doc.setFontSize(8);
   doc.setTextColor(136, 136, 136);
   doc.text("실수령액", W - 20, 18, { align: "right" });
   doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
-  doc.text(fmtKRW(emp.payrollTotalPay), W - 20, 28, { align: "right" });
+  doc.text(fmtKRW(netPreview), W - 20, 28, { align: "right" });
 
   y = 52;
 
@@ -207,6 +210,8 @@ async function createPdfBlob(emp, monthRange) {
   doc.setFont(undefined, "normal");
 
   // 공제 (우측 컬럼)
+  const withholdingTax = Math.round(emp.payrollTotalPay * 0.033);
+  const netPay = emp.payrollTotalPay - withholdingTax;
   const cx = 20 + col + 10;
   let cy = 78;
   doc.setFontSize(7);
@@ -214,8 +219,9 @@ async function createPdfBlob(emp, monthRange) {
   doc.text("공제내역", cx, cy);
   cy += 7;
   doc.setFontSize(9);
-  doc.setTextColor(187, 187, 187);
-  doc.text("공제 없음", cx, cy);
+  doc.setTextColor(209, 63, 63);
+  doc.text("원천징수세 (3.3%)", cx, cy);
+  doc.text(`−${fmtKRW(withholdingTax)}`, cx + col - 5, cy, { align: "right" });
   cy += 7;
   doc.setDrawColor(235, 235, 235);
   doc.line(cx, cy, cx + col - 5, cy);
@@ -223,7 +229,9 @@ async function createPdfBlob(emp, monthRange) {
   doc.setFontSize(9.5);
   doc.setTextColor(17, 17, 17);
   doc.text("공제합계", cx, cy);
-  doc.text("0원", cx + col - 5, cy, { align: "right" });
+  doc.setTextColor(209, 63, 63);
+  doc.text(`−${fmtKRW(withholdingTax)}`, cx + col - 5, cy, { align: "right" });
+  doc.setTextColor(17, 17, 17);
 
   y += 16;
 
@@ -292,11 +300,11 @@ async function createPdfBlob(emp, monthRange) {
   doc.rect(0, y - 2, W, 18, "F");
   doc.setFontSize(8.5);
   doc.setTextColor(85, 85, 85);
-  doc.text(`기본급 ${fmtKRW(emp.payrollBasePay)}  +  추가수당 ${fmtKRW(emp.payrollExtraPay)}  −  공제 0원  =  실수령액`, 20, y + 6);
+  doc.text(`지급합계 ${fmtKRW(emp.payrollTotalPay)}  −  원천징수 ${fmtKRW(withholdingTax)}  =  실수령액`, 20, y + 6);
   doc.setFontSize(11);
   doc.setTextColor(17, 17, 17);
   doc.setFont(undefined, "bold");
-  doc.text(fmtKRW(emp.payrollTotalPay), W - 20, y + 6, { align: "right" });
+  doc.text(fmtKRW(netPay), W - 20, y + 6, { align: "right" });
   doc.setFont(undefined, "normal");
 
   y += 22;

@@ -18,7 +18,10 @@ export function PayslipModal({ emp, monthRange, onClose }) {
   const basePay = Math.round(emp.payrollBasePay || 0);
   const extraPay = Math.round(emp.payrollExtraPay || 0);
   const totalPay = basePay + extraPay;
-  const deductTotal = 0;
+
+  // 3.3% 원천징수 (소득세 3% + 지방소득세 0.3%)
+  const withholdingTax = Math.round(totalPay * 0.033);
+  const deductTotal = withholdingTax;
   const netPay = totalPay - deductTotal;
 
   const totalBasePlannedMin = (emp.days || []).reduce(
@@ -86,6 +89,12 @@ export function PayslipModal({ emp, monthRange, onClose }) {
           <section className="ps-section">
             <h2 className="ps-section-title">공제내역</h2>
             <div className="ps-rows">
+              {/* 3.3% 원천징수 */}
+              <PayRow
+                label="원천징수세 (3.3%)"
+                value={`−${fmtKRW(withholdingTax)}`}
+                danger
+              />
               {totalLateMin > 0 && (
                 <PayRow
                   label="지각공제"
@@ -102,15 +111,12 @@ export function PayslipModal({ emp, monthRange, onClose }) {
                   sub={`${totalEarlyMin}분`}
                 />
               )}
-              {totalLateMin === 0 && totalEarlyMin === 0 && (
-                <PayRow label="공제 없음" value="—" muted />
-              )}
               <div className="ps-divider" />
               <PayRow
                 label="공제합계"
-                value={deductTotal > 0 ? `−${fmtKRW(deductTotal)}` : "0원"}
+                value={`−${fmtKRW(deductTotal)}`}
                 bold
-                danger={deductTotal > 0}
+                danger
               />
             </div>
           </section>

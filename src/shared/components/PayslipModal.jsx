@@ -5,10 +5,8 @@ const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
 function formatMinutesToHourLabel(min) {
   const minutes = Number(min || 0);
   if (minutes <= 0) return "0시간";
-
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-
   if (m === 0) return `${h}시간`;
   return `${h}시간 ${m}분`;
 }
@@ -27,131 +25,206 @@ export function PayslipModal({ emp, monthRange, onClose }) {
     0,
   );
 
+  const totalLateMin = (emp.days || []).reduce(
+    (sum, d) => sum + Number(d.payrollLateDeductMin || 0),
+    0,
+  );
+
+  const totalEarlyMin = (emp.days || []).reduce(
+    (sum, d) => sum + Number(d.payrollEarlyLeaveDeductMin || 0),
+    0,
+  );
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="payslip-header">
-          <div>
-            <div className="payslip-brand">DUNKIN</div>
-            <div className="payslip-title">임금명세서</div>
+    <div className="ps-overlay" onClick={onClose}>
+      <div className="ps-modal" onClick={(e) => e.stopPropagation()}>
+
+        {/* ── 헤더 ── */}
+        <div className="ps-header">
+          <div className="ps-header-left">
+            <span className="ps-brand">DUNKIN'</span>
+            <h1 className="ps-doc-title">임금명세서</h1>
+            <p className="ps-period">{monthRange.label} 근무분</p>
           </div>
-
-          <button className="close-btn" onClick={onClose}>
-            ×
-          </button>
+          <div className="ps-header-right">
+            <p className="ps-net-label">실수령액</p>
+            <strong className="ps-net-amount">{fmtKRW(netPay)}</strong>
+          </div>
+          <button className="ps-close" onClick={onClose} aria-label="닫기">×</button>
         </div>
 
-        <div className="payslip-net-banner">
-          <span className="payslip-net-label">실수령액</span>
-          <strong className="payslip-net-amount">{fmtKRW(netPay)}</strong>
-        </div>
-
-        <div className="payslip-info-grid">
+        {/* ── 기본 정보 밴드 ── */}
+        <div className="ps-info-band">
           {[
-            ["사업장명", "던킨 송도 랜드마크시티점"],
-            ["사업장 주소", "인천광역시 연수구 송도동 311 301동 100호"],
-            ["임금산정기간", `${monthRange.label} 근무분`],
             ["성명", emp.name],
-            ["지급일", monthRange.payDateLabel],
+            ["근무일수", `${(emp.days || []).length}일`],
             ["기본 근무시간", formatMinutesToHourLabel(totalBasePlannedMin)],
+            ["사업장", "송도 랜드마크시티점"],
+            ["임금산정기간", `${monthRange.label} 근무분`],
+            ["지급일", monthRange.payDateLabel],
           ].map(([label, value]) => (
-            <div key={label}>
-              <span>{label}</span>
-              <strong>{value}</strong>
+            <div key={label} className="ps-info-item">
+              <span className="ps-info-label">{label}</span>
+              <strong className="ps-info-value">{value}</strong>
             </div>
           ))}
         </div>
 
-        <div className="payslip-section-title">지급내역</div>
-        <div className="payslip-pay-grid">
-          <PayItem label="기본급" amount={basePay} />
-          <PayItem label="추가 수당" amount={extraPay} />
-          <PayItem label="지급합계" amount={totalPay} highlight />
+        {/* ── 지급 / 공제 2단 ── */}
+        <div className="ps-pay-deduct-grid">
+          <section className="ps-section">
+            <h2 className="ps-section-title">지급내역</h2>
+            <div className="ps-rows">
+              <PayRow label="기본급" value={fmtKRW(basePay)} />
+              <PayRow label="시간 외 추가수당" value={fmtKRW(extraPay)} />
+              <div className="ps-divider" />
+              <PayRow label="지급합계" value={fmtKRW(totalPay)} bold />
+            </div>
+          </section>
+
+          <section className="ps-section">
+            <h2 className="ps-section-title">공제내역</h2>
+            <div className="ps-rows">
+              {totalLateMin > 0 && (
+                <PayRow
+                  label="지각공제"
+                  value={`−${fmtKRW(Math.round((totalLateMin / 60) * (emp.wage || 0)))}`}
+                  danger
+                  sub={`${totalLateMin}분`}
+                />
+              )}
+              {totalEarlyMin > 0 && (
+                <PayRow
+                  label="조퇴공제"
+                  value={`−${fmtKRW(Math.round((totalEarlyMin / 60) * (emp.wage || 0)))}`}
+                  danger
+                  sub={`${totalEarlyMin}분`}
+                />
+              )}
+              {totalLateMin === 0 && totalEarlyMin === 0 && (
+                <PayRow label="공제 없음" value="—" muted />
+              )}
+              <div className="ps-divider" />
+              <PayRow
+                label="공제합계"
+                value={deductTotal > 0 ? `−${fmtKRW(deductTotal)}` : "0원"}
+                bold
+                danger={deductTotal > 0}
+              />
+            </div>
+          </section>
         </div>
 
-        <div className="payslip-section-title">공제내역</div>
-        <div className="payslip-deduct-grid">
-          <div className="payslip-deduct-item total">
-            <span>공제합계</span>
-            <strong>0원</strong>
+        {/* ── 근무 상세 테이블 ── */}
+        <section className="ps-section ps-section-full">
+          <h2 className="ps-section-title">근무 상세</h2>
+          <div className="ps-table-wrap">
+            <table className="ps-table">
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>출근</th>
+                  <th>퇴근</th>
+                  <th>기본 근무시간</th>
+                  <th className="align-right">기본급</th>
+                  <th className="align-right">추가수당</th>
+                </tr>
+              </thead>
+              <tbody>
+                {emp.days.map((d, i) => {
+                  const dayKr = DAY_KR[new Date(d.date).getDay()];
+                  const dayBasePay = Math.round(d.payrollBasePay || 0);
+                  const dayExtraPay = Math.round(d.payrollExtraPay || 0);
+                  const isLate = Number(d.payrollLateDeductMin || 0) > 0;
+                  const isEarly = Number(d.payrollEarlyLeaveDeductMin || 0) > 0;
+
+                  return (
+                    <tr key={i}>
+                      <td className="ps-td-date">{d.date.slice(5)} ({dayKr})</td>
+                      <td className={isLate ? "ps-td-warn" : ""}>
+                        {formatTime(d.planned_start)}
+                      </td>
+                      <td className={isEarly ? "ps-td-warn" : ""}>
+                        {formatTime(d.planned_end)}
+                      </td>
+                      <td>{formatMinutesToHourLabel(d.payrollBasePlannedMin || 0)}</td>
+                      <td className="align-right ps-td-pos">{fmtKRW(dayBasePay)}</td>
+                      <td className="align-right ps-td-extra">
+                        {dayExtraPay > 0 ? `+${fmtKRW(dayExtraPay)}` : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td className="ps-tfoot-label">합계</td>
+                  <td /><td />
+                  <td>{formatMinutesToHourLabel(totalBasePlannedMin)}</td>
+                  <td className="align-right">{fmtKRW(basePay)}</td>
+                  <td className="align-right">+{fmtKRW(extraPay)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+
+        {/* ── 최종 수령액 요약 ── */}
+        <div className="ps-summary-bar">
+          <div className="ps-summary-items">
+            <div className="ps-summary-item">
+              <span>기본급</span>
+              <strong>{fmtKRW(basePay)}</strong>
+            </div>
+            <span className="ps-summary-op">+</span>
+            <div className="ps-summary-item">
+              <span>추가수당</span>
+              <strong>{fmtKRW(extraPay)}</strong>
+            </div>
+            <span className="ps-summary-op">−</span>
+            <div className="ps-summary-item">
+              <span>공제</span>
+              <strong>{fmtKRW(deductTotal)}</strong>
+            </div>
+            <span className="ps-summary-op">=</span>
+            <div className="ps-summary-item ps-summary-net">
+              <span>실수령액</span>
+              <strong>{fmtKRW(netPay)}</strong>
+            </div>
           </div>
         </div>
 
-        <div className="payslip-section-title">근무 상세</div>
-        <div className="payslip-table">
-          <div className="payslip-row header payslip-row-4">
-            <span>날짜</span>
-            <span>스케줄 근무시간</span>
-            <span>기본급</span>
-            <span>추가 수당</span>
-          </div>
-
-          {emp.days.map((d, i) => {
-            const dayKr = DAY_KR[new Date(d.date).getDay()];
-            const dayBasePay = Math.round(d.payrollBasePay || 0);
-            const dayExtraPay = Math.round(d.payrollExtraPay || 0);
-
-            return (
-              <div key={i} className="payslip-row payslip-row-4">
-                <span>
-                  {d.date.slice(5)} ({dayKr})
-                </span>
-                <span>
-                  {formatTime(d.planned_start)} ~ {formatTime(d.planned_end)}
-                </span>
-                <span>{fmtKRW(dayBasePay)}</span>
-                <span>{fmtKRW(dayExtraPay)}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="payslip-summary">
-          <div className="ps-row">
-            <span>기본 근무시간</span>
-            <span>{formatMinutesToHourLabel(totalBasePlannedMin)}</span>
-          </div>
-          <div className="ps-row">
-            <span>기본급</span>
-            <span>{fmtKRW(basePay)}</span>
-          </div>
-          <div className="ps-row">
-            <span>추가 수당</span>
-            <span>{fmtKRW(extraPay)}</span>
-          </div>
-          <div className="ps-row">
-            <span>공제합계</span>
-            <span>0원</span>
-          </div>
-          <div className="ps-row total">
-            <span>실수령액</span>
-            <span>{fmtKRW(netPay)}</span>
-          </div>
-        </div>
-
-        <div className="payslip-foot">
-          <div>
+        {/* ── 푸터 ── */}
+        <div className="ps-foot">
+          <p className="ps-foot-text">
             던킨 송도 랜드마크시티점은 위 금액을 {monthRange.label} 근무분 급여로{" "}
-            {monthRange.payDateLabel} 지급함을 확인합니다.
-          </div>
-
-          <div style={{ marginTop: 8 }}>이번 달도 근무해주셔서 감사합니다.</div>
+            {monthRange.payDateLabel} 지급함을 확인합니다. 이번 달도 근무해주셔서 감사합니다.
+          </p>
+          <button className="ps-print-btn" onClick={() => window.print()}>
+            <PrintIcon /> 인쇄하기
+          </button>
         </div>
 
-        <button className="payslip-print-btn" onClick={() => window.print()}>
-          🖨️ 인쇄하기
-        </button>
       </div>
     </div>
   );
 }
 
-function PayItem({ label, amount, note, highlight }) {
+function PayRow({ label, value, bold, danger, muted, sub }) {
   return (
-    <div className={`payslip-pay-item${highlight ? " highlight" : ""}`}>
-      <span>{label}</span>
-      <strong>{fmtKRW(amount)}</strong>
-      {note && <small>{note}</small>}
+    <div className={`ps-pay-row${bold ? " ps-pay-row--bold" : ""}${muted ? " ps-pay-row--muted" : ""}`}>
+      <span className="ps-pay-label">{label}{sub && <em className="ps-pay-sub">{sub}</em>}</span>
+      <span className={`ps-pay-value${danger ? " ps-pay-value--danger" : ""}`}>{value}</span>
     </div>
+  );
+}
+
+function PrintIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <polyline points="6 9 6 2 18 2 18 9" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
+    </svg>
   );
 }

@@ -1,0 +1,430 @@
+/* ============================================================
+   PayslipModal — Professional Redesign
+   기존 .payslip-* 클래스를 .ps-* 네임스페이스로 교체
+   ============================================================ */
+
+/* ── 오버레이 ── */
+.ps-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+/* ── 모달 컨테이너 ── */
+.ps-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+}
+
+/* 인쇄 시 모달을 전체 페이지로 */
+@media print {
+  .ps-overlay {
+    position: static;
+    background: none;
+    padding: 0;
+  }
+  .ps-modal {
+    max-height: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .ps-close,
+  .ps-print-btn {
+    display: none !important;
+  }
+}
+
+/* ── 헤더 ── */
+.ps-header {
+  background: #111111;
+  color: #ffffff;
+  padding: 28px 32px 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  position: relative;
+  border-radius: 12px 12px 0 0;
+}
+
+.ps-header-left {
+  flex: 1;
+}
+
+.ps-brand {
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  color: #888888;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ps-doc-title {
+  font-size: 22px;
+  font-weight: 500;
+  margin-top: 4px;
+  color: #ffffff;
+}
+
+.ps-period {
+  font-size: 13px;
+  color: #999999;
+  margin-top: 3px;
+}
+
+.ps-header-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.ps-net-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #888888;
+  text-transform: uppercase;
+}
+
+.ps-net-amount {
+  display: block;
+  font-size: 26px;
+  font-weight: 500;
+  color: #ffffff;
+  margin-top: 4px;
+  letter-spacing: -0.5px;
+}
+
+.ps-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: #666666;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 4px;
+  transition: color 0.15s;
+}
+
+.ps-close:hover {
+  color: #ffffff;
+}
+
+/* ── 기본 정보 밴드 ── */
+.ps-info-band {
+  background: #f7f7f7;
+  border-bottom: 1px solid #ebebeb;
+  padding: 16px 32px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 24px;
+}
+
+.ps-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ps-info-label {
+  font-size: 11px;
+  color: #888888;
+  font-weight: 400;
+}
+
+.ps-info-value {
+  font-size: 13px;
+  color: #111111;
+  font-weight: 500;
+}
+
+/* ── 지급/공제 2단 그리드 ── */
+.ps-pay-deduct-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 1px solid #ebebeb;
+}
+
+.ps-pay-deduct-grid .ps-section:first-child {
+  border-right: 1px solid #ebebeb;
+}
+
+/* ── 섹션 공통 ── */
+.ps-section {
+  padding: 20px 32px;
+}
+
+.ps-section-full {
+  border-bottom: 1px solid #ebebeb;
+  grid-column: 1 / -1;
+}
+
+.ps-section-title {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #aaaaaa;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* ── 지급/공제 행 ── */
+.ps-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.ps-pay-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+}
+
+.ps-pay-row--bold .ps-pay-label,
+.ps-pay-row--bold .ps-pay-value {
+  font-weight: 600;
+  font-size: 14px;
+  color: #111111;
+}
+
+.ps-pay-row--muted .ps-pay-label,
+.ps-pay-row--muted .ps-pay-value {
+  color: #bbbbbb;
+}
+
+.ps-pay-label {
+  color: #555555;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ps-pay-sub {
+  font-size: 11px;
+  color: #aaaaaa;
+  font-style: normal;
+}
+
+.ps-pay-value {
+  color: #111111;
+  font-weight: 500;
+}
+
+.ps-pay-value--danger {
+  color: #d13f3f;
+}
+
+.ps-divider {
+  height: 1px;
+  background: #ebebeb;
+  margin: 4px 0;
+}
+
+/* ── 근무 상세 테이블 ── */
+.ps-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 480px;
+}
+
+.ps-table th {
+  text-align: left;
+  font-size: 10px;
+  color: #aaaaaa;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 0 8px 10px 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ps-table th.align-right {
+  text-align: right;
+}
+
+.ps-table td {
+  padding: 8px 8px 8px 0;
+  border-top: 1px solid #f0f0f0;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.ps-td-date {
+  color: #111111 !important;
+  font-weight: 500;
+}
+
+.ps-td-warn {
+  color: #d13f3f !important;
+}
+
+.ps-td-pos {
+  color: #111111 !important;
+}
+
+.ps-td-extra {
+  color: #2a7a4b !important;
+}
+
+.ps-table td.align-right {
+  text-align: right;
+}
+
+.ps-table tfoot td {
+  border-top: 1px solid #cccccc;
+  padding-top: 10px;
+  font-weight: 600;
+  color: #111111;
+  font-size: 13px;
+}
+
+.ps-tfoot-label {
+  color: #111111;
+}
+
+/* ── 요약 바 ── */
+.ps-summary-bar {
+  background: #f7f7f7;
+  border-top: 1px solid #ebebeb;
+  border-bottom: 1px solid #ebebeb;
+  padding: 16px 32px;
+}
+
+.ps-summary-items {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ps-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ps-summary-item span {
+  font-size: 10px;
+  color: #aaaaaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ps-summary-item strong {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333333;
+}
+
+.ps-summary-item.ps-summary-net strong {
+  font-size: 17px;
+  font-weight: 600;
+  color: #111111;
+}
+
+.ps-summary-op {
+  font-size: 16px;
+  color: #cccccc;
+  font-weight: 300;
+  align-self: flex-end;
+  padding-bottom: 2px;
+}
+
+/* ── 푸터 ── */
+.ps-foot {
+  padding: 20px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ps-foot-text {
+  font-size: 12px;
+  color: #aaaaaa;
+  line-height: 1.7;
+  flex: 1;
+}
+
+.ps-print-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #444444;
+  background: #ffffff;
+  border: 1px solid #dddddd;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.ps-print-btn:hover {
+  background: #f5f5f5;
+  border-color: #bbbbbb;
+}
+
+/* ── 반응형 ── */
+@media (max-width: 520px) {
+  .ps-header {
+    padding: 20px 20px 18px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ps-header-right {
+    text-align: left;
+  }
+
+  .ps-info-band {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 14px 20px;
+  }
+
+  .ps-pay-deduct-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ps-pay-deduct-grid .ps-section:first-child {
+    border-right: none;
+    border-bottom: 1px solid #ebebeb;
+  }
+
+  .ps-section {
+    padding: 16px 20px;
+  }
+
+  .ps-summary-bar {
+    padding: 14px 20px;
+  }
+
+  .ps-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 16px 20px;
+  }
+}

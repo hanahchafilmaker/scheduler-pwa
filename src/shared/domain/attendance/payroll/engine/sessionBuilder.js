@@ -65,6 +65,12 @@ export function buildWorkSessions(rows = []) {
       !cur.planned_start ||
       !cur.planned_end;
 
+    // 5-1. 연속 근무 여부 + 다음 세션의 스케줄 정보 수집
+    //      같은 직원 + 같은 날 + 다음 row에 스케줄이 있으면 연속 근무로 판단
+    const isContinuous = sameEmployee && sameDay && !!next?.check_in;
+    const nextPlannedStart = isContinuous ? (next?.planned_start || null) : null;
+    const nextPlannedEnd   = isContinuous ? (next?.planned_end   || null) : null;
+
     // 6. session 생성
     sessions.push({
       employee_id: cur.employee_id,
@@ -83,6 +89,12 @@ export function buildWorkSessions(rows = []) {
       // 상태 플래그
       inferred_checkout: !cur.check_out && !!end,
       is_out_of_schedule: isOutOfSchedule,
+      is_continuous: isContinuous,
+
+      // 연속 근무 시 다음 파트의 스케줄 정보
+      // → payEngine에서 "스케줄 내 연장"인지 판단하는 데 사용
+      next_planned_start: nextPlannedStart,
+      next_planned_end: nextPlannedEnd,
 
       // 디버깅용 (운영에서 매우 중요)
       raw_index: i,

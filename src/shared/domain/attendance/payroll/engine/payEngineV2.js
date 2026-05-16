@@ -98,6 +98,41 @@ export function calcSessionPay(session, hourlyWage, policy = {}) {
   // 기본 인정 분 계산 (기본시간 - 지각 - 조퇴 - 휴게시간)
   let basePaid = Math.max(0, baseMin - late - early - breakMin);
 
+  // ─────────────────────────────────────────────────────────────────────
+  // [연속 근무 보정] 스케줄 범위 내 연장 시간 → 수당이 아닌 기본급 처리
+  //
+  // 배경: A파트(09~13) → B파트(13~18) 연속 근무 시,
+  //   A파트 실제 퇴근이 13:30이면 13:00~13:30은 B파트 스케줄 내부이므로
+  //   추가 수당이 아닌 기본급으로 인정해야 함.
+  //
+  // sessionBuilder가 session에 next_planned_start / next_planned_end를
+  // 주입한 경우에만 동작 (연속 근무가 아니면 두 필드가 null → 보정 없음).
+  // ─────────────────────────────────────────────────────────────────────
+  if (
+    extra > 0 &&
+    session.next_planned_start &&
+    session.next_planned_end &&
+    session.check_out
+  ) {
+    const overlapMs = Math.min(
+      new Date(session.check_out).getTime(),
+      new Date(session.next_planned_end).getTime()
+    ) - Math.max(
+      new Date(session.planned_end).getTime(),
+      new Date(session.next_planned_start).getTime()
+    );
+
+    if (overlapMs > 0) {
+      let extraInSchedule = overlapMs / 60000; // ms → 분
+      if (use5MinRule) {
+        extraInSchedule = roundTo5Minutes(extraInSchedule, 'floor');
+      }
+      // 스케줄 내 포함분: extra에서 빼고 basePaid에 합산
+      extra    = Math.max(0, extra - extraInSchedule);
+      basePaid = basePaid + extraInSchedule;
+    }
+  }
+
   // 급여 산출
   const basePay = Math.round((basePaid / 60) * wage);
   

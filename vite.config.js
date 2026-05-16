@@ -61,7 +61,7 @@ export default defineConfig({
       },
       output: {
         manualChunks(id) {
-          // react 계열은 정확한 경로로 먼저 분리 (순환 참조 방지)
+          // 1. React 계열 핵심 라이브러리 분리 (기존 유지)
           if (
             id.includes("node_modules/react/") ||
             id.includes("node_modules/react-dom/") ||
@@ -69,11 +69,33 @@ export default defineConfig({
           ) {
             return "react-vendor";
           }
-          // supabase는 크기가 크므로 별도 청크로 분리
+
+          // 2. Supabase 데이터베이스 라이브러리 분리 (기존 유지)
           if (id.includes("node_modules/@supabase/")) {
             return "supabase-vendor";
           }
-          // 나머지 node_modules
+
+          // 3. ✨ UI / 아이콘 / 애니메이션 라이브러리 추가 분리
+          // 프로젝트에서 많이 쓰이는 무거운 UI 패키지들을 ui-vendor로 묶어 쪼갭니다.
+          if (
+            id.includes("node_modules/lucide-react/") ||
+            id.includes("node_modules/@radix-ui/") ||
+            id.includes("node_modules/framer-motion/") ||
+            id.includes("node_modules/recharts/") // 만약 차트를 쓰신다면 포함
+          ) {
+            return "ui-vendor";
+          }
+
+          // 4. ✨ 날짜 및 대형 유틸리티 라이브러리 추가 분리
+          if (
+            id.includes("node_modules/date-fns/") ||
+            id.includes("node_modules/lodash/") ||
+            id.includes("node_modules/axios/")
+          ) {
+            return "util-vendor";
+          }
+
+          // 5. 나머지 잔잔한 외부 모듈들 (기존 유지)
           if (id.includes("node_modules/")) {
             return "vendor";
           }

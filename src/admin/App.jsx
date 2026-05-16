@@ -156,11 +156,16 @@ export default function App() {
 
     if (tab === "emp") {
       refreshAll().catch(() => {});
+      return;
+    }
+
+    if (tab === "settle") {
+      refreshAll().catch(() => {});
     }
   }, [tab, refreshAdminToday, refreshAll, settlementMonth, selectedMonth]);
 
   useEffect(() => {
-    if (tab === "att") {
+    if (tab === "att" || tab === "settle") {
       refreshAll().catch(() => {});
     }
   }, [selectedMonth, tab, refreshAll]);
@@ -304,16 +309,6 @@ export default function App() {
           selectedMonth={selectedMonth}
           lockMonthlyPay={lockMonthlyPay}
           currentManagerName="manager"
-        />
-      );
-    }
-
-    if (tab === "payroll") {
-      return (
-        <PayrollAdminPanel
-          employees={employees}
-          attendance={monthAttendance}
-          activeMonth={selectedMonth}
         />
       );
     }

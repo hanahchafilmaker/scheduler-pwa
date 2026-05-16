@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase.js";
 import { calcRowPayWithSeparation } from "../domain/attendance/payroll/engine/payEngine";
 import { getApprovalStatusLabel } from "../domain/attendance/labels";
+import { PayrollAdminPanel } from "./PayrollAdminPanel";
 
 /* ----------------------------------------------------------------
    Helper Functions
@@ -166,6 +167,15 @@ export default function SettleTab({
       ) : (
         <PreviewTable rows={preview} />
       )}
+
+      {/* 급여 명세서 패널 */}
+      <div style={{ marginTop: "2rem" }}>
+        <PayrollAdminPanel
+          employees={employees}
+          attendance={monthAttendance}
+          activeMonth={selectedMonth}
+        />
+      </div>
     </div>
   );
 }

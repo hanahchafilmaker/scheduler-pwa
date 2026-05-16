@@ -121,13 +121,24 @@ async function createPdfBlob(emp, monthRange) {
   const net = grossPay - tax;
   const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
 
+  // html2canvas는 position:fixed 요소를 제대로 캡처 못하는 경우가 있어
+  // overflow:hidden wrapper 안에 absolute로 배치합니다.
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText = `
+    position: absolute; left: -9999px; top: 0;
+    width: 794px; height: 0; overflow: hidden;
+    pointer-events: none;
+  `;
+
   const container = document.createElement("div");
   container.style.cssText = `
-    position: fixed; left: -9999px; top: 0;
+    position: relative;
     width: 794px; background: white; padding: 40px;
     font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
     box-sizing: border-box;
   `;
+
+  wrapper.appendChild(container);
 
   container.innerHTML = `
     <div style="background:#111;color:#fff;padding:24px 32px;margin-bottom:24px">
@@ -231,11 +242,21 @@ async function createPdfBlob(emp, monthRange) {
     </div>
   `;
 
-  document.body.appendChild(container);
+  document.body.appendChild(wrapper);
+  // wrapper 높이를 실제 콘텐츠 높이로 확보해야 html2canvas가 전체를 캡처합니다.
+  wrapper.style.height = container.scrollHeight + "px";
 
   try {
     const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+    const canvas = await html2canvas(container, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: "#ffffff",
+      width: 794,
+      height: container.scrollHeight,
+      windowWidth: 794,
+    });
 
     const imgData = canvas.toDataURL("image/jpeg", 0.95);
     const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -258,7 +279,7 @@ async function createPdfBlob(emp, monthRange) {
 
     return doc.output("blob");
   } finally {
-    document.body.removeChild(container);
+    document.body.removeChild(wrapper);
   }
 }
 

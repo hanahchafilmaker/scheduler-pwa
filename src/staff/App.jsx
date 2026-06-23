@@ -125,6 +125,7 @@ export default function StaffApp() {
       });
 
       setToast("퇴근 처리되었습니다");
+      handleLogout();
     } catch (err) {
       setPinError(err?.message || "퇴근 처리에 실패했습니다.");
     }

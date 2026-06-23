@@ -142,6 +142,7 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
               <strong>지급시간</strong>
               <div>{timeRange(row.paid_check_in, row.paid_check_out)}</div>
             </div>
+            </div>
             <div>
               <strong>차감/연장</strong>
               <div>
@@ -184,6 +185,8 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
 }
 
 function EditModal({ row, onClose, onSave }) {
+  const [checkIn, setCheckIn] = useState(row?.check_in || "");
+  const [checkOut, setCheckOut] = useState(row?.check_out || "");
   const [paidIn, setPaidIn] = useState(row?.paid_check_in || "");
   const [paidOut, setPaidOut] = useState(row?.paid_check_out || "");
   const [breakMin, setBreakMin] = useState(String(row?.break_min || 0));
@@ -192,8 +195,20 @@ function EditModal({ row, onClose, onSave }) {
   if (!row) return null;
 
   const handleSave = () => {
+    // Basic validation: check-in required; if check-out provided, it must be after check-in
+    if (!checkIn) {
+      alert("출근 시간은 필수입니다.");
+      return;
+    }
+    if (checkOut && checkIn > checkOut) {
+      alert("퇴근 시간은 출근 시간보다 이전일 수 없습니다.");
+      return;
+    }
+
     onSave({
       attendance_id: row.attendance_id,
+      check_in: checkIn,
+      check_out: checkOut || null,
       paid_check_in: paidIn,
       paid_check_out: paidOut,
       break_min: Number(breakMin) || 0,
@@ -209,6 +224,7 @@ function EditModal({ row, onClose, onSave }) {
           <h3>근태 수정</h3>
           <button type="button" className="att-icon-btn" onClick={onClose}>닫기</button>
         </div>
+
         <div className="att-modal-body">
           <div className="att-detail-grid">
             <div>
@@ -216,20 +232,34 @@ function EditModal({ row, onClose, onSave }) {
               <div>{row.name || "-"}</div>
             </div>
             <div>
-              <strong>날짜 / 파트</strong>
-              <div>{row.date} · {getPartLabel(row.part)}</div>
+              <strong>날짜</strong>
+              <div>{row.date || "-"}</div>
             </div>
             <div>
-              <strong>실제 출근</strong>
-              <div>{row.check_in || "-"}</div>
-            </div>
-            <div>
-              <strong>실제 퇴근</strong>
-              <div>{row.check_out || "-"}</div>
+              <strong>파트</strong>
+              <div>{getPartLabel(row.part)}</div>
             </div>
           </div>
 
-          <label className="att-label" style={{ marginTop: 12 }}>
+          <label className="att-label">
+            실제 출근 시간
+            <input
+              className="att-input"
+              type="time"
+              value={checkIn}
+              onChange={(e) => setCheckIn(e.target.value)}
+            />
+          </label>
+          <label className="att-label">
+            실제 퇴근 시간 (비워두면 미퇴근)
+            <input
+              className="att-input"
+              type="time"
+              value={checkOut}
+              onChange={(e) => setCheckOut(e.target.value)}
+            />
+          </label>
+          <label className="att-label">
             지급 출근 시간
             <input
               className="att-input"
@@ -313,8 +343,9 @@ export default function AttTab(props) {
 
     const totalActualMinutes = attendanceList.reduce(
       (acc, row) =>
-        acc + Math.max(0, diffMinutes(row.check_in, row.check_out) - Number(row.break_min || 0)),
-      0,
+        acc +
+        Math.max(0, diffMinutes(row.check_in, row.check_out) - Number(row.break_min || 0)),
+      0
     );
 
     return {
@@ -458,7 +489,9 @@ export default function AttTab(props) {
                       <td>
                         {row.name || "-"}
                         {row.is_substitute && (
-                          <span style={{ fontSize: 10, color: "#f59e0b", marginLeft: 4 }}>대타</span>
+                          <span style={{ fontSize: 10, color: "#f59e0b", marginLeft: 4 }}>
+                            대타
+                          </span>
                         )}
                       </td>
                       <td>{row.date || "-"}</td>

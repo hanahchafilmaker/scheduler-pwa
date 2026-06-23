@@ -601,13 +601,14 @@ async function doUpdateAttendance(body) {
   const { attendance_id, ...fields } = body;
 
   const updates = {};
-  // check_in / check_out 은 원본 로그 — 절대 수정 불가
-  // paid_check_in / paid_check_out 만 수정 허용
+  // check_in / check_out 과 paid_check_in / paid_check_out 모두 수정 허용
   const mutableFields = [
     "planned_start",
     "planned_end",
     "paid_check_in",
     "paid_check_out",
+    "check_in",
+    "check_out",
     "approval_note",
     "requested_at",
     "approved_at",

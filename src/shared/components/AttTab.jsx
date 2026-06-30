@@ -145,10 +145,8 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
             </div>
             <div>
               <strong>차감/연장</strong>
-              <div>
-                지각차감 {Number(row.late_deduct_min || 0)}분 / 조퇴차감{" "}
-                {Number(row.early_leave_min || 0)}분 / 추가 {Number(row.extra_work_min || 0)}분 /
-                연장 {Number(row.extension_min || 0)}분
+              <div style={{ whiteSpace: 'pre-wrap' }}>
+                {`지각차감 ${Number(row.late_deduct_min || 0)}분 / 조퇴차감 ${Number(row.early_leave_min || 0)}분 / 추가 ${Number(row.extra_work_min || 0)}분 / 연장 ${Number(row.extension_min || 0)}분`}
               </div>
             </div>
           </div>

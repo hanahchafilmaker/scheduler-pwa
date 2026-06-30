@@ -142,7 +142,6 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
               <strong>지급시간</strong>
               <div>{timeRange(row.paid_check_in, row.paid_check_out)}</div>
             </div>
-            </div>
             <div>
               <strong>차감/연장</strong>
               <div>
@@ -151,7 +150,7 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
                 연장 {Number(row.extension_min || 0)}분
               </div>
             </div>
-          </div>
+          </div> {/* <--- 이 닫는 태그가 원래 누락되었거나 위치가 틀려 있었습니다 */}
 
           {row.approval_note ? (
             <div className="att-note-box">
@@ -183,6 +182,7 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
     </div>
   );
 }
+
 
 function EditModal({ row, onClose, onSave }) {
   const [checkIn, setCheckIn] = useState(row?.check_in || "");

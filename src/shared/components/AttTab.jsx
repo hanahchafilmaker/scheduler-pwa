@@ -215,6 +215,7 @@ const PART_OPTIONS = [
 
 function EditModal({ row, onClose, onSave }) {
   const [part, setPart] = useState(row?.part || "");
+  const [isSubstitute, setIsSubstitute] = useState(!!row?.is_substitute);
   const [checkIn, setCheckIn] = useState(row?.check_in || "");
   const [checkOut, setCheckOut] = useState(row?.check_out || "");
   const [paidIn, setPaidIn] = useState(row?.paid_check_in || "");
@@ -226,6 +227,7 @@ function EditModal({ row, onClose, onSave }) {
   useEffect(() => {
     if (row) {
       setPart(row.part || "");
+      setIsSubstitute(!!row.is_substitute);
       setCheckIn(row.check_in || "");
       setCheckOut(row.check_out || "");
       setPaidIn(row.paid_check_in || "");
@@ -251,6 +253,7 @@ function EditModal({ row, onClose, onSave }) {
     onSave({
       attendance_id: row.attendance_id,
       part: part || null,
+      is_substitute: isSubstitute,
       check_in: checkIn,
       check_out: checkOut || null,
       paid_check_in: paidIn,

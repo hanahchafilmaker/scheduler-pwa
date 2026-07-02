@@ -250,10 +250,22 @@ function EditModal({ row, onClose, onSave }) {
       return;
     }
 
+    // 대타 체크박스 상태에 맞춰 사유(approval_reason)도 함께 정리
+    // - 체크 해제 & 기존 사유가 "대타"였다면 → 비움
+    // - 체크 & 기존 사유가 비어있었다면 → "대타"로 채움
+    // - 그 외(사용자가 다른 사유를 이미 갖고 있던 경우)는 그대로 유지
+    let nextReason = row.approval_reason || "";
+    if (!isSubstitute && nextReason === "substitute") {
+      nextReason = "";
+    } else if (isSubstitute && !nextReason) {
+      nextReason = "substitute";
+    }
+
     onSave({
       attendance_id: row.attendance_id,
       part: part || null,
       is_substitute: isSubstitute,
+      approval_reason: nextReason,
       check_in: checkIn,
       check_out: checkOut || null,
       paid_check_in: paidIn,

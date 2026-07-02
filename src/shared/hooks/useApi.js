@@ -616,6 +616,7 @@ async function doUpdateAttendance(body) {
     "check_in",
     "check_out",
     "approval_note",
+    "approval_reason",
     "requested_at",
     "approved_at",
     "approved_by",

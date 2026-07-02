@@ -130,31 +130,14 @@ const EXTENSION_REASONS = new Set([
  * 순수 함수 — 컴포넌트 외부에서 분류 로직 전체를 처리.
  */
 function selectTodayState(scheduleList, attendanceList, employeeList) {
-  const employeeMap = employeeList.reduce((acc, emp) => {
-    if (emp?.employee_id) {
-      acc[String(emp.employee_id)] = emp;
-    }
-    return acc;
-  }, {});
-
   // ── attendance 분류 (status 기준 단일 패스) ─────────────
   const workingNow = [];
   const attentionOpenList = [];
   const normalPending = [];
   const extensionPending = [];
-  
-  // 수정 고안: 이미 정상 출근 기록(근무중이거나 퇴근 완료)이 존재하는 schedule_id 수집
-  const matchedScheduleIds = new Set();
 
   for (const row of attendanceList) {
     const status = getAttendanceStatus(row);
-    
-    if (row.schedule_id) {
-      // WORKING 상태거나 승인 여부와 상관없이 기록(CLOSED 등)이 있다면 출근한 것임
-      if (status === ATTENDANCE_STATUS.WORKING || status === ATTENDANCE_STATUS.CLOSED) {
-        matchedScheduleIds.add(String(row.schedule_id));
-      }
-    }
 
     if (status === ATTENDANCE_STATUS.WORKING) {
       workingNow.push(row);
@@ -175,20 +158,11 @@ function selectTodayState(scheduleList, attendanceList, employeeList) {
     }
   }
 
-  // ── schedule 분류 (미출근) ───────────────────────────────
-  const lateNoShowList = scheduleList
-    .filter((row) => !matchedScheduleIds.has(String(row.schedule_id)))
-    .map((row) => {
-      const emp = employeeMap[String(row.employee_id)] || null;
-      return { ...row, employee_name: row.name || emp?.name || "-" };
-    });
-
   return {
     workingNow,
     attentionOpenList,
     normalPending,
     extensionPending,
-    lateNoShowList,
   };
 }
 
@@ -206,7 +180,6 @@ export default function TodayTab(props) {
     attentionOpenList,
     normalPending,
     extensionPending,
-    lateNoShowList,
   } = useMemo(
     () => selectTodayState(scheduleList, attendanceList, employeeList),
     [scheduleList, attendanceList, employeeList]
@@ -393,22 +366,6 @@ export default function TodayTab(props) {
       </div>
 
       <div className="today-overview">
-        <StatCard title="미출근" count={lateNoShowList.length}>
-          {lateNoShowList.length === 0 ? (
-            <EmptyState text="오늘 미출근 예정자는 없습니다." />
-          ) : (
-            lateNoShowList.map((row, idx) => (
-              <PersonRow
-                key={row.schedule_id || `noshow-${idx}`}
-                title={`${row.employee_name} · ${getPartLabel(row.part)}`}
-                subtitle={`예정 ${timeRange(row.planned_start, row.planned_end)}`}
-                extra={`스케줄 ID ${row.schedule_id || "-"}`}
-                right={<span className="today-badge neutral">미출근</span>}
-              />
-            ))
-          )}
-        </StatCard>
-
         <StatCard title="오늘 스케줄 요약" count={scheduleList.length}>
           {scheduleList.length === 0 ? (
             <EmptyState text="오늘 등록된 스케줄이 없습니다." />

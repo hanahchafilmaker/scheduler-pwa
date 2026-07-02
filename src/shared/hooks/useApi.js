@@ -623,8 +623,21 @@ async function doUpdateAttendance(body) {
     "memo",
   ];
 
+  // Postgres의 time 타입 컬럼은 빈 문자열("")을 허용하지 않으므로 null로 변환합니다.
+  const TIME_FIELDS = new Set([
+    "planned_start",
+    "planned_end",
+    "paid_check_in",
+    "paid_check_out",
+    "check_in",
+    "check_out",
+  ]);
+
   mutableFields.forEach((key) => {
-    if (fields[key] !== undefined) updates[key] = fields[key];
+    if (fields[key] !== undefined) {
+      const value = fields[key];
+      updates[key] = TIME_FIELDS.has(key) && value === "" ? null : value;
+    }
   });
 
   if (fields.approval_status !== undefined) {

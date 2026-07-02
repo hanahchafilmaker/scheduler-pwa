@@ -44,6 +44,37 @@ function getPartLabel(part) {
   }
 }
 
+// 파트별 표준 출근시간 (예정 스케줄이 없어도 이 기준으로 지각 판정)
+const PART_STANDARD_START = {
+  open: "07:00",
+  middle_a: "11:30",
+  middle_b: "16:00",
+  close: "18:30",
+};
+
+const LATE_GRACE_MIN = 5;
+
+function timeToMinutes(t) {
+  const m = String(t || "").match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+/**
+ * 파트별 표준 출근시간 기준으로 지각 여부 계산.
+ * 예정 스케줄(planned_start) 유무와 무관하게, 파트만 알면 판정 가능.
+ * 유예시간(LATE_GRACE_MIN) 이내는 지각으로 표시하지 않음.
+ */
+function computeLateMinutes(row) {
+  const standardStart = PART_STANDARD_START[String(row.part || "").toLowerCase()];
+  const std = timeToMinutes(standardStart);
+  const actual = timeToMinutes(row.check_in);
+  if (std == null || actual == null) return 0;
+
+  const diff = actual - std;
+  return diff > LATE_GRACE_MIN ? diff - LATE_GRACE_MIN : 0;
+}
+
 function formatMinutes(mins) {
   const n = Number(mins || 0);
   if (!n) return "0분";
@@ -545,7 +576,6 @@ export default function AttTab(props) {
                 <th>이름</th>
                 <th>날짜</th>
                 <th>파트</th>
-                <th>예정시간</th>
                 <th>파트기준</th>
                 <th>실제시간</th>
                 <th>지각</th>
@@ -561,12 +591,14 @@ export default function AttTab(props) {
             <tbody>
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="att-empty-cell">
+                  <td colSpan={13} className="att-empty-cell">
                     조건에 맞는 근태 기록이 없습니다.
                   </td>
                 </tr>
               ) : (
                 filteredRows.map((row) => {
+                  const lateMin = computeLateMinutes(row);
+
                   return (
                     <tr key={row.attendance_id}>
                       <td>
@@ -586,15 +618,14 @@ export default function AttTab(props) {
                           </span>
                         )}
                       </td>
-                      <td>{timeRange(row.planned_start, row.planned_end)}</td>
                       <td style={{ color: "#6b7280", fontSize: 12 }}>
                         {formatMinutes(getScheduledWorkMinutes(row))}
                       </td>
                       <td>{timeRange(row.check_in, row.check_out)}</td>
                       <td>
-                        {row.late_display_min > 0 ? (
+                        {lateMin > 0 ? (
                           <span style={{ color: "#dc2626", fontSize: 12 }}>
-                            {row.late_display_min}분
+                            {lateMin}분
                           </span>
                         ) : (
                           <span className="att-muted">-</span>

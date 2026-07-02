@@ -81,27 +81,6 @@ function PersonRow({ title, subtitle, right, extra }) {
   );
 }
 
-function findMatchingAttendance(scheduleRow, attendanceList) {
-  return (
-    attendanceList.find((att) => {
-      if (
-        scheduleRow.schedule_id &&
-        att.schedule_id &&
-        String(att.schedule_id) === String(scheduleRow.schedule_id)
-      ) {
-        return !!att.check_in;
-      }
-
-      return (
-        String(att.employee_id || "") === String(scheduleRow.employee_id || "") &&
-        String(att.date || "") === String(scheduleRow.date || "") &&
-        String(att.part || "") === String(scheduleRow.part || "") &&
-        !!att.check_in
-      );
-    }) || null
-  );
-}
-
 function hasMatchingSchedule(attendanceRow, scheduleList) {
   return scheduleList.some((scheduleRow) => {
     if (
@@ -361,37 +340,6 @@ export default function TodayTab(props) {
                 )}
               </div>
             ))
-          )}
-        </StatCard>
-      </div>
-
-      <div className="today-overview">
-        <StatCard title="오늘 스케줄 요약" count={scheduleList.length}>
-          {scheduleList.length === 0 ? (
-            <EmptyState text="오늘 등록된 스케줄이 없습니다." />
-          ) : (
-            scheduleList.map((row, idx) => {
-              const matchedAttendance = findMatchingAttendance(row, attendanceList);
-              const checkedIn = !!matchedAttendance;
-
-              return (
-                <PersonRow
-                  key={row.schedule_id || `summary-${idx}`}
-                  title={`${row.name || "-"} · ${getPartLabel(row.part)}`}
-                  subtitle={timeRange(row.planned_start, row.planned_end)}
-                  extra={
-                    checkedIn
-                      ? `실제 ${timeRange(matchedAttendance.check_in, matchedAttendance.check_out)}`
-                      : null
-                  }
-                  right={
-                    <span className={`today-badge ${checkedIn ? "approved" : "neutral"}`}>
-                      {checkedIn ? "출근기록 있음" : "대기"}
-                    </span>
-                  }
-                />
-              );
-            })
           )}
         </StatCard>
       </div>

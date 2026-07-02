@@ -148,7 +148,7 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
                 {`지각차감 ${Number(row.late_deduct_min || 0)}분 / 조퇴차감 ${Number(row.early_leave_min || 0)}분 / 추가 ${Number(row.extra_work_min || 0)}분 / 연장 ${Number(row.extension_min || 0)}분`}
               </div>
             </div>
-          </div> {/* <--- 이 닫는 태그가 원래 누락되었거나 위치가 틀려 있었습니다 */}
+          </div>
 
           {row.approval_note ? (
             <div className="att-note-box">
@@ -189,6 +189,18 @@ function EditModal({ row, onClose, onSave }) {
   const [paidOut, setPaidOut] = useState(row?.paid_check_out || "");
   const [breakMin, setBreakMin] = useState(String(row?.break_min || 0));
   const [note, setNote] = useState(row?.approval_note || "");
+
+  // row prop이 바뀔 때마다(다른 행을 수정하러 들어올 때마다) 폼 상태를 동기화합니다.
+  useEffect(() => {
+    if (row) {
+      setCheckIn(row.check_in || "");
+      setCheckOut(row.check_out || "");
+      setPaidIn(row.paid_check_in || "");
+      setPaidOut(row.paid_check_out || "");
+      setBreakMin(String(row.break_min || 0));
+      setNote(row.approval_note || "");
+    }
+  }, [row]);
 
   if (!row) return null;
 

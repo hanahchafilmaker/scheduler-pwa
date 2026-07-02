@@ -35,8 +35,19 @@ function calcRowPay(row, hourlyWage) {
   const wage = Number(hourlyWage || 0);
   if (!wage) return { basePay: 0, extraPay: 0, basePlannedMin: 0 };
 
-  const basePlannedMin = calcBasePlannedMin(row);
-  const paidMin        = calcPaidMin(row);
+  const paidMin = calcPaidMin(row);
+
+  // 대타 근무는 예정시간 유무와 상관없이 전액 시간외(추가) 수당으로 처리
+  if (row.is_substitute) {
+    const extraPay = Math.round((paidMin / 60) * wage);
+    return { basePay: 0, extraPay, basePlannedMin: 0 };
+  }
+
+  // 일반 근무: 예정 스케줄(planned_start/planned_end)이 있으면 그 시간까지 기본급, 초과분만 시간외 수당.
+  // 예정 스케줄이 없는 경우(스케줄 외 출근 등)는 비교 기준이 없으므로 전액 기본급 처리.
+  const hasPlannedSchedule = !!(row.planned_start && row.planned_end);
+  const basePlannedMin = hasPlannedSchedule ? calcBasePlannedMin(row) : paidMin;
+
   const baseMin        = Math.min(paidMin, basePlannedMin);
   const extraMin       = Math.max(0, paidMin - basePlannedMin);
   const basePay        = Math.round((baseMin  / 60) * wage);

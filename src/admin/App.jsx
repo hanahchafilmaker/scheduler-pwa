@@ -142,12 +142,12 @@ export default function App() {
     addEmployee,
     updateEmployee,
     deleteEmployee,
+    updateAttendance,
   } = useApi({
     month: selectedMonth,
   });
 
-  const updateAttendance = approveAttendance;
-
+  
   useEffect(() => {
     if (error) showToast(error, "err");
   }, [error, showToast]);

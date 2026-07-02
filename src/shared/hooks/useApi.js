@@ -567,7 +567,7 @@ async function doCheckOut(body) {
 }
 
 async function doApproveAttendance(body) {
-  const { attendance_id, approved, approved_by = null, approval_note } = body;
+  const { attendance_id, approved, approved_by = null, approval_note, part } = body;
 
   // 기존 레코드 조회 → approval_note 미전달 시 기존 값 보존
   const { data: existing, error: fetchError } = await supabase
@@ -584,6 +584,11 @@ async function doApproveAttendance(body) {
     approved_at: nowDateTimeString(),
     approval_note: approval_note !== undefined ? approval_note : (existing?.approval_note || ""),
   };
+
+  // 파트가 전달된 경우에만 함께 업데이트 (빈 문자열/undefined면 기존 값 유지)
+  if (part) {
+    updates.part = part;
+  }
 
   const { data, error } = await supabase
     .from("attendance")

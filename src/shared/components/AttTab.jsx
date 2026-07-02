@@ -99,6 +99,14 @@ function SummaryCard({ title, value, sub }) {
 
 function ApprovalModal({ row, onClose, onApprove, onReject }) {
   const [note, setNote] = useState("");
+  const [part, setPart] = useState(row?.part || "");
+
+  useEffect(() => {
+    if (row) {
+      setNote("");
+      setPart(row.part || "");
+    }
+  }, [row]);
 
   if (!row) return null;
 
@@ -124,7 +132,18 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
             </div>
             <div>
               <strong>파트</strong>
-              <div>{getPartLabel(row.part)}</div>
+              <select
+                className="att-select"
+                value={part}
+                onChange={(e) => setPart(e.target.value)}
+              >
+                <option value="">선택 안 함</option>
+                {PART_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <strong>현재 상태</strong>
@@ -173,10 +192,10 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
         </div>
 
         <div className="att-modal-actions">
-          <button type="button" className="att-btn secondary" onClick={() => onReject(row, note)}>
+          <button type="button" className="att-btn secondary" onClick={() => onReject(row, note, part)}>
             거절
           </button>
-          <button type="button" className="att-btn primary" onClick={() => onApprove(row, note)}>
+          <button type="button" className="att-btn primary" onClick={() => onApprove(row, note, part)}>
             승인
           </button>
         </div>
@@ -398,7 +417,7 @@ export default function AttTab(props) {
     };
   }, [attendanceList]);
 
-  const handleApprove = async (row, note) => {
+  const handleApprove = async (row, note, part) => {
     if (!approveAttendance) return;
 
     await approveAttendance({
@@ -407,12 +426,13 @@ export default function AttTab(props) {
       approved_by: currentManagerName,
       approval_note: note || "",
       date: row.date,
+      part: part || null,
     });
 
     setSelectedRow(null);
   };
 
-  const handleReject = async (row, note) => {
+  const handleReject = async (row, note, part) => {
     if (!approveAttendance) return;
 
     await approveAttendance({
@@ -421,6 +441,7 @@ export default function AttTab(props) {
       approved_by: currentManagerName,
       approval_note: note || "",
       date: row.date,
+      part: part || null,
     });
 
     setSelectedRow(null);

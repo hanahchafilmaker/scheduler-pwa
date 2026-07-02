@@ -303,6 +303,15 @@ function EditModal({ row, onClose, onSave }) {
               ))}
             </select>
           </label>
+
+          <label className="att-label att-checkbox-label">
+            <input
+              type="checkbox"
+              checked={isSubstitute}
+              onChange={(e) => setIsSubstitute(e.target.checked)}
+            />
+            대타 근무 (체크 해제 시 일반 근무로 처리 · 급여 계산에 영향)
+          </label>
           <label className="att-label">
             실제 출근 시간
             <input

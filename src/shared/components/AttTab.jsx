@@ -186,7 +186,16 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
 }
 
 
+const PART_OPTIONS = [
+  { value: "open", label: "오픈" },
+  { value: "middle_a", label: "미들A" },
+  { value: "middle_b", label: "미들B" },
+  { value: "close", label: "마감" },
+  { value: "extra", label: "추가" },
+];
+
 function EditModal({ row, onClose, onSave }) {
+  const [part, setPart] = useState(row?.part || "");
   const [checkIn, setCheckIn] = useState(row?.check_in || "");
   const [checkOut, setCheckOut] = useState(row?.check_out || "");
   const [paidIn, setPaidIn] = useState(row?.paid_check_in || "");
@@ -197,6 +206,7 @@ function EditModal({ row, onClose, onSave }) {
   // row prop이 바뀔 때마다(다른 행을 수정하러 들어올 때마다) 폼 상태를 동기화합니다.
   useEffect(() => {
     if (row) {
+      setPart(row.part || "");
       setCheckIn(row.check_in || "");
       setCheckOut(row.check_out || "");
       setPaidIn(row.paid_check_in || "");
@@ -221,6 +231,7 @@ function EditModal({ row, onClose, onSave }) {
 
     onSave({
       attendance_id: row.attendance_id,
+      part: part || null,
       check_in: checkIn,
       check_out: checkOut || null,
       paid_check_in: paidIn,
@@ -255,6 +266,21 @@ function EditModal({ row, onClose, onSave }) {
             </div>
           </div>
 
+          <label className="att-label">
+            파트 (오픈/미들/마감)
+            <select
+              className="att-select"
+              value={part}
+              onChange={(e) => setPart(e.target.value)}
+            >
+              <option value="">선택 안 함</option>
+              {PART_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <label className="att-label">
             실제 출근 시간
             <input

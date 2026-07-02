@@ -603,6 +603,7 @@ async function doUpdateAttendance(body) {
   const updates = {};
   // check_in / check_out 과 paid_check_in / paid_check_out 모두 수정 허용
   const mutableFields = [
+    "part",
     "planned_start",
     "planned_end",
     "paid_check_in",

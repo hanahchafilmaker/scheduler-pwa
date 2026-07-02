@@ -127,6 +127,10 @@ function ApprovalModal({ row, onClose, onApprove, onReject }) {
               <div>{getPartLabel(row.part)}</div>
             </div>
             <div>
+              <strong>현재 상태</strong>
+              <div><StatusBadge status={row.approval_status} /></div>
+            </div>
+            <div>
               <strong>사유</strong>
               <div>{getApprovalReasonLabel(row.approval_reason)}</div>
             </div>
@@ -492,8 +496,6 @@ export default function AttTab(props) {
                 </tr>
               ) : (
                 filteredRows.map((row) => {
-                  const canApprove = row.approval_status === "pending";
-
                   return (
                     <tr key={row.attendance_id}>
                       <td>
@@ -543,15 +545,13 @@ export default function AttTab(props) {
                       <td className="att-note-cell">{row.memo || row.approval_note || "-"}</td>
                       <td>
                         <div style={{ display: "flex", gap: 4, flexWrap: "nowrap" }}>
-                          {canApprove && (
-                            <button
-                              type="button"
-                              className="att-btn primary small"
-                              onClick={() => setSelectedRow(row)}
-                            >
-                              승인
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            className="att-btn primary small"
+                            onClick={() => setSelectedRow(row)}
+                          >
+                            {row.approval_status === "pending" ? "승인" : "상태변경"}
+                          </button>
                           <button
                             type="button"
                             className="att-btn secondary small"

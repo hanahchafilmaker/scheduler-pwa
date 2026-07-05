@@ -262,49 +262,67 @@ export default function App() {
   }, [tab, refreshAdminToday, refreshAll]);
 
   const handleSaveCell = useCallback(
-    (cellEdit, employeeId) => {
-      const emp = employees.find((e) => safeStr(e.employee_id) === safeStr(employeeId));
+    async (cellEdit, employeeIds) => {
+      // employeeIds is array of strings (may be empty)
       const shift = SHIFT_TIME[cellEdit.part] || {};
-
-      const payload = {
-        date: cellEdit.date,
-        part: cellEdit.part,
-        employee_id: employeeId || "",
-        name: emp?.name || "",
-        planned_start: shift.start || "",
-        planned_end: shift.end || "",
-        memo: cellEdit.memo || "",
-      };
 
       const refetch = () => refreshAll();
 
-      if (cellEdit.scheduleId) {
-        if (!employeeId) {
-          deleteSchedule({
-            schedule_id: cellEdit.scheduleId,
-            date: cellEdit.date,
-          })
-            .then(refetch)
-            .catch(() => {});
-          return;
+      // If no employee IDs selected, delete all schedule entries for this cell (date, part)
+      if (employeeIds.length === 0) {
+        // Find all existing schedules for this date/part
+        const existing = schedule.filter(
+          s => s.date === cellEdit.date && s.part === cellEdit.part
+        );
+        // Delete each
+        for (const sched of existing) {
+          await deleteSchedule({
+            schedule_id: sched.schedule_id,
+            date: sched.date,
+          }).catch(() => {}); // ignore individual errors
         }
-
-        updateSchedule({
-          schedule_id: cellEdit.scheduleId,
-          ...payload,
-        })
-          .then(refetch)
-          .catch(() => {});
+        await refetch();
         return;
       }
 
-      if (!employeeId) return;
+      // For each employee ID, upsert schedule
+      for (const empId of employeeIds) {
+        const emp = employees.find((e) => safeStr(e.employee_id) === safeStr(empId));
+        // Find existing schedule for this employee/date/part
+        const existing = schedule.find(
+          s =>
+            s.date === cellEdit.date &&
+            s.part === cellEdit.part &&
+            safeStr(s.employee_id) === safeStr(empId)
+        );
 
-      addSchedule(payload)
-        .then(refetch)
-        .catch(() => {});
+        const payload = {
+          date: cellEdit.date,
+          part: cellEdit.part,
+          employee_id: empId,
+          name: emp?.name || "",
+          planned_start: shift.start || "",
+          planned_end: shift.end || "",
+          memo: cellEdit.memo || "",
+        };
+
+        if (existing) {
+          // Update existing schedule
+          await updateSchedule({
+            schedule_id: existing.schedule_id,
+            ...payload,
+          })
+            .then(refetch)
+            .catch(() => {});
+        } else {
+          // Add new schedule
+          await addSchedule(payload)
+            .then(refetch)
+            .catch(() => {});
+        }
+      }
     },
-    [employees, refreshAll, addSchedule, updateSchedule, deleteSchedule],
+    [employees, refreshAll, addSchedule, updateSchedule, deleteSchedule, schedule],
   );
 
   const renderTab = () => {

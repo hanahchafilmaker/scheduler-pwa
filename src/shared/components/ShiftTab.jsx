@@ -18,16 +18,18 @@ function formatDayLabel(dateStr) {
   };
 }
 
-function getEntry(schedule, date, part) {
-  return schedule.find((s) => s.part === part && normalizeDate(s.date) === date) || null;
+function getEntries(schedule, date, part) {
+  return schedule.filter((s) => s.part === part && normalizeDate(s.date) === date);
 }
 
 /* ----------------------------------------------------------------
    CellPopover (근무 셀 클릭 시 나타나는 배정 팝오버)
 ---------------------------------------------------------------- */
-function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchorRef, onToast }) {
-  const [selectedId, setSelectedId] = useState(entry?.employee_id || "");
-  const [memo, setMemo] = useState(entry?.memo || "");
+function CellPopover({ entries, date, part, employees, onSaveCell, onClose, anchorRef, onToast }) {
+  // entries: array of schedule objects for this date/part
+  const [selectedIds, setSelectedIds] = useState(() => entries.map(e => e.employee_id).filter(Boolean));
+  // Use memo from first entry if exists, else empty
+  const [memo, setMemo] = useState(entries.length > 0 ? entries[0].memo || "" : "");
   const [position, setPosition] = useState({ top: "calc(100% + 6px)", left: 0 });
   const popRef = useRef(null);
 
@@ -38,6 +40,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
         !popRef.current.contains(e.target) &&
         anchorRef?.current &&
         !anchorRef.current.contains(e.target)
+      && anchorRef?.current)
       ) {
         onClose();
       }
@@ -53,7 +56,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
     const rect = anchor.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    const popoverH = 320; 
+    const popoverH = 320;
     const popoverW = 240;
 
     const spaceBelow = viewportHeight - rect.bottom;
@@ -70,17 +73,22 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
   }, [anchorRef]);
 
   const handleSave = () => {
-    onSaveCell({ date, part, scheduleId: entry?.schedule_id || "", memo }, selectedId);
+    onSaveCell({ date, part, memo }, selectedIds);
     onClose();
-    if (onToast) onToast(selectedId ? "저장되었습니다" : "배정이 해제되었습니다");
+    if (onToast) {
+      if (selectedIds.length === 0) {
+        onToast("배정이 해제되었습니다");
+      } else if (selectedIds.length === 1) {
+        onToast("저장되었습니다");
+      } else {
+        onToast(`${selectedIds.length}명 배정 완료`);
+      }
+    }
   };
 
   const handleDelete = () => {
-    if (!entry?.schedule_id) {
-      onClose();
-      return;
-    }
-    onSaveCell({ date, part, scheduleId: entry.schedule_id, memo: "" }, "");
+    // Delete all entries for this cell
+    onSaveCell({ date, part, memo: "" }, []); // passing empty array signals delete all
     onClose();
     if (onToast) onToast("삭제되었습니다");
   };
@@ -112,28 +120,29 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
         <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{date}</div>
       </div>
 
-      <select
-        value={selectedId}
-        onChange={(e) => setSelectedId(e.target.value)}
-        style={{
-          width: "100%",
-          padding: "8px 10px",
-          borderRadius: 8,
-          border: "1px solid #d1d5db",
-          fontSize: 13,
-          marginBottom: 8,
-        }}
-        autoFocus
-      >
-        <option value="">— 미배정 —</option>
+      {/* Employee selection via checkboxes */}
+      <div style={{ marginBottom: 10 }}>
+        <strong style={{ fontSize: 13, display: "block", marginBottom: 4 }}>직원 선택</strong>
         {employees
           .filter((e) => e.active !== false)
           .map((e) => (
-            <option key={e.employee_id} value={e.employee_id}>
+            <label key={e.employee_id} style={{ display: "block", marginBottom: 4 }}>
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(e.employee_id)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedIds(prev => [...prev, e.employee_id]);
+                  } else {
+                    setSelectedIds(prev => prev.filter(id => id !== e.employee_id));
+                  }
+                }}
+                style={{ marginRight: 6 }}
+              />
               {e.name}
-            </option>
+            </label>
           ))}
-      </select>
+      </div>
 
       <textarea
         value={memo}
@@ -147,7 +156,6 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
           border: "1px solid #d1d5db",
           fontSize: 12,
           resize: "none",
-          marginBottom: 10,
           boxSizing: "border-box",
           color: "#374151",
         }}
@@ -160,7 +168,7 @@ function CellPopover({ entry, date, part, employees, onSaveCell, onClose, anchor
         <button type="button" className="att-btn secondary small" onClick={onClose}>
           취소
         </button>
-        {entry?.schedule_id && (
+        {entries.length > 0 && (
           <button
             type="button"
             className="att-btn secondary small"
@@ -227,7 +235,7 @@ function DesktopShiftTable(props) {
     <>
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
 
-      <div className="card shift-card-table" style={{ padding: 0, overflow: "visible" }}>
+      <div className="shift-card-table" style={{ padding: 0, overflow: "visible" }}>
         <div className="shift-wrap" style={{ overflow: "visible" }}>
           <table className="shift-table shift-grid">
             <thead>
@@ -261,7 +269,7 @@ function DesktopShiftTable(props) {
 
                   {weekDates.map((date) => {
                     const cellKey = `${date}_${part}`;
-                    const entry = getEntry(schedule, date, part);
+                    const entries = getEntries(schedule, date, part);
                     const isOpen = openCell === cellKey;
                     const isCurrentCell = currentPart === part && date === todayDate;
 
@@ -277,13 +285,17 @@ function DesktopShiftTable(props) {
                         ref={(el) => (cellRefs.current[cellKey] = { current: el })}
                         onClick={() => setOpenCell(isOpen ? null : cellKey)}
                       >
-                        {entry ? (
+                        {entries.length > 0 ? (
                           <div className="shift-cell-filled">
                             <span className="cell-name">{PART_LABEL[part]}</span>
-                            <span className="cell-employee-mini">{entry.name}</span>
-                            {entry.memo && (
-                              <span style={{ fontSize: 10, color: "#9ca3af", marginTop: 2, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {entry.memo}
+                            {/* Show assigned employees */}
+                            <span className="cell-employee-mini">
+                              {entries.map(e => e.name).filter(Boolean).join(", ")}
+                            </span>
+                            {/* Memo from first entry (if any) */}
+                            {entries[0]?.memo && (
+                              <span style={{ fontSize: 10, color: "color": "#9ca3af", marginTop: 2, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {entries[0].memo}
                               </span>
                             )}
                           </div>
@@ -293,7 +305,7 @@ function DesktopShiftTable(props) {
 
                         {isOpen && (
                           <CellPopover
-                            entry={entry}
+                            entries={entries}
                             date={date}
                             part={part}
                             employees={employees}
@@ -343,7 +355,7 @@ function MobileShiftCards(props) {
           const meta = formatDayLabel(date); // 모바일 상단 날짜 표기를 위해 메타정보 가져옴
           return (
             <section key={date} className={`shift-day-card ${date === todayDate ? "today" : ""}`}>
-              {/* FIXED: 모바일에서 요일과 날짜를 명확히 구분할 수 있도록 카드 타이틀 헤더 추가 */}
+              {/* FIXED: 모바일에서 요일과 날짜를 duidelijk히 구분할 수 있도록 카드 타이틀 헤더 추가 */}
               <div className="shift-mobile-day-title" style={{ padding: "10px 14px", borderBottom: "1px solid #f3f4f6", fontWeight: "bold", fontSize: 14, color: meta.color }}>
                 {meta.full} {date === todayDate && <span style={{ fontSize: 11, background: "#eff6ff", color: "#2563eb", padding: "2px 6px", borderRadius: 4, marginLeft: 6 }}>오늘</span>}
               </div>
@@ -351,7 +363,7 @@ function MobileShiftCards(props) {
               <div className="shift-day-parts">
                 {PARTS.map((part) => {
                   const cellKey = `${date}_${part}`;
-                  const entry = getEntry(schedule, date, part);
+                  const entries = getEntries(schedule, date, part);
                   const isOpen = openCell === cellKey;
 
                   return (
@@ -374,12 +386,14 @@ function MobileShiftCards(props) {
                       </div>
 
                       <div className="shift-part-bottom">
-                        {entry ? (
+                        {entries.length > 0 ? (
                           <>
-                            <strong className="shift-part-employee">{entry.name}</strong>
-                            {entry.memo && (
+                            <strong className="shift-part-employee">
+                              {entries.map(e => e.name).filter(Boolean).join(", ")}
+                            </strong>
+                            {entries[0]?.memo && (
                               <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: 6 }}>
-                                {entry.memo}
+                                {entries[0].memo}
                               </span>
                             )}
                           </>
@@ -390,7 +404,7 @@ function MobileShiftCards(props) {
 
                       {isOpen && (
                         <CellPopover
-                          entry={entry}
+                          entries={entries}
                           date={date}
                           part={part}
                           employees={employees}

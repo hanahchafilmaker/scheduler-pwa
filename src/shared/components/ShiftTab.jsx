@@ -40,7 +40,6 @@ function CellPopover({ entries, date, part, employees, onSaveCell, onClose, anch
         !popRef.current.contains(e.target) &&
         anchorRef?.current &&
         !anchorRef.current.contains(e.target)
-      && anchorRef?.current)
       ) {
         onClose();
       }
@@ -291,7 +290,10 @@ function DesktopShiftTable(props) {
                             {/* Show assigned employees */}
                             <span className="cell-employee-mini">
                               {entries
-                                .map((e) => e.name || e.employee_id)
+                                .map((e) => {
+                                  const emp = employees.find((emp) => emp.employee_id === e.employee_id);
+                                  return emp ? emp.name : e.employee_id || "";
+                                })
                                 .filter(Boolean)
                                 .join(", ")}
                             </span>
@@ -358,7 +360,7 @@ function MobileShiftCards(props) {
           const meta = formatDayLabel(date); // 모바일 상단 날짜 표기를 위해 메타정보 가져옴
           return (
             <section key={date} className={`shift-day-card ${date === todayDate ? "today" : ""}`}>
-              {/* FIXED: 모바일에서 요일과 날짜를 duidelijk히 구분할 수 있도록 카드 타이틀 헤더 추가 */}
+              {/* FIXED: 모바일에서 요일과 날짜를 명확히 구분할 수 있도록 카드 타이틀 헤더 추가 */}
               <div className="shift-mobile-day-title" style={{ padding: "10px 14px", borderBottom: "1px solid #f3f4f6", fontWeight: "bold", fontSize: 14, color: meta.color }}>
                 {meta.full} {date === todayDate && <span style={{ fontSize: 11, background: "#eff6ff", color: "#2563eb", padding: "2px 6px", borderRadius: 4, marginLeft: 6 }}>오늘</span>}
               </div>
@@ -393,7 +395,10 @@ function MobileShiftCards(props) {
                           <>
                             <strong className="shift-part-employee">
                               {entries
-                                .map((e) => e.name || e.employee_id)
+                                .map((e) => {
+                                  const emp = employees.find((emp) => emp.employee_id === e.employee_id);
+                                  return emp ? emp.name : e.employee_id || "";
+                                })
                                 .filter(Boolean)
                                 .join(", ")}
                             </strong>

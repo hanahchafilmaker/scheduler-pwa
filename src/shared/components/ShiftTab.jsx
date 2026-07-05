@@ -290,11 +290,14 @@ function DesktopShiftTable(props) {
                             <span className="cell-name">{PART_LABEL[part]}</span>
                             {/* Show assigned employees */}
                             <span className="cell-employee-mini">
-                              {entries.map(e => e.name).filter(Boolean).join(", ")}
+                              {entries
+                                .map((e) => e.name || e.employee_id)
+                                .filter(Boolean)
+                                .join(", ")}
                             </span>
                             {/* Memo from first entry (if any) */}
                             {entries[0]?.memo && (
-                              <span style={{ fontSize: 10, color: "color": "#9ca3af", marginTop: 2, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              <span style={{ fontSize: 10, color: "#9ca3af", marginTop: 2, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {entries[0].memo}
                               </span>
                             )}
@@ -389,7 +392,10 @@ function MobileShiftCards(props) {
                         {entries.length > 0 ? (
                           <>
                             <strong className="shift-part-employee">
-                              {entries.map(e => e.name).filter(Boolean).join(", ")}
+                              {entries
+                                .map((e) => e.name || e.employee_id)
+                                .filter(Boolean)
+                                .join(", ")}
                             </strong>
                             {entries[0]?.memo && (
                               <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: 6 }}>

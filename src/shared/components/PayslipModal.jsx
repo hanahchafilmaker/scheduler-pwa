@@ -149,10 +149,10 @@ export function PayslipModal({ emp, monthRange, onClose }) {
                     <tr key={i}>
                       <td className="ps-td-date">{d.date.slice(5)} ({dayKr})</td>
                       <td className={isLate ? "ps-td-warn" : ""}>
-                        {formatTime(d.planned_start)}
+                        {formatTime(d.check_in)}
                       </td>
                       <td className={isEarly ? "ps-td-warn" : ""}>
-                        {formatTime(d.planned_end)}
+                        {formatTime(d.check_out)}
                       </td>
                       <td>{formatMinutesToHourLabel(d.payrollBasePlannedMin || 0)}</td>
                       <td className="align-right ps-td-pos">{fmtKRW(dayBasePay)}</td>

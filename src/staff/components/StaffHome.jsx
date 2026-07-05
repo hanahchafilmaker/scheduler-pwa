@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { getApprovalReasonLabel, getApprovalStatusLabel } from "../../shared/hooks/useApi";
 import {
   calcPayrollLateDeductMinutes,
@@ -6,6 +6,8 @@ import {
   formatLateMinutes,
   formatEarlyLeaveMinutes,
 } from "../../shared/utils/pay";
+import { useTodaySchedule } from "./hooks/useTodaySchedule";
+import { useTodayAttendance } from "./hooks/useTodayAttendance";
 
 /* ================================================================
    순수 유틸
@@ -16,13 +18,6 @@ function safeArray(v) {
 
 function timeRange(start, end) {
   return `${start || "-"} ~ ${end || "-"}`;
-}
-
-function toMin(t) {
-  const [h, m] = String(t || "")
-    .split(":")
-    .map(Number);
-  return Number.isNaN(h) || Number.isNaN(m) ? null : h * 60 + m;
 }
 
 function getPartLabel(part) {
@@ -37,66 +32,6 @@ function getPartLabel(part) {
     대타: "대타",
   };
   return map[String(part || "").toLowerCase()] ?? part ?? "-";
-}
-
-/* ================================================================
-   schedule 전용 계산 — attendance 데이터 절대 참조 금지
-================================================================ */
-
-/** 지금 시각 기준 가장 적합한 스케줄 1개 (없으면 null) */
-function pickDisplaySchedule(scheduleList) {
-  if (!scheduleList.length) return null;
-
-  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-
-  const withRange = scheduleList
-    .map((r) => ({ ...r, _start: toMin(r.planned_start), _end: toMin(r.planned_end) }))
-    .filter((r) => r._start !== null && r._end !== null);
-
-  return (
-    withRange.find((r) => nowMin >= r._start && nowMin < r._end) ||
-    [...withRange].filter((r) => r._start >= nowMin).sort((a, b) => a._start - b._start)[0] ||
-    [...withRange].sort((a, b) => a._start - b._start)[0] ||
-    null
-  );
-}
-
-/** 현재 출근 가능한 파트 후보 (±30분 버퍼) */
-function getCandidates(scheduleList) {
-  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-  return scheduleList.filter((r) => {
-    const s = toMin(r.planned_start);
-    const e = toMin(r.planned_end);
-    return s !== null && e !== null && nowMin >= s - 30 && nowMin <= e + 30;
-  });
-}
-
-/* ================================================================
-   attendance 전용 계산 — schedule 데이터 절대 참조 금지
-================================================================ */
-
-/** 현재 열린(미퇴근) attendance */
-function getOpenAttendance(list) {
-  return list.find((r) => r.check_in && !r.check_out) || null;
-}
-
-/** 오늘 가장 최근 attendance */
-function getLatestAttendance(list) {
-  if (!list.length) return null;
-  return [...list].sort((a, b) => {
-    const ka = `${a.date || ""} ${a.check_in || ""}`;
-    const kb = `${b.date || ""} ${b.check_in || ""}`;
-    return kb.localeCompare(ka);
-  })[0];
-}
-
-/** 출근 시간 기준 오름차순 정렬 */
-function sortByCheckIn(list) {
-  return [...list].sort((a, b) => {
-    const ka = `${a.date || ""} ${a.check_in || ""}`;
-    const kb = `${b.date || ""} ${b.check_in || ""}`;
-    return ka.localeCompare(kb);
-  });
 }
 
 /* ================================================================
@@ -174,15 +109,10 @@ export default function StaffHome({
   const attendanceList = safeArray(todayAttendance);
 
   // ── schedule 파생 (attendance 참조 없음) ───────────────────────
-  const displaySchedule = useMemo(() => pickDisplaySchedule(scheduleList), [scheduleList]);
-  const candidates = useMemo(() => getCandidates(scheduleList), [scheduleList]);
-  const hasSchedule = scheduleList.length > 0;
+  const { activeSchedule: displaySchedule, candidates, hasSchedule } = useTodaySchedule(scheduleList);
 
   // ── attendance 파생 (schedule 참조 없음) ───────────────────────
-  const openAttendance = useMemo(() => getOpenAttendance(attendanceList), [attendanceList]);
-  const latestAttendance = useMemo(() => getLatestAttendance(attendanceList), [attendanceList]);
-  const sortedAttendance = useMemo(() => sortByCheckIn(attendanceList), [attendanceList]);
-  const hasAttendance = attendanceList.length > 0;
+  const { openAttendance, latestAttendance, sortedAttendance, hasAttendance } = useTodayAttendance(attendanceList);
 
   // ── 출퇴근 가능 여부 (schedule 없어도 체크인 항상 가능) ─────────
   const canCheckIn = !openAttendance && !checking;
@@ -408,7 +338,7 @@ function AttendanceSummary({ attendance, label }) {
   const lateMin = calcPayrollLateDeductMinutes(attendance.planned_start, attendance.check_in);
   const earlyMin = calcPayrollEarlyLeaveDeductMinutes(attendance.planned_end, attendance.check_out);
 
-  const lateLabel  = formatLateMinutes(lateMin);       // "지각 12분" | null
+  const lateLabel = formatLateMinutes(lateMin); // "지각 12분" | null
   const earlyLabel = formatEarlyLeaveMinutes(earlyMin); // "조기퇴근 6분" | null
 
   // 근무중(미퇴근)이면 조기퇴근 표기 불필요

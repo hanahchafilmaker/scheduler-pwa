@@ -25,11 +25,13 @@ function getEntries(schedule, date, part) {
 /* ----------------------------------------------------------------
    CellPopover (근무 셀 클릭 시 나타나는 배정 팝오버)
 ---------------------------------------------------------------- */
-function CellPopover({ entries, date, part, employees, onSaveCell, onClose, anchorRef, onToast }) {
+function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onClose, anchorRef, onToast }) {
   // entries: array of schedule objects for this date/part
   const [selectedIds, setSelectedIds] = useState(() => entries.map(e => e.employee_id).filter(Boolean));
   // Use memo from first entry if exists, else empty
   const [memo, setMemo] = useState(entries.length > 0 ? entries[0].memo || "" : "");
+  const [consecutiveParts, setConsecutiveParts] = useState([]);
+  const otherParts = PARTS.filter((p) => p !== part);
   const [position, setPosition] = useState({ top: "calc(100% + 6px)", left: 0 });
   const popRef = useRef(null);
 
@@ -71,12 +73,29 @@ function CellPopover({ entries, date, part, employees, onSaveCell, onClose, anch
     });
   }, [anchorRef]);
 
-  const handleSave = () => {
-    onSaveCell({ date, part, memo }, selectedIds);
+  const handleSave = async () => {
+    await onSaveCell({ date, part, memo }, selectedIds);
+
+    // 연속근무: 직원 1명만 선택했을 때, 체크된 다른 파트에도 같은 직원 추가 배정
+    if (selectedIds.length === 1 && consecutiveParts.length > 0) {
+      const empId = selectedIds[0];
+      for (const p of consecutiveParts) {
+        const existingForPart = getEntries(schedule, date, p)
+          .map((s) => s.employee_id)
+          .filter(Boolean);
+        const merged = existingForPart.includes(empId)
+          ? existingForPart
+          : [...existingForPart, empId];
+        await onSaveCell({ date, part: p, memo: "" }, merged);
+      }
+    }
+
     onClose();
     if (onToast) {
       if (selectedIds.length === 0) {
         onToast("배정이 해제되었습니다");
+      } else if (consecutiveParts.length > 0) {
+        onToast(`연속근무 ${consecutiveParts.length + 1}개 파트 배정 완료`);
       } else if (selectedIds.length === 1) {
         onToast("저장되었습니다");
       } else {
@@ -142,6 +161,31 @@ function CellPopover({ entries, date, part, employees, onSaveCell, onClose, anch
             </label>
           ))}
       </div>
+
+      {selectedIds.length === 1 && (
+        <div style={{ marginBottom: 10 }}>
+          <strong style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
+            연속근무 (다른 파트도 함께 배정)
+          </strong>
+          {otherParts.map((p) => (
+            <label key={p} style={{ display: "block", marginBottom: 4, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={consecutiveParts.includes(p)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setConsecutiveParts((prev) => [...prev, p]);
+                  } else {
+                    setConsecutiveParts((prev) => prev.filter((x) => x !== p));
+                  }
+                }}
+                style={{ marginRight: 6 }}
+              />
+              {PART_LABEL[p]} ({SHIFT_TIME[p]?.start}~{SHIFT_TIME[p]?.end})
+            </label>
+          ))}
+        </div>
+      )}
 
       <textarea
         value={memo}
@@ -314,6 +358,7 @@ function DesktopShiftTable(props) {
                             date={date}
                             part={part}
                             employees={employees}
+                            schedule={schedule}
                             onSaveCell={onSaveCell}
                             onClose={() => setOpenCell(null)}
                             anchorRef={cellRefs.current[cellKey]}

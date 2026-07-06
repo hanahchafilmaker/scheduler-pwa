@@ -26,11 +26,19 @@ function getEntries(schedule, date, part) {
    CellPopover (근무 셀 클릭 시 나타나는 배정 팝오버)
 ---------------------------------------------------------------- */
 function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onClose, anchorRef, onToast }) {
-  // entries: array of schedule objects for this date/part
-  const [selectedIds, setSelectedIds] = useState(() => entries.map(e => e.employee_id).filter(Boolean));
-  // Use memo from first entry if exists, else empty
+  const activeEmployees = employees.filter(e => e.active !== false);
+
+  const initialNames = entries
+    .map(e => {
+      const emp = employees.find(emp => emp.employee_id === e.employee_id);
+      return emp ? emp.name : null;
+    })
+    .filter(Boolean)
+    .join(", ");
+
+  const [nameInput, setNameInput] = useState(initialNames);
   const [memo, setMemo] = useState(entries.length > 0 ? entries[0].memo || "" : "");
-  const [consecutiveParts, setConsecutiveParts] = useState([]);
+  const [consecutiveByEmployee, setConsecutiveByEmployee] = useState({});
   const otherParts = PARTS.filter((p) => p !== part);
   const [position, setPosition] = useState({ top: "calc(100% + 6px)", left: 0 });
   const popRef = useRef(null);
@@ -58,7 +66,7 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
     const popoverH = 320;
-    const popoverW = 240;
+    const popoverW = 260;
 
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
@@ -69,50 +77,110 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
       top: isBottom ? "auto" : "calc(100% + 6px)",
       bottom: isBottom ? "calc(100% + 6px)" : "auto",
       left: isRight ? "auto" : 0,
-      right: isRight ? 0 : "auto",
+      right: isRight ? "0" : "auto",
     });
   }, [anchorRef]);
 
-  const handleSave = async () => {
-    await onSaveCell({ date, part, memo }, selectedIds);
+  const parsedSelection = useMemo(() => {
+    const tokens = nameInput
+      .split(",")
+      .map(t => t.trim())
+      .filter(Boolean);
 
-    // 연속근무: 직원 1명만 선택했을 때, 체크된 다른 파트에도 같은 직원 추가 배정
-    if (selectedIds.length === 1 && consecutiveParts.length > 0) {
-      const empId = selectedIds[0];
-      for (const p of consecutiveParts) {
-        const existingForPart = getEntries(schedule, date, p)
-          .map((s) => s.employee_id)
-          .filter(Boolean);
-        const merged = existingForPart.includes(empId)
-          ? existingForPart
-          : [...existingForPart, empId];
-        await onSaveCell({ date, part: p, memo: "" }, merged);
+    const matchedIds = [];
+    const unmatched = [];
+
+    for (const token of tokens) {
+      const emp = activeEmployees.find(
+        e => e.name.trim().toLowerCase() === token.toLowerCase()
+      );
+      if (emp) {
+        matchedIds.push(emp.employee_id);
+      } else {
+        unmatched.push(token);
       }
     }
 
+    return {
+      matchedIds: Array.from(new Set(matchedIds)),
+      unmatched,
+    };
+  }, [nameInput, activeEmployees]);
+
+  const selectedIds = parsedSelection.matchedIds;
+
+  const toggleConsecutive = (empId, partId, checked) => {
+    setConsecutiveByEmployee(prev => {
+      const current = prev[empId] || [];
+      const next = checked ? [...current, partId] : current.filter(p => p !== partId);
+      return { ...prev, [empId]: next };
+    });
+  };
+
+  const handleSave = async () => {
+    if (parsedSelection.unmatched.length > 0) {
+      if (onToast) {
+        onToast(`일치하는 직원을 찾을 수 없습니다: ${parsedSelection.unmatched.join(", ")}`);
+      }
+      return;
+    }
+
+    await onSaveCell({ date, part, memo }, selectedIds);
     onClose();
+
+    const anyConsecutive = Object.values(consecutiveByEmployee).some(list => list.length > 0);
+    if (!anyConsecutive) {
+      if (onToast) {
+        if (selectedIds.length === 0) {
+          onToast("배정이 해제되었습니다");
+        } else if (selectedIds.length === 1) {
+          onToast("저장되었습니다");
+        } else {
+          onToast(`${selectedIds.length}명 배정 완료`);
+        }
+      }
+      return;
+    }
+
+    const affectedParts = new Set();
+    for (const empId of selectedIds) {
+      const parts = consecutiveByEmployee[empId] || [];
+      for (const p of parts) affectedParts.add(p);
+    }
+
+    for (const p of Array.from(affectedParts)) {
+      const existingForPart = getEntries(schedule, date, p)
+        .map(s => s.employee_id)
+        .filter(Boolean);
+      const toAdd = selectedIds.filter(
+        empId => (consecutiveByEmployee[empId] || []).includes(p)
+      );
+      const merged = Array.from(new Set([...existingForPart, ...toAdd]));
+      await onSaveCell({ date, part: p, memo: "" }, merged);
+    }
+
     if (onToast) {
-      if (selectedIds.length === 0) {
-        onToast("배정이 해제되었습니다");
-      } else if (consecutiveParts.length > 0) {
-        onToast(`연속근무 ${consecutiveParts.length + 1}개 파트 배정 완료`);
-      } else if (selectedIds.length === 1) {
-        onToast("저장되었습니다");
+      const extraCount = Array.from(affectedParts).length;
+      const baseMsg = selectedIds.length === 0 ? "배정이 해제되었습니다"
+        : selectedIds.length === 1 ? "저장되었습니다"
+        : `${selectedIds.length}명 배정 완료`;
+      if (extraCount > 0) {
+        onToast(`${baseMsg} (연속근무 ${extraCount}개 파트 추가)`);
       } else {
-        onToast(`${selectedIds.length}명 배정 완료`);
+        onToast(baseMsg);
       }
     }
   };
 
   const handleDelete = () => {
-    // Delete all entries for this cell
-    onSaveCell({ date, part, memo: "" }, []); // passing empty array signals delete all
+    onSaveCell({ date, part, memo: "" }, []);
     onClose();
     if (onToast) onToast("삭제되었습니다");
   };
 
   const shift = SHIFT_TIME[part] || {};
   const partLabel = PART_LABEL[part] || part;
+  const datalistId = `emp-names-${date}-${part}`;
 
   return (
     <div
@@ -126,7 +194,7 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
         borderRadius: 10,
         boxShadow: "0 10px 28px rgba(0,0,0,0.14)",
         padding: "14px 16px",
-        minWidth: 220,
+        minWidth: 260,
         ...position,
       }}
     >
@@ -138,58 +206,78 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
         <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{date}</div>
       </div>
 
-      {/* Employee selection via checkboxes */}
       <div style={{ marginBottom: 10 }}>
-        <strong style={{ fontSize: 13, display: "block", marginBottom: 4 }}>직원 선택</strong>
-        {employees
-          .filter((e) => e.active !== false)
-          .map((e) => (
-            <label key={e.employee_id} style={{ display: "block", marginBottom: 4 }}>
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(e.employee_id)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedIds(prev => [...prev, e.employee_id]);
-                  } else {
-                    setSelectedIds(prev => prev.filter(id => id !== e.employee_id));
-                  }
-                }}
-                style={{ marginRight: 6 }}
-              />
-              {e.name}
-            </label>
+        <strong style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
+          직원 (쉼표로 구분, 여러 명 입력 가능)
+        </strong>
+        <input
+          list={datalistId}
+          type="text"
+          value={nameInput}
+          onChange={e => setNameInput(e.target.value)}
+          placeholder="예: 홍길동, 김철수"
+          autoFocus
+          style={{
+            width: "100%",
+            padding: "7px 10px",
+            borderRadius: 8,
+            border: `1px solid ${parsedSelection.unmatched.length > 0 ? "#dc2626" : "#d1d5db"}`,
+            fontSize: 13,
+            boxSizing: "border-box",
+            color: "#374151",
+          }}
+        />
+        <datalist id={datalistId}>
+          {activeEmployees.map(e => (
+            <option key={e.employee_id} value={e.name} />
           ))}
+        </datalist>
+        {parsedSelection.unmatched.length > 0 && (
+          <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>
+            일치하는 직원 없음: {parsedSelection.unmatched.join(", ")}
+          </div>
+        )}
+        {selectedIds.length > 0 && parsedSelection.unmatched.length === 0 && (
+          <div style={{ fontSize: 11, color: "#16a34a", marginTop: 4 }}>
+            {selectedIds.length}명 인식됨
+          </div>
+        )}
       </div>
 
-      {selectedIds.length === 1 && (
+      {selectedIds.length > 0 && (
         <div style={{ marginBottom: 10 }}>
           <strong style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
-            연속근무 (다른 파트도 함께 배정)
+            연속근무 (각 직원에 대해 추가 파트 선택)
           </strong>
-          {otherParts.map((p) => (
-            <label key={p} style={{ display: "block", marginBottom: 4, fontSize: 13 }}>
-              <input
-                type="checkbox"
-                checked={consecutiveParts.includes(p)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setConsecutiveParts((prev) => [...prev, p]);
-                  } else {
-                    setConsecutiveParts((prev) => prev.filter((x) => x !== p));
-                  }
-                }}
-                style={{ marginRight: 6 }}
-              />
-              {PART_LABEL[p]} ({SHIFT_TIME[p]?.start}~{SHIFT_TIME[p]?.end})
-            </label>
-          ))}
+          {selectedIds.map(empId => {
+            const emp = employees.find(e => e.employee_id === empId);
+            const empName = emp ? emp.name : empId;
+            const selectedParts = consecutiveByEmployee[empId] || [];
+            return (
+              <div key={empId} style={{ marginBottom: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
+                  <strong style={{ fontSize: 12, marginRight: 8 }}>{empName}:</strong>
+                  {otherParts.map(p => (
+                    <label key={p} style={{ display: "inline-flex", alignItems: "center", marginRight: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedParts.includes(p)}
+                        onChange={e => toggleConsecutive(empId, p, e.target.checked)}
+                        style={{ marginRight: 4 }}
+                      />
+                      <span>{PART_LABEL[p]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
       <textarea
         value={memo}
-        onChange={(e) => setMemo(e.target.value)}
+        onChange={e => setMemo(e.target.value)}
         placeholder="메모 (선택)"
         rows={2}
         style={{
@@ -201,6 +289,7 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
           resize: "none",
           boxSizing: "border-box",
           color: "#374151",
+          marginBottom: 8,
         }}
       />
 
@@ -267,7 +356,7 @@ function DesktopShiftTable(props) {
   const currentPart = useMemo(() => {
     const now = new Date();
     const hhmm = now.getHours() * 60 + now.getMinutes();
-    return PARTS.find((p) => {
+    return PARTS.find(p => {
       const [sh, sm] = SHIFT_TIME[p].start.split(":").map(Number);
       const [eh, em] = SHIFT_TIME[p].end.split(":").map(Number);
       return hhmm >= sh * 60 + sm && hhmm < eh * 60 + em;
@@ -284,7 +373,7 @@ function DesktopShiftTable(props) {
             <thead>
               <tr>
                 <th className="part-col">파트</th>
-                {weekDates.map((d) => {
+                {weekDates.map(d => {
                   const meta = formatDayLabel(d);
                   return (
                     <th
@@ -301,7 +390,7 @@ function DesktopShiftTable(props) {
             </thead>
 
             <tbody>
-              {PARTS.map((part) => (
+              {PARTS.map(part => (
                 <tr key={part} className={currentPart === part ? "current-part" : ""}>
                   <td className="part-label-cell">
                     <strong>{PART_LABEL[part]}</strong>
@@ -310,7 +399,7 @@ function DesktopShiftTable(props) {
                     </div>
                   </td>
 
-                  {weekDates.map((date) => {
+                  {weekDates.map(date => {
                     const cellKey = `${date}_${part}`;
                     const entries = getEntries(schedule, date, part);
                     const isOpen = openCell === cellKey;
@@ -325,23 +414,21 @@ function DesktopShiftTable(props) {
                           isCurrentCell ? "current-part-cell" : "",
                         ].filter(Boolean).join(" ")}
                         style={{ position: "relative" }}
-                        ref={(el) => (cellRefs.current[cellKey] = { current: el })}
+                        ref={el => (cellRefs.current[cellKey] = { current: el })}
                         onClick={() => setOpenCell(isOpen ? null : cellKey)}
                       >
                         {entries.length > 0 ? (
                           <div className="shift-cell-filled">
                             <span className="cell-name">{PART_LABEL[part]}</span>
-                            {/* Show assigned employees */}
                             <span className="cell-employee-mini">
                               {entries
-                                .map((e) => {
-                                  const emp = employees.find((emp) => emp.employee_id === e.employee_id);
+                                .map(e => {
+                                  const emp = employees.find(emp => emp.employee_id === e.employee_id);
                                   return emp ? emp.name : e.employee_id || "";
                                 })
                                 .filter(Boolean)
                                 .join(", ")}
                             </span>
-                            {/* Memo from first entry (if any) */}
                             {entries[0]?.memo && (
                               <span style={{ fontSize: 10, color: "#9ca3af", marginTop: 2, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {entries[0].memo}
@@ -389,7 +476,7 @@ function MobileShiftCards(props) {
   const currentPart = useMemo(() => {
     const now = new Date();
     const hhmm = now.getHours() * 60 + now.getMinutes();
-    return PARTS.find((p) => {
+    return PARTS.find(p => {
       const [sh, sm] = SHIFT_TIME[p].start.split(":").map(Number);
       const [eh, em] = SHIFT_TIME[p].end.split(":").map(Number);
       return hhmm >= sh * 60 + sm && hhmm < eh * 60 + em;
@@ -401,17 +488,16 @@ function MobileShiftCards(props) {
       <ShiftHeader weekDates={weekDates} weekOffset={weekOffset} setWeekOffset={setWeekOffset} />
 
       <div className="shift-mobile-list">
-        {weekDates.map((date) => {
-          const meta = formatDayLabel(date); // 모바일 상단 날짜 표기를 위해 메타정보 가져옴
+        {weekDates.map(date => {
+          const meta = formatDayLabel(date);
           return (
             <section key={date} className={`shift-day-card ${date === todayDate ? "today" : ""}`}>
-              {/* FIXED: 모바일에서 요일과 날짜를 명확히 구분할 수 있도록 카드 타이틀 헤더 추가 */}
               <div className="shift-mobile-day-title" style={{ padding: "10px 14px", borderBottom: "1px solid #f3f4f6", fontWeight: "bold", fontSize: 14, color: meta.color }}>
                 {meta.full} {date === todayDate && <span style={{ fontSize: 11, background: "#eff6ff", color: "#2563eb", padding: "2px 6px", borderRadius: 4, marginLeft: 6 }}>오늘</span>}
               </div>
 
               <div className="shift-day-parts">
-                {PARTS.map((part) => {
+                {PARTS.map(part => {
                   const cellKey = `${date}_${part}`;
                   const entries = getEntries(schedule, date, part);
                   const isOpen = openCell === cellKey;
@@ -419,7 +505,7 @@ function MobileShiftCards(props) {
                   return (
                     <div
                       key={cellKey}
-                      ref={(el) => (cardRefs.current[cellKey] = { current: el })}
+                      ref={el => (cardRefs.current[cellKey] = { current: el })}
                       className={[
                         "shift-part-card editable",
                         isOpen ? "active" : "",
@@ -440,8 +526,8 @@ function MobileShiftCards(props) {
                           <>
                             <strong className="shift-part-employee">
                               {entries
-                                .map((e) => {
-                                  const emp = employees.find((emp) => emp.employee_id === e.employee_id);
+                                .map(e => {
+                                  const emp = employees.find(emp => emp.employee_id === e.employee_id);
                                   return emp ? emp.name : e.employee_id || "";
                                 })
                                 .filter(Boolean)

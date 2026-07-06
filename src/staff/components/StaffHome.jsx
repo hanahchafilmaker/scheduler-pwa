@@ -6,8 +6,8 @@ import {
   formatLateMinutes,
   formatEarlyLeaveMinutes,
 } from "../../shared/utils/pay";
-import { useTodaySchedule } from "./hooks/useTodaySchedule";
-import { useTodayAttendance } from "./hooks/useTodayAttendance";
+import { useTodaySchedule } from "../hooks/useTodaySchedule";
+import { useTodayAttendance } from "../hooks/useTodayAttendance";
 
 /* ================================================================
    순수 유틸

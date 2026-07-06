@@ -464,6 +464,7 @@ function MobileShiftCards(props) {
                           date={date}
                           part={part}
                           employees={employees}
+                          schedule={schedule}
                           onSaveCell={onSaveCell}
                           onClose={() => setOpenCell(null)}
                           anchorRef={cardRefs.current[cellKey]}

@@ -28,20 +28,17 @@ function getEntries(schedule, date, part) {
 function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onClose, anchorRef, onToast }) {
   const activeEmployees = employees.filter(e => e.active !== false);
 
-  const initialNames = entries
-    .map(e => {
-      const emp = employees.find(emp => emp.employee_id === e.employee_id);
-      return emp ? emp.name : null;
-    })
-    .filter(Boolean)
-    .join(", ");
-
-  const [nameInput, setNameInput] = useState(initialNames);
+  const [selectedIds, setSelectedIds] = useState(() => entries.map(e => e.employee_id).filter(Boolean));
   const [memo, setMemo] = useState(entries.length > 0 ? entries[0].memo || "" : "");
   const [consecutiveByEmployee, setConsecutiveByEmployee] = useState({});
   const otherParts = PARTS.filter((p) => p !== part);
   const [position, setPosition] = useState({ top: "calc(100% + 6px)", left: 0 });
   const popRef = useRef(null);
+
+  // 검색/드롭다운 상태
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
@@ -65,7 +62,7 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
     const rect = anchor.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    const popoverH = 320;
+    const popoverH = 360;
     const popoverW = 260;
 
     const spaceBelow = viewportHeight - rect.bottom;
@@ -81,33 +78,28 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
     });
   }, [anchorRef]);
 
-  const parsedSelection = useMemo(() => {
-    const tokens = nameInput
-      .split(",")
-      .map(t => t.trim())
-      .filter(Boolean);
+  const availableEmployees = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return activeEmployees
+      .filter(e => !selectedIds.includes(e.employee_id))
+      .filter(e => !term || e.name.toLowerCase().includes(term));
+  }, [activeEmployees, selectedIds, searchTerm]);
 
-    const matchedIds = [];
-    const unmatched = [];
+  const addEmployee = (empId) => {
+    setSelectedIds(prev => (prev.includes(empId) ? prev : [...prev, empId]));
+    setSearchTerm("");
+    // 여러 명 연속으로 추가할 수 있게 드롭다운은 유지하고 포커스 복귀
+    searchInputRef.current?.focus();
+  };
 
-    for (const token of tokens) {
-      const emp = activeEmployees.find(
-        e => e.name.trim().toLowerCase() === token.toLowerCase()
-      );
-      if (emp) {
-        matchedIds.push(emp.employee_id);
-      } else {
-        unmatched.push(token);
-      }
-    }
-
-    return {
-      matchedIds: Array.from(new Set(matchedIds)),
-      unmatched,
-    };
-  }, [nameInput, activeEmployees]);
-
-  const selectedIds = parsedSelection.matchedIds;
+  const removeEmployee = (empId) => {
+    setSelectedIds(prev => prev.filter(id => id !== empId));
+    setConsecutiveByEmployee(prev => {
+      const next = { ...prev };
+      delete next[empId];
+      return next;
+    });
+  };
 
   const toggleConsecutive = (empId, partId, checked) => {
     setConsecutiveByEmployee(prev => {
@@ -118,13 +110,6 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
   };
 
   const handleSave = async () => {
-    if (parsedSelection.unmatched.length > 0) {
-      if (onToast) {
-        onToast(`일치하는 직원을 찾을 수 없습니다: ${parsedSelection.unmatched.join(", ")}`);
-      }
-      return;
-    }
-
     await onSaveCell({ date, part, memo }, selectedIds);
     onClose();
 
@@ -180,7 +165,6 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
 
   const shift = SHIFT_TIME[part] || {};
   const partLabel = PART_LABEL[part] || part;
-  const datalistId = `emp-names-${date}-${part}`;
 
   return (
     <div
@@ -206,44 +190,119 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
         <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>{date}</div>
       </div>
 
+      {/* 직원 배정: 칩 + 검색 드롭다운 */}
       <div style={{ marginBottom: 10 }}>
-        <strong style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
-          직원 (쉼표로 구분, 여러 명 입력 가능)
-        </strong>
-        <input
-          list={datalistId}
-          type="text"
-          value={nameInput}
-          onChange={e => setNameInput(e.target.value)}
-          placeholder="예: 홍길동, 김철수"
-          autoFocus
-          style={{
-            width: "100%",
-            padding: "7px 10px",
-            borderRadius: 8,
-            border: `1px solid ${parsedSelection.unmatched.length > 0 ? "#dc2626" : "#d1d5db"}`,
-            fontSize: 13,
-            boxSizing: "border-box",
-            color: "#374151",
-          }}
-        />
-        <datalist id={datalistId}>
-          {activeEmployees.map(e => (
-            <option key={e.employee_id} value={e.name} />
-          ))}
-        </datalist>
-        {parsedSelection.unmatched.length > 0 && (
-          <div style={{ fontSize: 11, color: "#dc2626", marginTop: 4 }}>
-            일치하는 직원 없음: {parsedSelection.unmatched.join(", ")}
+        <strong style={{ fontSize: 13, display: "block", marginBottom: 6 }}>직원 배정</strong>
+
+        {/* 선택된 직원 칩 */}
+        {selectedIds.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+            {selectedIds.map(empId => {
+              const emp = employees.find(e => e.employee_id === empId);
+              const empName = emp ? emp.name : empId;
+              return (
+                <span
+                  key={empId}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    background: "#eff6ff",
+                    color: "#2563eb",
+                    borderRadius: 999,
+                    padding: "3px 8px 3px 10px",
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  {empName}
+                  <button
+                    type="button"
+                    onClick={() => removeEmployee(empId)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#2563eb",
+                      marginLeft: 4,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      lineHeight: 1,
+                      padding: "0 2px",
+                    }}
+                    aria-label={`${empName} 제거`}
+                  >
+                    ×
+                  </button>
+                </span>
+              );
+            })}
           </div>
         )}
-        {selectedIds.length > 0 && parsedSelection.unmatched.length === 0 && (
-          <div style={{ fontSize: 11, color: "#16a34a", marginTop: 4 }}>
-            {selectedIds.length}명 인식됨
-          </div>
-        )}
+
+        {/* 검색 입력 + 드롭다운 */}
+        <div style={{ position: "relative" }}>
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            onFocus={() => setDropdownOpen(true)}
+            placeholder="이름 검색 또는 클릭해서 추가"
+            style={{
+              width: "100%",
+              padding: "7px 10px",
+              borderRadius: 8,
+              border: "1px solid #d1d5db",
+              fontSize: 13,
+              boxSizing: "border-box",
+              color: "#374151",
+            }}
+          />
+
+          {dropdownOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                left: 0,
+                right: 0,
+                maxHeight: 160,
+                overflowY: "auto",
+                background: "#fff",
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                boxShadow: "0 6px 16px rgba(0,0,0,0.1)",
+                zIndex: 10000,
+              }}
+            >
+              {availableEmployees.length > 0 ? (
+                availableEmployees.map(e => (
+                  <div
+                    key={e.employee_id}
+                    onClick={() => addEmployee(e.employee_id)}
+                    style={{
+                      padding: "8px 10px",
+                      fontSize: 13,
+                      cursor: "pointer",
+                      color: "#374151",
+                    }}
+                    onMouseDown={ev => ev.preventDefault()} // 입력 포커스 유지
+                    onMouseEnter={ev => (ev.currentTarget.style.background = "#f9fafb")}
+                    onMouseLeave={ev => (ev.currentTarget.style.background = "#fff")}
+                  >
+                    {e.name}
+                  </div>
+                ))
+              ) : (
+                <div style={{ padding: "8px 10px", fontSize: 12, color: "#9ca3af" }}>
+                  검색 결과 없음
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* 연속근무 파트 선택 */}
       {selectedIds.length > 0 && (
         <div style={{ marginBottom: 10 }}>
           <strong style={{ fontSize: 13, display: "block", marginBottom: 4 }}>

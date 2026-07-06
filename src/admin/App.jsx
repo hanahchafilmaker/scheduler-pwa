@@ -285,6 +285,20 @@ export default function App() {
         return;
       }
 
+      // 선택 해제된 기존 배정 삭제 (전체 삭제가 아닌 부분 변경 시)
+      const toRemove = schedule.filter(
+        (s) =>
+          s.date === cellEdit.date &&
+          s.part === cellEdit.part &&
+          !employeeIds.some((id) => safeStr(id) === safeStr(s.employee_id))
+      );
+      for (const sched of toRemove) {
+        await deleteSchedule({
+          schedule_id: sched.schedule_id,
+          date: sched.date,
+        }).catch(() => {});
+      }
+
       // For each employee ID, upsert schedule
       for (const empId of employeeIds) {
         const emp = employees.find((e) => safeStr(e.employee_id) === safeStr(empId));
@@ -321,6 +335,8 @@ export default function App() {
             .catch(() => {});
         }
       }
+
+      await refetch();
     },
     [employees, refreshAll, addSchedule, updateSchedule, deleteSchedule, schedule],
   );

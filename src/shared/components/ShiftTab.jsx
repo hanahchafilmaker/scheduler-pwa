@@ -119,6 +119,7 @@ function CellPopover({ entries, date, part, employees, onSaveCell, onClose, anch
     <div
       ref={popRef}
       className="cell-popover"
+      onClick={(e) => e.stopPropagation()}
       style={{
         position: "absolute",
         zIndex: 9999,

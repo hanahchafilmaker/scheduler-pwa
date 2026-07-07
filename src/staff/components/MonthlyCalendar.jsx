@@ -2,8 +2,8 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { FullCalendar } from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { useApi } from '../hooks/useApi';
-import { getApprovalStatusLabel } from '../hooks/useApi';
+import { useApi } from '../../shared/hooks/useApi';
+import { getApprovalStatusLabel } from '../../shared/hooks/useApi';
 
 const STATUS_COLORS = {
   approved: '#10b981', // green

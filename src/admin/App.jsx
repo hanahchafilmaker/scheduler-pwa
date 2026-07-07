@@ -15,7 +15,8 @@ import SettleTab from "../shared/components/SettleTab";
 import { PayrollAdminPanel } from "../shared/components/PayrollAdminPanel";
 
 // 1. 실제 파일 위치인 src/shared/components/ 경로를 정확히 반영한 상대 경로 수정
-import AdminPinScreen from "../shared/components/Admin_PinScreen.jsx"; 
+import AdminPinScreen from "../shared/components/Admin_PinScreen.jsx";
+import QCTab from "../shared/components/QCTab"; 
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -52,7 +53,7 @@ function getWeekDates(offset = 0) {
   });
 }
 
-const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift", "emp"]);
+const TABS_WITHOUT_MONTH_BAR = new Set(["today", "sim", "shift", "emp", "qc"]);
 
 export default function App() {
   // 인증된 관리자 상태 관리 (sessionStorage로 브라우저 탭 닫기 전까지 로그인 유지)
@@ -390,6 +391,17 @@ export default function App() {
       );
     }
 
+    if (tab === "qc") {
+      return (
+        <QCTab
+          monthAttendance={monthAttendance}
+          approveAttendance={approveAttendance}
+          selectedMonth={selectedMonth}
+          currentManagerName={adminUser?.name || "manager"}
+        />
+      );
+    }
+
     if (tab === "settle") {
       return (
         <SettleTab
@@ -397,7 +409,7 @@ export default function App() {
           employees={employees}
           selectedMonth={selectedMonth}
           lockMonthlyPay={lockMonthlyPay}
-          currentManagerName={adminUser?.name || "manager"} 
+          currentManagerName={adminUser?.name || "manager"}
         />
       );
     }
@@ -408,7 +420,7 @@ export default function App() {
         approveAttendance={approveAttendance}
         updateAttendance={updateAttendance}
         selectedMonth={selectedMonth}
-        currentManagerName={adminUser?.name || "manager"} 
+        currentManagerName={adminUser?.name || "manager"}
       />
     );
   };

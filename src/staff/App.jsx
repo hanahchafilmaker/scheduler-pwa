@@ -3,6 +3,7 @@ import useApi from "../shared/hooks/useApi";
 import PinScreen from "./components/PinScreen";
 import StaffHome from "./components/StaffHome";
 import MonthlyCalendar from "./components/MonthlyCalendar";
+import CrewManual from "./components/CrewManual";
 import "./staff.css";
 
 function Toast({ message }) {
@@ -15,7 +16,7 @@ export default function StaffApp() {
   const [inputPin, setInputPin] = useState("");
   const [pinError, setPinError] = useState("");
   const [toast, setToast] = useState("");
-  const [tab, setTab] = useState("home"); // 'home' or 'calendar'
+  const [tab, setTab] = useState("home"); // 'home', 'calendar', or 'manual'
 
   const employeeId = currentEmployee?.employee_id || "";
 
@@ -177,8 +178,10 @@ export default function StaffApp() {
             onCheckOut={handleCheckOut}
             checking={loading || todayLoading}
           />
-        ) : (
+        ) : tab === "calendar" ? (
           <MonthlyCalendar employeeId={employeeId} />
+        ) : (
+          <CrewManual />
         )}
       </main>
 
@@ -195,6 +198,12 @@ export default function StaffApp() {
           className={tab === "calendar" ? "active" : ""}
         >
           달력
+        </button>
+        <button
+          onClick={() => setTab("manual")}
+          className={tab === "manual" ? "active" : ""}
+        >
+          크루 매뉴얼
         </button>
       </div>
 

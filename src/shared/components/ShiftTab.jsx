@@ -25,17 +25,14 @@ function getEntries(schedule, date, part) {
 /* ----------------------------------------------------------------
    CellPopover (근무 셀 클릭 시 나타나는 배정 팝오버)
 ---------------------------------------------------------------- */
-function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onClose, anchorRef, onToast }) {
+function CellPopover({ entries, date, part, employees, onSaveCell, onClose, anchorRef, onToast }) {
   const activeEmployees = employees.filter(e => e.active !== false);
 
   const [selectedIds, setSelectedIds] = useState(() => entries.map(e => e.employee_id).filter(Boolean));
   const [memo, setMemo] = useState(entries.length > 0 ? entries[0].memo || "" : "");
-  const [consecutiveByEmployee, setConsecutiveByEmployee] = useState({});
-  const otherParts = PARTS.filter((p) => p !== part);
   const [position, setPosition] = useState({ top: "calc(100% + 6px)", left: 0 });
   const popRef = useRef(null);
 
-  // 검색/드롭다운 상태
   const [searchTerm, setSearchTerm] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const searchInputRef = useRef(null);
@@ -62,7 +59,7 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
     const rect = anchor.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    const popoverH = 360;
+    const popoverH = 280;
     const popoverW = 260;
 
     const spaceBelow = viewportHeight - rect.bottom;
@@ -88,71 +85,23 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
   const addEmployee = (empId) => {
     setSelectedIds(prev => (prev.includes(empId) ? prev : [...prev, empId]));
     setSearchTerm("");
-    // 여러 명 연속으로 추가할 수 있게 드롭다운은 유지하고 포커스 복귀
     searchInputRef.current?.focus();
   };
 
   const removeEmployee = (empId) => {
     setSelectedIds(prev => prev.filter(id => id !== empId));
-    setConsecutiveByEmployee(prev => {
-      const next = { ...prev };
-      delete next[empId];
-      return next;
-    });
-  };
-
-  const toggleConsecutive = (empId, partId, checked) => {
-    setConsecutiveByEmployee(prev => {
-      const current = prev[empId] || [];
-      const next = checked ? [...current, partId] : current.filter(p => p !== partId);
-      return { ...prev, [empId]: next };
-    });
   };
 
   const handleSave = async () => {
     await onSaveCell({ date, part, memo }, selectedIds);
     onClose();
-
-    const anyConsecutive = Object.values(consecutiveByEmployee).some(list => list.length > 0);
-    if (!anyConsecutive) {
-      if (onToast) {
-        if (selectedIds.length === 0) {
-          onToast("배정이 해제되었습니다");
-        } else if (selectedIds.length === 1) {
-          onToast("저장되었습니다");
-        } else {
-          onToast(`${selectedIds.length}명 배정 완료`);
-        }
-      }
-      return;
-    }
-
-    const affectedParts = new Set();
-    for (const empId of selectedIds) {
-      const parts = consecutiveByEmployee[empId] || [];
-      for (const p of parts) affectedParts.add(p);
-    }
-
-    for (const p of Array.from(affectedParts)) {
-      const existingForPart = getEntries(schedule, date, p)
-        .map(s => s.employee_id)
-        .filter(Boolean);
-      const toAdd = selectedIds.filter(
-        empId => (consecutiveByEmployee[empId] || []).includes(p)
-      );
-      const merged = Array.from(new Set([...existingForPart, ...toAdd]));
-      await onSaveCell({ date, part: p, memo: "" }, merged);
-    }
-
     if (onToast) {
-      const extraCount = Array.from(affectedParts).length;
-      const baseMsg = selectedIds.length === 0 ? "배정이 해제되었습니다"
-        : selectedIds.length === 1 ? "저장되었습니다"
-        : `${selectedIds.length}명 배정 완료`;
-      if (extraCount > 0) {
-        onToast(`${baseMsg} (연속근무 ${extraCount}개 파트 추가)`);
+      if (selectedIds.length === 0) {
+        onToast("배정이 해제되었습니다");
+      } else if (selectedIds.length === 1) {
+        onToast("저장되었습니다");
       } else {
-        onToast(baseMsg);
+        onToast(`${selectedIds.length}명 배정 완료`);
       }
     }
   };
@@ -194,7 +143,6 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
       <div style={{ marginBottom: 10 }}>
         <strong style={{ fontSize: 13, display: "block", marginBottom: 6 }}>직원 배정</strong>
 
-        {/* 선택된 직원 칩 */}
         {selectedIds.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
             {selectedIds.map(empId => {
@@ -238,7 +186,6 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
           </div>
         )}
 
-        {/* 검색 입력 + 드롭다운 */}
         <div style={{ position: "relative" }}>
           <input
             ref={searchInputRef}
@@ -285,7 +232,7 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
                       cursor: "pointer",
                       color: "#374151",
                     }}
-                    onMouseDown={ev => ev.preventDefault()} // 입력 포커스 유지
+                    onMouseDown={ev => ev.preventDefault()}
                     onMouseEnter={ev => (ev.currentTarget.style.background = "#f9fafb")}
                     onMouseLeave={ev => (ev.currentTarget.style.background = "#fff")}
                   >
@@ -301,38 +248,6 @@ function CellPopover({ entries, date, part, employees, schedule, onSaveCell, onC
           )}
         </div>
       </div>
-
-      {/* 연속근무 파트 선택 */}
-      {selectedIds.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <strong style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
-            연속근무 (각 직원에 대해 추가 파트 선택)
-          </strong>
-          {selectedIds.map(empId => {
-            const emp = employees.find(e => e.employee_id === empId);
-            const empName = emp ? emp.name : empId;
-            const selectedParts = consecutiveByEmployee[empId] || [];
-            return (
-              <div key={empId} style={{ marginBottom: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
-                  <strong style={{ fontSize: 12, marginRight: 8 }}>{empName}:</strong>
-                  {otherParts.map(p => (
-                    <label key={p} style={{ display: "inline-flex", alignItems: "center", marginRight: 12 }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedParts.includes(p)}
-                        onChange={e => toggleConsecutive(empId, p, e.target.checked)}
-                        style={{ marginRight: 4 }}
-                      />
-                      <span>{PART_LABEL[p]}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       <textarea
         value={memo}
@@ -504,7 +419,6 @@ function DesktopShiftTable(props) {
                             date={date}
                             part={part}
                             employees={employees}
-                            schedule={schedule}
                             onSaveCell={onSaveCell}
                             onClose={() => setOpenCell(null)}
                             anchorRef={cellRefs.current[cellKey]}
@@ -609,7 +523,6 @@ function MobileShiftCards(props) {
                           date={date}
                           part={part}
                           employees={employees}
-                          schedule={schedule}
                           onSaveCell={onSaveCell}
                           onClose={() => setOpenCell(null)}
                           anchorRef={cardRefs.current[cellKey]}

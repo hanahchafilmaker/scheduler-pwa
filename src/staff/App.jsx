@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import useApi from "../shared/hooks/useApi";
 import PinScreen from "./components/PinScreen";
 import StaffHome from "./components/StaffHome";
+import MonthlyCalendar from "./components/MonthlyCalendar";
 import "./staff.css";
 
 function Toast({ message }) {
@@ -14,6 +15,7 @@ export default function StaffApp() {
   const [inputPin, setInputPin] = useState("");
   const [pinError, setPinError] = useState("");
   const [toast, setToast] = useState("");
+  const [tab, setTab] = useState("home"); // 'home' or 'calendar'
 
   const employeeId = currentEmployee?.employee_id || "";
 
@@ -58,7 +60,6 @@ export default function StaffApp() {
 
   const handleLogin = () => {
     setPinError("");
-
     const normalizedPin = String(inputPin || "").trim();
 
     if (!normalizedPin) {
@@ -72,7 +73,7 @@ export default function StaffApp() {
     }
 
     const found = employees.find(
-      (emp) => String(emp.pin || "").trim() === normalizedPin && emp.active !== false,
+      (emp) => String(emp.pin || "").trim() === normalizedPin && emp.active !== false
     );
 
     if (!found) {
@@ -91,6 +92,7 @@ export default function StaffApp() {
     setInputPin("");
     setPinError("");
     setToast("로그아웃되었습니다");
+    setTab("home"); // Reset to home tab on logout
   };
 
   const handleCheckIn = async (payload) => {
@@ -166,16 +168,35 @@ export default function StaffApp() {
 
       <main className="staff-page">
         {mergedError ? <div className="staff-error">{mergedError}</div> : null}
-
-        <StaffHome
-          employee={currentEmployeeFull}
-          todaySchedule={Array.isArray(todaySchedule) ? todaySchedule : []}
-          todayAttendance={Array.isArray(todayAttendance) ? todayAttendance : []}
-          onCheckIn={handleCheckIn}
-          onCheckOut={handleCheckOut}
-          checking={loading || todayLoading}
-        />
+        {tab === "home" ? (
+          <StaffHome
+            employee={currentEmployeeFull}
+            todaySchedule={Array.isArray(todaySchedule) ? todaySchedule : []}
+            todayAttendance={Array.isArray(todayAttendance) ? todayAttendance : []}
+            onCheckIn={handleCheckIn}
+            onCheckOut={handleCheckOut}
+            checking={loading || todayLoading}
+          />
+        ) : (
+          <MonthlyCalendar employeeId={employeeId} />
+        )}
       </main>
+
+      {/* Tab Bar - only show when logged in */}
+      <div className="tab-bar">
+        <button
+          onClick={() => setTab("home")}
+          className={tab === "home" ? "active" : ""}
+        >
+          홈
+        </button>
+        <button
+          onClick={() => setTab("calendar")}
+          className={tab === "calendar" ? "active" : ""}
+        >
+          달력
+        </button>
+      </div>
 
       <Toast message={toast} />
     </div>

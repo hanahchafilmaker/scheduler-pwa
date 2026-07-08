@@ -29,21 +29,24 @@
   margin: 12px 0px;
 }
 
-.pin-cardp40 12px;
-  colse#ca3af;
-  ffon8ts:ze:14c4x;
+.pin-card p {
+  margin: 12px 0px;
+  color: #ca3af;
+  font-size: 14px;
 }
 
-.pin-cardnputwidthd01t0r%i;t ;
-    maarg:ini:ng-2b0o:tm0  1l20px;;
-    pa:ddinizng:p: 1p6x;
-    bo:rbordr-er:i:ad1i:usr:1 6px;
-    bgraocaknund: #d:0# f0f111177;
-    colo:r: #ffwff;
-    fonfto-nsizae:ce: 18 1p8x;
-    tealx-talign:gn: center;
-    bo:x-inzisizin:g: bo:rde:r-box;
-  }
+.pin-card input {
+  width: 100%;
+  margin: 20px 0;
+  padding: 16px;
+  border: 1px solid #2a2d3a;
+  border-radius: 12px;
+  background: #0f1117;
+  color: #fff;
+  font-size: 18px;
+  text-align: center;
+  box-sizing: border-box;
+}
 
 .pin-card button,
 .primary-btn,

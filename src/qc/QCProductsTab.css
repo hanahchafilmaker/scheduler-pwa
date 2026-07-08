@@ -1,0 +1,338 @@
+:root {
+  --qc-accent: #0f6e5c;
+  --qc-accent-soft: #e6f2ef;
+}
+
+.qc-tab {
+  padding: 20px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---- 상단 툴바 ---- */
+.qc-toolbar {
+  display: flex;
+  gap: 12px;
+}
+
+.qc-search {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.qc-search:focus {
+  outline: none;
+  border-color: var(--qc-accent);
+  box-shadow: 0 0 0 3px var(--qc-accent-soft);
+}
+
+.qc-btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.qc-btn-primary {
+  background: var(--qc-accent);
+  color: #fff;
+}
+
+.qc-btn-primary:hover {
+  background: #0b5a4b;
+}
+
+.qc-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qc-btn-secondary {
+  background: #f1f3f4;
+  color: #374151;
+}
+
+.qc-btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+/* ---- 존 탭 ---- */
+.qc-zone-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.qc-zone-tab {
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+
+.qc-zone-tab.active {
+  color: var(--qc-accent);
+  border-bottom-color: var(--qc-accent);
+}
+
+/* ---- 로딩 / 빈 상태 / 에러 ---- */
+.qc-loading,
+.qc-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.qc-error {
+  padding: 24px;
+  margin: 20px;
+  background: #fef2f2;
+  border-left: 4px solid #dc2626;
+  border-radius: 0 8px 8px 0;
+  color: #991b1b;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+/* ---- 제품 리스트 ---- */
+.qc-product-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qc-product-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #d1d5db;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.qc-product-row:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.qc-product-row.status-warning {
+  border-left-color: #d97706;
+}
+
+.qc-product-row.status-urgent {
+  border-left-color: #ea580c;
+}
+
+.qc-product-row.status-today,
+.qc-product-row.status-expired {
+  border-left-color: #dc2626;
+  background: #fef2f2;
+}
+
+.qc-product-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.qc-product-name {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.qc-product-category {
+  font-size: 0.78rem;
+  color: #9ca3af;
+}
+
+.qc-product-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.qc-product-deadline {
+  font-size: 0.85rem;
+  color: #4b5563;
+  min-width: 96px;
+  text-align: right;
+}
+
+.qc-status-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.qc-status-badge.status-ok {
+  background: var(--qc-accent-soft);
+  color: var(--qc-accent);
+}
+
+.qc-status-badge.status-warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.qc-status-badge.status-urgent {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.qc-status-badge.status-today,
+.qc-status-badge.status-expired {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.qc-status-badge.status-unset {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* ---- 스캔/기록 모달 ---- */
+.qc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 16px;
+}
+
+.qc-modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+}
+
+.qc-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 20px 12px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.qc-modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #1f2937;
+}
+
+.qc-modal-sub {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: #9ca3af;
+}
+
+.qc-icon-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.qc-modal-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.qc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.qc-field input {
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.qc-field input:focus {
+  outline: none;
+  border-color: var(--qc-accent);
+  box-shadow: 0 0 0 3px var(--qc-accent-soft);
+}
+
+.qc-modal-empty {
+  color: #9ca3af;
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.qc-modal-error {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.qc-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* ---- 모바일 ---- */
+@media (max-width: 600px) {
+  .qc-tab {
+    padding: 16px;
+  }
+
+  .qc-toolbar {
+    flex-direction: column;
+  }
+
+  .qc-product-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .qc-product-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

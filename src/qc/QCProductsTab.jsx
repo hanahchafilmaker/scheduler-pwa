@@ -141,7 +141,7 @@ export default function QCProductsTab() {
 
   useEffect(() => {
     if (!activeZone && zones.length > 0) {
-      setActiveZone(zones[0].key);
+      setActiveZone(zones[0].key || zones[0].id);
     }
   }, [zones, activeZone]);
 
@@ -215,10 +215,10 @@ export default function QCProductsTab() {
       <div className="qc-zone-tabs">
         {zones.map((z) => (
           <button
-            key={z.key}
+            key={z.key || z.id}
             type="button"
-            className={`qc-zone-tab ${z.key === activeZone ? 'active' : ''}`}
-            onClick={() => setActiveZone(z.key)}
+            className={`qc-zone-tab ${(z.key || z.id) === activeZone ? 'active' : ''}`}
+            onClick={() => setActiveZone(z.key || z.id)}
           >
             {z.label}
           </button>

@@ -4,7 +4,6 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import useApi from '../../shared/hooks/useApi';
 import { getApprovalStatusLabel } from '../../shared/hooks/useApi';
-import './MonthlyCalendar.css';
 
 const STATUS_COLORS = {
   approved: '#16a34a',

@@ -78,7 +78,6 @@ export const NAV_ITEMS = [
   { id: "shift", label: "스케줄 조회", icon: "📅" },
   { id: "sim", label: "급여 정산", icon: "💴" },
   { id: "emp", label: "직원 관리", icon: "👥" },
-  { id: "qc", label: "품질 검사", icon: "✅" },
   { id: "settle", label: "월 정산 마감", icon: "🔒" },
 ];
 
@@ -91,7 +90,6 @@ export function getPageTitle(tab) {
     shift: { title: "스케줄 조회", sub: "Google Sheets 기준 원본 스케줄 확인" },
     sim: { title: "급여 정산", sub: "실제 출퇴근 기준 인건비 계산" },
     emp: { title: "직원 관리", sub: "직원 등록, 수정, 활성화 관리" },
-    qc: { title: "품질 검사", sub: "대기 중인 근태 기록을 검토하고 승인/거절 처리" },
     settle: { title: "월 정산 마감", sub: "월별 급여 확정 및 final_pay 저장" },
   }[tab];
 }

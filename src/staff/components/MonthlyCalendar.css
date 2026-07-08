@@ -1,193 +1,424 @@
+/* ===========================================================
+   Monthly Attendance Calendar — visual refresh
+   Palette: neutral office white + deep slate navy accent
+   Status colors (approved/pending/rejected) are functional —
+   kept exactly as passed in from JS, never overridden here.
+   =========================================================== */
+
 .mcal {
-  background: #1a1d27;
-  border-radius: 16px;
-  overflow: hidden;
-  max-width: 900px;
+  --mcal-bg: #f7f8fa;
+  --mcal-surface: #ffffff;
+  --mcal-border: #e4e7ec;
+  --mcal-text: #1b1f27;
+  --mcal-text-soft: #6b7280;
+  --mcal-accent: #2f3b52;
+  --mcal-accent-soft: #eef1f6;
+  --mcal-radius: 14px;
+  --mcal-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--mcal-text);
+  background: var(--mcal-bg);
+  padding: 24px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.mcal-card {
+  background: var(--mcal-surface);
+  border: 1px solid var(--mcal-border);
+  border-radius: var(--mcal-radius);
+  box-shadow: var(--mcal-shadow);
+  padding: 28px 28px 20px;
+  max-width: 960px;
   margin: 0 auto;
 }
-.mcal-card {
-  background: #1a1d27;
-  border: 1px solid #2a2d3a;
-  border-radius: 16px;
-  overflow: hidden;
-}
+
+/* ---------- Header ---------- */
+
 .mcal-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  background: #2a2d3a;
-  padding: 16px 24px;
-  border-bottom: 1px solid #3a4055;
+  justify-content: space-between;
+  margin-bottom: 18px;
 }
+
 .mcal-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #fff;
+  color: var(--mcal-accent);
 }
+
 .mcal-nav {
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 4px;
+  background: var(--mcal-accent-soft);
+  border-radius: 999px;
+  padding: 4px;
 }
+
 .mcal-nav-btn {
-  background: transparent;
+  width: 30px;
+  height: 30px;
   border: none;
-  color: #c9a98c;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-  transition: background 0.2s, color 0.2s;
-}
-.mcal-nav-btn:hover {
-  background: #3a4055;
-  color: #fff;
-}
-.mcal-month-label {
-  font-weight: 600;
-  color: #c9a98c;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mcal-accent);
   font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
+
+.mcal-nav-btn:hover {
+  background: var(--mcal-surface);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.12);
+}
+
+.mcal-nav-btn:active {
+  transform: scale(0.92);
+}
+
+.mcal-month-label {
+  min-width: 96px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--mcal-accent);
+}
+
+/* ---------- Legend ---------- */
+
 .mcal-legend {
   display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 24px;
-  background: #1a1d27;
-  border-top: 1px solid #2a2d3a;
 }
+
 .mcal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mcal-text-soft);
+  background: var(--mcal-bg);
+  border: 1px solid var(--mcal-border);
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+}
+
+.mcal-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ---------- Status lines ---------- */
+
+.mcal-status-line {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+
+.mcal-loading {
+  color: var(--mcal-accent);
+  background: var(--mcal-accent-soft);
+}
+
+.mcal-error {
+  color: #b42318;
+  background: #fef3f2;
+}
+
+/* ---------- Calendar grid ---------- */
+
+.mcal-grid {
+  border: 1px solid var(--mcal-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.mcal-grid .fc {
+  --fc-border-color: var(--mcal-border);
+  --fc-today-bg-color: var(--mcal-accent-soft);
+  --fc-neutral-bg-color: var(--mcal-surface);
+  font-family: inherit;
+}
+
+.mcal-grid .fc .fc-col-header-cell {
+  background: var(--mcal-bg);
+  border-color: var(--mcal-border);
+}
+
+.mcal-grid .fc .fc-col-header-cell-cushion {
+  padding: 10px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mcal-text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mcal-grid .fc .fc-daygrid-day-number {
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--mcal-text);
+  padding: 6px 8px 2px;
+}
+
+.mcal-grid .fc .fc-day-today .fc-daygrid-day-number {
+  color: var(--mcal-accent);
+  font-weight: 800;
+}
+
+.mcal-grid .fc .fc-daygrid-day:hover {
+  background: var(--mcal-accent-soft);
+  cursor: pointer;
+}
+
+.mcal-grid .fc .fc-daygrid-day-frame {
+  min-height: 96px;
+}
+
+.mcal-grid .fc-scrollgrid {
+  border: none;
+}
+
+/* ---------- Event chip ("time card" look) ---------- */
+
+.mcal-event-chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  color: #c9a98c;
+  background: var(--mcal-surface);
+  border: 1px solid var(--mcal-border);
+  border-left: 3px solid var(--mcal-status-color, var(--mcal-accent));
+  border-radius: 6px;
+  padding: 3px 7px;
+  margin: 1px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mcal-text);
+  overflow: hidden;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
-.mcal-legend-dot {
-  width: 10px;
-  height: 10px;
+
+.mcal-event-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.1);
+}
+
+.mcal-event-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  display: inline-block;
+  flex-shrink: 0;
+  display: none; /* superseded by left-border stripe; kept for JS compatibility */
 }
-.mcal-status-line {
-  padding: 12px 24px;
-  font-size: 14px;
-  text-align: center;
+
+.mcal-event-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
-.mcal-loading {
-  color: #c9a98c;
-}
-.mcal-error {
-  color: #f87171;
-}
-.mcal-grid {
-  padding: 24px;
-}
+
+/* ---------- Modal ---------- */
+
 .mcal-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
+  inset: 0;
+  background: rgba(16, 24, 40, 0.45);
+  backdrop-filter: blur(2px);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   z-index: 1000;
+  padding: 16px;
+  animation: mcal-fade-in 0.15s ease;
 }
+
 .mcal-modal {
-  background: #1a1d27;
-  border: 1px solid #2a2d3a;
-  border-radius: 16px;
-  max-width: 90%;
-  width: 480px;
-  max-height: 85vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+  background: var(--mcal-surface);
+  border-radius: var(--mcal-radius);
+  width: 100%;
+  max-width: 420px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 50px rgba(16, 24, 40, 0.25);
+  animation: mcal-slide-up 0.18s ease;
 }
+
+@keyframes mcal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mcal-slide-up {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .mcal-modal-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #2a2d3a;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--mcal-border);
 }
+
 .mcal-modal-header h3 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mcal-accent);
 }
+
 .mcal-icon-btn {
-  background: none;
+  width: 28px;
+  height: 28px;
   border: none;
-  color: #9ca3af;
-  font-size: 24px;
+  border-radius: 50%;
+  background: var(--mcal-bg);
+  color: var(--mcal-text-soft);
   cursor: pointer;
-  width: 36px;
-  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 13px;
+  transition: background 0.15s ease;
 }
+
 .mcal-icon-btn:hover {
-  color: #fff;
+  background: var(--mcal-border);
+  color: var(--mcal-text);
 }
+
 .mcal-modal-body {
-  padding: 24px;
+  padding: 16px 20px 20px;
+  overflow-y: auto;
 }
+
 .mcal-modal-empty {
+  color: var(--mcal-text-soft);
+  font-size: 13.5px;
   text-align: center;
-  color: #9ca3af;
-  margin: 24px 0;
+  padding: 24px 0;
+  margin: 0;
 }
+
 .mcal-event-list {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
+
 .mcal-event-item {
-  background: #0f1117;
-  border: 1px solid #2a2d3a;
-  border-radius: 12px;
-  margin-bottom: 16px;
-  overflow: hidden;
+  border: 1px solid var(--mcal-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--mcal-bg);
 }
+
 .mcal-event-item-top {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid #2a2d3a;
+  margin-bottom: 8px;
 }
+
 .mcal-status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 9px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
 }
+
 .mcal-event-time {
-  font-weight: 600;
-  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--mcal-text);
 }
+
 .mcal-event-details {
-  padding: 12px 16px;
   display: grid;
-  gap: 8px;
-  color: #d1d5db;
-  font-size: 14px;
-}
-.mcal-event-details dt {
-  font-weight: 600;
-  color: #9ca3af;
-}
-.mcal-event-details dd {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
   margin: 0;
-  color: #fff;
+}
+
+.mcal-event-details dt {
+  font-size: 11px;
+  color: var(--mcal-text-soft);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.mcal-event-details dd {
+  font-size: 12.5px;
+  color: var(--mcal-text);
+  margin: 0;
   word-break: break-word;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 560px) {
+  .mcal {
+    padding: 12px;
+  }
+
+  .mcal-card {
+    padding: 18px 16px 14px;
+  }
+
+  .mcal-grid .fc .fc-daygrid-day-frame {
+    min-height: 72px;
+  }
+
+  .mcal-event-text {
+    max-width: 60px;
+  }
+
+  .mcal-event-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Accessibility ---------- */
+
+.mcal-nav-btn:focus-visible,
+.mcal-icon-btn:focus-visible {
+  outline: 2px solid var(--mcal-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mcal-modal-overlay,
+  .mcal-modal,
+  .mcal-event-chip {
+    animation: none;
+    transition: none;
+  }
 }

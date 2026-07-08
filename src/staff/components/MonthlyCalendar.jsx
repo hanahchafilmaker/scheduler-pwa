@@ -128,11 +128,10 @@ export default function MonthlyCalendar({ employeeId }) {
             dayMaxEventRows={3}
             weekends
             eventContent={(arg) => (
-              <div className="mcal-event-chip">
-                <span
-                  className="mcal-event-dot"
-                  style={{ backgroundColor: arg.event.extendedProps.statusColor }}
-                />
+              <div
+                className="mcal-event-chip"
+                style={{ '--mcal-status-color': arg.event.extendedProps.statusColor }}
+              >
                 <span className="mcal-event-text">{arg.event.title}</span>
               </div>
             )}

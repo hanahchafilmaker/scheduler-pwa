@@ -61,6 +61,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, "index.html"),
         staff: path.resolve(__dirname, "staff.html"),
+        qc: path.resolve(__dirname, "qc.html"),
       },
       output: {
         manualChunks(id) {

@@ -3,6 +3,8 @@
     { "src": "/assets/(.*)", "dest": "/assets/$1" },
     { "src": "/staff\\.html", "dest": "/staff.html" },
     { "src": "/staff", "dest": "/staff.html" },
+    { "src": "/qc\\.html", "dest": "/qc.html" },
+    { "src": "/qc", "dest": "/qc.html" },
     {
       "src": "/(sw\\.js|registerSW\\.js|manifest\\.webmanifest|workbox-.*\\.js|icons.*)",
       "dest": "/$1"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../lib/supabase.js';
 // ↑ 프로젝트의 실제 supabase client export 위치에 맞게 이 경로를 조정하세요.
 
 // ---- 기준일 타입별 라벨 ----

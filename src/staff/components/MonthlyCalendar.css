@@ -1,0 +1,193 @@
+.mcal {
+  background: #1a1d27;
+  border-radius: 16px;
+  overflow: hidden;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.mcal-card {
+  background: #1a1d27;
+  border: 1px solid #2a2d3a;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.mcal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2a2d3a;
+  padding: 16px 24px;
+  border-bottom: 1px solid #3a4055;
+}
+.mcal-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+}
+.mcal-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.mcal-nav-btn {
+  background: transparent;
+  border: none;
+  color: #c9a98c;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+.mcal-nav-btn:hover {
+  background: #3a4055;
+  color: #fff;
+}
+.mcal-month-label {
+  font-weight: 600;
+  color: #c9a98c;
+  font-size: 16px;
+}
+.mcal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 24px;
+  background: #1a1d27;
+  border-top: 1px solid #2a2d3a;
+}
+.mcal-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #c9a98c;
+}
+.mcal-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.mcal-status-line {
+  padding: 12px 24px;
+  font-size: 14px;
+  text-align: center;
+}
+.mcal-loading {
+  color: #c9a98c;
+}
+.mcal-error {
+  color: #f87171;
+}
+.mcal-grid {
+  padding: 24px;
+}
+.mcal-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+.mcal-modal {
+  background: #1a1d27;
+  border: 1px solid #2a2d3a;
+  border-radius: 16px;
+  max-width: 90%;
+  width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+}
+.mcal-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #2a2d3a;
+}
+.mcal-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+.mcal-icon-btn {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 24px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mcal-icon-btn:hover {
+  color: #fff;
+}
+.mcal-modal-body {
+  padding: 24px;
+}
+.mcal-modal-empty {
+  text-align: center;
+  color: #9ca3af;
+  margin: 24px 0;
+}
+.mcal-event-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.mcal-event-item {
+  background: #0f1117;
+  border: 1px solid #2a2d3a;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.mcal-event-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2a2d3a;
+}
+.mcal-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.mcal-event-time {
+  font-weight: 600;
+  color: #fff;
+}
+.mcal-event-details {
+  padding: 12px 16px;
+  display: grid;
+  gap: 8px;
+  color: #d1d5db;
+  font-size: 14px;
+}
+.mcal-event-details dt {
+  font-weight: 600;
+  color: #9ca3af;
+}
+.mcal-event-details dd {
+  margin: 0;
+  color: #fff;
+  word-break: break-word;
+}
